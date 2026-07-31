@@ -131,6 +131,11 @@
       transform: scale(0.98);
     }
 
+    .fight-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
     .message {
       min-height: 24px;
       margin-top: 14px;
@@ -154,79 +159,138 @@
 
       <div class="stat">
         <span class="stat-label">ЭНЕРГИЯ</span>
-        <span class="stat-value"><span id="energy">10</span>/10</span>
+        <span class="stat-value">
+          <span id="energy">10</span>/10
+        </span>
       </div>
     </section>
 
     <section class="hero-card">
       <div class="hero">🧙‍♂️</div>
 
-      <h1>Странник</h1>
+      <h1 id="heroName">Странник</h1>
       <p class="subtitle">Начинающий охотник на слизней</p>
 
       <div class="enemy">
-        <div class="enemy-name">🟢 Слизень — <span id="enemyHpText">30</span> HP</div>
+        <div class="enemy-name">
+          🟢 Слизень — <span id="enemyHpText">30</span> HP
+        </div>
 
         <div class="health-bar">
           <div class="health-fill" id="enemyHpBar"></div>
         </div>
       </div>
 
-      <button class="fight-button" id="fightButton">
-        ⚔️ Атаковать
+      <button class="fight-button" id="fightButton" disabled>
+        ⏳ Загрузка…
       </button>
 
-      <div class="message" id="message"></div>
+      <div class="message" id="message">
+        Подключаемся к серверу…
+      </div>
     </section>
   </main>
 
   <script>
     const telegram = window.Telegram.WebApp;
+    const API_URL = "https://ryzhikai.com/rpg-api";
 
     telegram.ready();
     telegram.expand();
 
-    let gold = 0;
-    let energy = 10;
-    let enemyHp = 30;
-
+    const levelElement = document.getElementById("level");
     const goldElement = document.getElementById("gold");
     const energyElement = document.getElementById("energy");
     const enemyHpText = document.getElementById("enemyHpText");
     const enemyHpBar = document.getElementById("enemyHpBar");
+    const heroName = document.getElementById("heroName");
     const message = document.getElementById("message");
     const fightButton = document.getElementById("fightButton");
 
-    function updateScreen() {
-      goldElement.textContent = gold;
-      energyElement.textContent = energy;
-      enemyHpText.textContent = enemyHp;
-      enemyHpBar.style.width = `${(enemyHp / 30) * 100}%`;
-    }
+    let player = null;
 
-    fightButton.addEventListener("click", () => {
-      if (energy <= 0) {
-        message.textContent = "😴 Энергия закончилась";
+    function updateScreen() {
+      if (!player) {
         return;
       }
 
-      energy -= 1;
-      enemyHp -= 10;
+      levelElement.textContent = player.level;
+      goldElement.textContent = player.gold;
+      energyElement.textContent = player.energy;
+      enemyHpText.textContent = player.enemy_hp;
+      heroName.textContent = player.first_name || "Странник";
 
-      telegram.HapticFeedback.impactOccurred("medium");
+      const hpPercent = Math.max(
+        0,
+        Math.min(100, (player.enemy_hp / 30) * 100)
+      );
 
-      if (enemyHp <= 0) {
-        gold += 10;
-        enemyHp = 30;
-        message.textContent = "🏆 Слизень побеждён! +10 золота";
-      } else {
-        message.textContent = "⚔️ Ты нанёс 10 урона";
+      enemyHpBar.style.width = `${hpPercent}%`;
+    }
+
+    async function apiRequest(path, method = "GET") {
+      const response = await fetch(`${API_URL}${path}`, {
+        method,
+        headers: {
+          "X-Telegram-Init-Data": telegram.initData
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Ошибка сервера");
       }
 
-      updateScreen();
+      return data;
+    }
+
+    async function loadPlayer() {
+      try {
+        if (!telegram.initData) {
+          throw new Error(
+            "Открой игру через кнопку Mini App внутри Telegram"
+          );
+        }
+
+        player = await apiRequest("/player");
+        updateScreen();
+
+        message.textContent = "✅ Прогресс загружен";
+        fightButton.disabled = false;
+        fightButton.textContent = "⚔️ Атаковать";
+      } catch (error) {
+        message.textContent = `❌ ${error.message}`;
+        fightButton.textContent = "Ошибка подключения";
+      }
+    }
+
+    fightButton.addEventListener("click", async () => {
+      if (fightButton.disabled) {
+        return;
+      }
+
+      fightButton.disabled = true;
+      fightButton.textContent = "⚔️ Атака…";
+
+      try {
+        player = await apiRequest("/fight", "POST");
+        updateScreen();
+
+        message.textContent = player.message;
+
+        if (telegram.HapticFeedback) {
+          telegram.HapticFeedback.impactOccurred("medium");
+        }
+      } catch (error) {
+        message.textContent = `❌ ${error.message}`;
+      } finally {
+        fightButton.disabled = false;
+        fightButton.textContent = "⚔️ Атаковать";
+      }
     });
 
-    updateScreen();
+    loadPlayer();
   </script>
 </body>
 </html>
