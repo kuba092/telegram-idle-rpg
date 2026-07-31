@@ -13,6 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_PATH = "/root/telegram-idle-rpg/game.db"
 
+MAX_ENERGY = 10
+ENERGY_RESTORE_SECONDS = 300  # 5 минут
+
 app = FastAPI(title="Telegram Idle RPG API")
 
 app.add_middleware(
@@ -45,8 +48,32 @@ def create_database() -> None:
             gold INTEGER NOT NULL DEFAULT 0,
             energy INTEGER NOT NULL DEFAULT 10,
             enemy_hp INTEGER NOT NULL DEFAULT 30,
-            updated_at INTEGER NOT NULL
+            updated_at INTEGER NOT NULL,
+            energy_updated_at INTEGER NOT NULL DEFAULT 0
         )
+        """
+    )
+
+    columns = {
+        row["name"]
+        for row in connection.execute(
+            "PRAGMA table_info(players)"
+        ).fetchall()
+    }
+
+    if "energy_updated_at" not in columns:
+        connection.execute(
+            """
+            ALTER TABLE players
+            ADD COLUMN energy_updated_at INTEGER NOT NULL DEFAULT 0
+            """
+        )
+
+    connection.execute(
+        """
+        UPDATE players
+        SET energy_updated_at = updated_at
+        WHERE energy_updated_at = 0
         """
     )
 
@@ -112,10 +139,80 @@ def validate_telegram_data(init_data: str) -> dict:
     return json.loads(user_data)
 
 
+def restore_energy(
+    connection: sqlite3.Connection,
+    telegram_id: int,
+) -> None:
+    player = connection.execute(
+        """
+        SELECT energy, energy_updated_at
+        FROM players
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    ).fetchone()
+
+    if not player:
+        return
+
+    current_energy = player["energy"]
+
+    if current_energy >= MAX_ENERGY:
+        connection.execute(
+            """
+            UPDATE players
+            SET energy_updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(time.time()),
+                telegram_id,
+            ),
+        )
+        return
+
+    now = int(time.time())
+    elapsed_seconds = now - player["energy_updated_at"]
+    restored_energy = elapsed_seconds // ENERGY_RESTORE_SECONDS
+
+    if restored_energy <= 0:
+        return
+
+    new_energy = min(
+        MAX_ENERGY,
+        current_energy + restored_energy,
+    )
+
+    used_seconds = restored_energy * ENERGY_RESTORE_SECONDS
+    new_energy_updated_at = (
+        player["energy_updated_at"] + used_seconds
+    )
+
+    if new_energy >= MAX_ENERGY:
+        new_energy_updated_at = now
+
+    connection.execute(
+        """
+        UPDATE players
+        SET energy = ?,
+            energy_updated_at = ?,
+            updated_at = ?
+        WHERE telegram_id = ?
+        """,
+        (
+            new_energy,
+            new_energy_updated_at,
+            now,
+            telegram_id,
+        ),
+    )
+
+
 def get_or_create_player(user: dict) -> dict:
     telegram_id = int(user["id"])
     username = user.get("username", "")
     first_name = user.get("first_name", "Игрок")
+    now = int(time.time())
 
     connection = get_database()
 
@@ -125,15 +222,17 @@ def get_or_create_player(user: dict) -> dict:
             telegram_id,
             username,
             first_name,
-            updated_at
+            updated_at,
+            energy_updated_at
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
         (
             telegram_id,
             username,
             first_name,
-            int(time.time()),
+            now,
+            now,
         ),
     )
 
@@ -148,11 +247,12 @@ def get_or_create_player(user: dict) -> dict:
         (
             username,
             first_name,
-            int(time.time()),
+            now,
             telegram_id,
         ),
     )
 
+    restore_energy(connection, telegram_id)
     connection.commit()
 
     player = connection.execute(
@@ -204,6 +304,7 @@ def fight(
     enemy_hp = player_data["enemy_hp"] - 10
     gold = player_data["gold"]
     message = "⚔️ Ты нанёс 10 урона"
+    now = int(time.time())
 
     if enemy_hp <= 0:
         enemy_hp = 30
@@ -218,6 +319,7 @@ def fight(
         SET gold = ?,
             energy = ?,
             enemy_hp = ?,
+            energy_updated_at = ?,
             updated_at = ?
         WHERE telegram_id = ?
         """,
@@ -225,7 +327,8 @@ def fight(
             gold,
             energy,
             enemy_hp,
-            int(time.time()),
+            now,
+            now,
             player_data["telegram_id"],
         ),
     )
