@@ -2,7 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>Idle RPG</title>
 
@@ -27,82 +30,107 @@
       max-width: 480px;
       min-height: 100vh;
       margin: 0 auto;
-      padding: 18px;
+      padding: 16px;
     }
 
     .top-panel {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-bottom: 14px;
     }
 
     .stat {
-      flex: 1;
-      padding: 12px;
+      padding: 11px 7px;
       text-align: center;
       background: rgba(255, 255, 255, 0.09);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 16px;
+      border-radius: 15px;
     }
 
     .stat-label {
       display: block;
       margin-bottom: 5px;
-      font-size: 12px;
+      font-size: 11px;
       color: #aab3c5;
     }
 
     .stat-value {
-      font-size: 19px;
+      font-size: 18px;
       font-weight: bold;
     }
 
-    .hero-card {
-      padding: 24px 18px;
+    .battle-card {
+      padding: 20px 16px;
       text-align: center;
       background: rgba(255, 255, 255, 0.07);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 24px;
     }
 
-    .hero {
+    .stage {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 7px 12px;
+      font-size: 13px;
+      color: #ffd783;
+      background: rgba(255, 215, 131, 0.12);
+      border-radius: 20px;
+    }
+
+    .battle-scene {
       display: flex;
       align-items: center;
-      justify-content: center;
-      width: 160px;
-      height: 160px;
-      margin: 0 auto 15px;
-      font-size: 90px;
-      background: radial-gradient(circle, #ffcf67, #d97820 65%, #794011);
-      border: 5px solid rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
     }
 
-    h1 {
-      margin: 0;
-      font-size: 26px;
-    }
-
-    .subtitle {
-      margin: 8px 0 20px;
-      color: #aab3c5;
-    }
-
-    .enemy {
-      margin: 18px 0;
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.25);
+    .fighter {
+      flex: 1;
+      padding: 14px 8px;
+      background: rgba(0, 0, 0, 0.2);
       border-radius: 18px;
     }
 
-    .enemy-name {
-      margin-bottom: 8px;
+    .fighter-icon {
+      min-height: 82px;
+      font-size: 66px;
+      transition: transform 0.15s;
+    }
+
+    .hero-attacking {
+      transform: translateX(14px) scale(1.08);
+    }
+
+    .enemy-hit {
+      transform: translateX(8px) rotate(5deg);
+    }
+
+    .fighter-name {
+      margin-top: 7px;
+      font-weight: bold;
+    }
+
+    .versus {
+      font-weight: bold;
+      color: #8993a8;
+    }
+
+    .enemy-panel {
+      margin-bottom: 16px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.26);
+      border-radius: 18px;
+    }
+
+    .enemy-title {
+      margin-bottom: 9px;
       font-weight: bold;
     }
 
     .health-bar {
-      height: 14px;
+      height: 15px;
       overflow: hidden;
       background: #3a1620;
       border-radius: 20px;
@@ -112,34 +140,57 @@
       width: 100%;
       height: 100%;
       background: linear-gradient(90deg, #ff3f55, #ff8d4d);
-      transition: width 0.25s;
+      transition: width 0.2s;
     }
 
-    .fight-button {
-      width: 100%;
-      padding: 17px;
-      font-size: 18px;
+    .progress-text {
+      margin-top: 9px;
+      font-size: 13px;
+      color: #aab3c5;
+    }
+
+    .character-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .character-stat {
+      padding: 10px 5px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 13px;
+    }
+
+    .character-stat-label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 10px;
+      color: #aab3c5;
+    }
+
+    .character-stat-value {
+      font-size: 15px;
       font-weight: bold;
-      color: white;
-      cursor: pointer;
-      background: linear-gradient(135deg, #ed7a1c, #bc381e);
-      border: none;
-      border-radius: 17px;
     }
 
-    .fight-button:active {
-      transform: scale(0.98);
-    }
-
-    .fight-button:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-
-    .message {
-      min-height: 24px;
-      margin-top: 14px;
+    .battle-status {
+      min-height: 46px;
+      margin-top: 15px;
+      padding: 12px;
       color: #ffd783;
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 14px;
+    }
+
+    .auto-battle {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #76e6a2;
+    }
+
+    .error {
+      color: #ff8e9c;
     }
   </style>
 </head>
@@ -158,35 +209,69 @@
       </div>
 
       <div class="stat">
-        <span class="stat-label">ЭНЕРГИЯ</span>
-        <span class="stat-value">
-          <span id="energy">10</span>/10
-        </span>
+        <span class="stat-label">СИЛА</span>
+        <span class="stat-value" id="power">10</span>
       </div>
     </section>
 
-    <section class="hero-card">
-      <div class="hero">🧙‍♂️</div>
+    <section class="battle-card">
+      <div class="stage">
+        Этап <span id="stage">1</span>
+      </div>
 
-      <h1 id="heroName">Странник</h1>
-      <p class="subtitle">Начинающий охотник на слизней</p>
+      <div class="battle-scene">
+        <div class="fighter">
+          <div class="fighter-icon" id="heroIcon">🧙‍♂️</div>
+          <div class="fighter-name" id="heroName">Герой</div>
+        </div>
 
-      <div class="enemy">
-        <div class="enemy-name">
-          🟢 Слизень — <span id="enemyHpText">30</span> HP
+        <div class="versus">VS</div>
+
+        <div class="fighter">
+          <div class="fighter-icon" id="enemyIcon">🟢</div>
+          <div class="fighter-name">Слизень</div>
+        </div>
+      </div>
+
+      <div class="enemy-panel">
+        <div class="enemy-title">
+          HP врага:
+          <span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span>
         </div>
 
         <div class="health-bar">
           <div class="health-fill" id="enemyHpBar"></div>
         </div>
+
+        <div class="progress-text">
+          Побеждено на этапе:
+          <span id="killsInStage">0</span>/10
+        </div>
       </div>
 
-      <button class="fight-button" id="fightButton" disabled>
-        ⏳ Загрузка…
-      </button>
+      <div class="character-stats">
+        <div class="character-stat">
+          <span class="character-stat-label">УРОН</span>
+          <span class="character-stat-value" id="damage">10</span>
+        </div>
 
-      <div class="message" id="message">
+        <div class="character-stat">
+          <span class="character-stat-label">СКОРОСТЬ</span>
+          <span class="character-stat-value" id="attackSpeed">1.00</span>
+        </div>
+
+        <div class="character-stat">
+          <span class="character-stat-label">УБИЙСТВА</span>
+          <span class="character-stat-value" id="totalKills">0</span>
+        </div>
+      </div>
+
+      <div class="battle-status" id="message">
         Подключаемся к серверу…
+      </div>
+
+      <div class="auto-battle" id="autoBattleStatus">
+        ⏳ Автобой загружается
       </div>
     </section>
   </main>
@@ -198,35 +283,29 @@
     telegram.ready();
     telegram.expand();
 
-    const levelElement = document.getElementById("level");
-    const goldElement = document.getElementById("gold");
-    const energyElement = document.getElementById("energy");
-    const enemyHpText = document.getElementById("enemyHpText");
-    const enemyHpBar = document.getElementById("enemyHpBar");
-    const heroName = document.getElementById("heroName");
-    const message = document.getElementById("message");
-    const fightButton = document.getElementById("fightButton");
+    const elements = {
+      level: document.getElementById("level"),
+      gold: document.getElementById("gold"),
+      power: document.getElementById("power"),
+      stage: document.getElementById("stage"),
+      heroName: document.getElementById("heroName"),
+      heroIcon: document.getElementById("heroIcon"),
+      enemyIcon: document.getElementById("enemyIcon"),
+      enemyHp: document.getElementById("enemyHp"),
+      enemyMaxHp: document.getElementById("enemyMaxHp"),
+      enemyHpBar: document.getElementById("enemyHpBar"),
+      killsInStage: document.getElementById("killsInStage"),
+      damage: document.getElementById("damage"),
+      attackSpeed: document.getElementById("attackSpeed"),
+      totalKills: document.getElementById("totalKills"),
+      message: document.getElementById("message"),
+      autoBattleStatus: document.getElementById("autoBattleStatus")
+    };
 
     let player = null;
-
-    function updateScreen() {
-      if (!player) {
-        return;
-      }
-
-      levelElement.textContent = player.level;
-      goldElement.textContent = player.gold;
-      energyElement.textContent = player.energy;
-      enemyHpText.textContent = player.enemy_hp;
-      heroName.textContent = player.first_name || "Странник";
-
-      const hpPercent = Math.max(
-        0,
-        Math.min(100, (player.enemy_hp / 30) * 100)
-      );
-
-      enemyHpBar.style.width = `${hpPercent}%`;
-    }
+    let battleTimer = null;
+    let battleRunning = false;
+    let requestInProgress = false;
 
     async function apiRequest(path, method = "GET") {
       const response = await fetch(`${API_URL}${path}`, {
@@ -245,7 +324,123 @@
       return data;
     }
 
-    async function loadPlayer() {
+    function updateScreen() {
+      if (!player) {
+        return;
+      }
+
+      elements.level.textContent = player.level;
+      elements.gold.textContent = player.gold;
+      elements.power.textContent = player.power;
+      elements.stage.textContent = player.stage;
+      elements.heroName.textContent = player.first_name || "Герой";
+      elements.enemyHp.textContent = player.enemy_hp;
+      elements.enemyMaxHp.textContent = player.enemy_max_hp;
+      elements.killsInStage.textContent = player.kills_in_stage;
+      elements.damage.textContent = player.damage;
+      elements.attackSpeed.textContent =
+        Number(player.attack_speed).toFixed(2);
+      elements.totalKills.textContent = player.total_kills;
+
+      const hpPercent = Math.max(
+        0,
+        Math.min(
+          100,
+          (player.enemy_hp / player.enemy_max_hp) * 100
+        )
+      );
+
+      elements.enemyHpBar.style.width = `${hpPercent}%`;
+
+      const attackDelay = Number(player.attack_interval || 1);
+
+      elements.autoBattleStatus.textContent =
+        `⚔️ Автобой: удар каждые ${attackDelay.toFixed(2)} сек.`;
+    }
+
+    function animateAttack() {
+      elements.heroIcon.classList.add("hero-attacking");
+
+      setTimeout(() => {
+        elements.heroIcon.classList.remove("hero-attacking");
+        elements.enemyIcon.classList.add("enemy-hit");
+      }, 100);
+
+      setTimeout(() => {
+        elements.enemyIcon.classList.remove("enemy-hit");
+      }, 250);
+    }
+
+    function stopAutoBattle() {
+      battleRunning = false;
+
+      if (battleTimer) {
+        clearTimeout(battleTimer);
+        battleTimer = null;
+      }
+
+      elements.autoBattleStatus.textContent = "⏸ Автобой остановлен";
+    }
+
+    function scheduleNextAttack(delaySeconds) {
+      if (!battleRunning) {
+        return;
+      }
+
+      const safeDelay = Math.max(0.1, Number(delaySeconds || 1));
+
+      battleTimer = setTimeout(
+        performAttack,
+        safeDelay * 1000
+      );
+    }
+
+    async function performAttack() {
+      if (!battleRunning || requestInProgress) {
+        return;
+      }
+
+      requestInProgress = true;
+
+      try {
+        const result = await apiRequest("/attack", "POST");
+
+        player = result;
+        updateScreen();
+
+        if (result.attacked) {
+          animateAttack();
+          elements.message.classList.remove("error");
+          elements.message.textContent = result.message;
+
+          if (
+            result.enemy_defeated &&
+            telegram.HapticFeedback
+          ) {
+            telegram.HapticFeedback.notificationOccurred(
+              "success"
+            );
+          } else if (telegram.HapticFeedback) {
+            telegram.HapticFeedback.impactOccurred("light");
+          }
+
+          scheduleNextAttack(result.attack_interval);
+        } else {
+          scheduleNextAttack(
+            result.retry_after || result.attack_interval
+          );
+        }
+      } catch (error) {
+        elements.message.classList.add("error");
+        elements.message.textContent = `❌ ${error.message}`;
+
+        scheduleNextAttack(3);
+      } finally {
+        requestInProgress = false;
+      }
+    }
+
+    async function startGame() {
       try {
         if (!telegram.initData) {
           throw new Error(
@@ -256,41 +451,36 @@
         player = await apiRequest("/player");
         updateScreen();
 
-        message.textContent = "✅ Прогресс загружен";
-        fightButton.disabled = false;
-        fightButton.textContent = "⚔️ Атаковать";
+        elements.message.classList.remove("error");
+        elements.message.textContent = "✅ Герой вступил в бой";
+
+        battleRunning = true;
+        scheduleNextAttack(0.5);
       } catch (error) {
-        message.textContent = `❌ ${error.message}`;
-        fightButton.textContent = "Ошибка подключения";
+        elements.message.classList.add("error");
+        elements.message.textContent = `❌ ${error.message}`;
+        elements.autoBattleStatus.textContent =
+          "Автобой не запущен";
       }
     }
 
-    fightButton.addEventListener("click", async () => {
-      if (fightButton.disabled) {
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopAutoBattle();
         return;
       }
 
-      fightButton.disabled = true;
-      fightButton.textContent = "⚔️ Атака…";
-
-      try {
-        player = await apiRequest("/fight", "POST");
-        updateScreen();
-
-        message.textContent = player.message;
-
-        if (telegram.HapticFeedback) {
-          telegram.HapticFeedback.impactOccurred("medium");
-        }
-      } catch (error) {
-        message.textContent = `❌ ${error.message}`;
-      } finally {
-        fightButton.disabled = false;
-        fightButton.textContent = "⚔️ Атаковать";
+      if (player && !battleRunning) {
+        battleRunning = true;
+        elements.message.textContent = "⚔️ Автобой продолжен";
+        scheduleNextAttack(0.3);
       }
     });
 
-    loadPlayer();
+    window.addEventListener("pagehide", stopAutoBattle);
+    window.addEventListener("beforeunload", stopAutoBattle);
+
+    startGame();
   </script>
 </body>
 </html>
