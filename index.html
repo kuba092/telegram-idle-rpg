@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Idle RPG</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: white;
+      background:
+        radial-gradient(circle at top, #27365c 0%, #111827 45%, #070b14 100%);
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .top-panel {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+    }
+
+    .stat-label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      color: #aab3c5;
+    }
+
+    .stat-value {
+      font-size: 19px;
+      font-weight: bold;
+    }
+
+    .hero-card {
+      padding: 24px 18px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 15px;
+      font-size: 90px;
+      background: radial-gradient(circle, #ffcf67, #d97820 65%, #794011);
+      border: 5px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .subtitle {
+      margin: 8px 0 20px;
+      color: #aab3c5;
+    }
+
+    .enemy {
+      margin: 18px 0;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 18px;
+    }
+
+    .enemy-name {
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .health-bar {
+      height: 14px;
+      overflow: hidden;
+      background: #3a1620;
+      border-radius: 20px;
+    }
+
+    .health-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff3f55, #ff8d4d);
+      transition: width 0.25s;
+    }
+
+    .fight-button {
+      width: 100%;
+      padding: 17px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      background: linear-gradient(135deg, #ed7a1c, #bc381e);
+      border: none;
+      border-radius: 17px;
+    }
+
+    .fight-button:active {
+      transform: scale(0.98);
+    }
+
+    .message {
+      min-height: 24px;
+      margin-top: 14px;
+      color: #ffd783;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="top-panel">
+      <div class="stat">
+        <span class="stat-label">УРОВЕНЬ</span>
+        <span class="stat-value" id="level">1</span>
+      </div>
+
+      <div class="stat">
+        <span class="stat-label">ЗОЛОТО</span>
+        <span class="stat-value" id="gold">0</span>
+      </div>
+
+      <div class="stat">
+        <span class="stat-label">ЭНЕРГИЯ</span>
+        <span class="stat-value"><span id="energy">10</span>/10</span>
+      </div>
+    </section>
+
+    <section class="hero-card">
+      <div class="hero">🧙‍♂️</div>
+
+      <h1>Странник</h1>
+      <p class="subtitle">Начинающий охотник на слизней</p>
+
+      <div class="enemy">
+        <div class="enemy-name">🟢 Слизень — <span id="enemyHpText">30</span> HP</div>
+
+        <div class="health-bar">
+          <div class="health-fill" id="enemyHpBar"></div>
+        </div>
+      </div>
+
+      <button class="fight-button" id="fightButton">
+        ⚔️ Атаковать
+      </button>
+
+      <div class="message" id="message"></div>
+    </section>
+  </main>
+
+  <script>
+    const telegram = window.Telegram.WebApp;
+
+    telegram.ready();
+    telegram.expand();
+
+    let gold = 0;
+    let energy = 10;
+    let enemyHp = 30;
+
+    const goldElement = document.getElementById("gold");
+    const energyElement = document.getElementById("energy");
+    const enemyHpText = document.getElementById("enemyHpText");
+    const enemyHpBar = document.getElementById("enemyHpBar");
+    const message = document.getElementById("message");
+    const fightButton = document.getElementById("fightButton");
+
+    function updateScreen() {
+      goldElement.textContent = gold;
+      energyElement.textContent = energy;
+      enemyHpText.textContent = enemyHp;
+      enemyHpBar.style.width = `${(enemyHp / 30) * 100}%`;
+    }
+
+    fightButton.addEventListener("click", () => {
+      if (energy <= 0) {
+        message.textContent = "😴 Энергия закончилась";
+        return;
+      }
+
+      energy -= 1;
+      enemyHp -= 10;
+
+      telegram.HapticFeedback.impactOccurred("medium");
+
+      if (enemyHp <= 0) {
+        gold += 10;
+        enemyHp = 30;
+        message.textContent = "🏆 Слизень побеждён! +10 золота";
+      } else {
+        message.textContent = "⚔️ Ты нанёс 10 урона";
+      }
+
+      updateScreen();
+    });
+
+    updateScreen();
+  </script>
+</body>
+</html>
