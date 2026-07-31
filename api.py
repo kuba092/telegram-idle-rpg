@@ -13,16 +13,15 @@ from fastapi.middleware.cors import CORSMiddleware
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_PATH = "/root/telegram-idle-rpg/game.db"
 
-MAX_ENERGY = 10
-ENERGY_RESTORE_SECONDS = 300  # 5 минут
+BASE_ENEMY_HP = 30
+ENEMIES_PER_STAGE = 10
+MIN_ATTACK_INTERVAL = 0.1
 
 app = FastAPI(title="Telegram Idle RPG API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://kuba092.github.io",
-    ],
+    allow_origins=["https://kuba092.github.io"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +32,33 @@ def get_database() -> sqlite3.Connection:
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def add_column_if_missing(
+    connection: sqlite3.Connection,
+    column_name: str,
+    column_definition: str,
+) -> None:
+    columns = {
+        row["name"]
+        for row in connection.execute(
+            "PRAGMA table_info(players)"
+        ).fetchall()
+    }
+
+    if column_name not in columns:
+        connection.execute(
+            f"ALTER TABLE players ADD COLUMN "
+            f"{column_name} {column_definition}"
+        )
+
+
+def calculate_enemy_hp(stage: int) -> int:
+    return round(BASE_ENEMY_HP * (1.22 ** (stage - 1)))
+
+
+def calculate_gold_reward(stage: int) -> int:
+    return 5 + stage * 2
 
 
 def create_database() -> None:
@@ -46,34 +72,66 @@ def create_database() -> None:
             first_name TEXT,
             level INTEGER NOT NULL DEFAULT 1,
             gold INTEGER NOT NULL DEFAULT 0,
-            energy INTEGER NOT NULL DEFAULT 10,
             enemy_hp INTEGER NOT NULL DEFAULT 30,
-            updated_at INTEGER NOT NULL,
-            energy_updated_at INTEGER NOT NULL DEFAULT 0
+            updated_at INTEGER NOT NULL
         )
         """
     )
 
-    columns = {
-        row["name"]
-        for row in connection.execute(
-            "PRAGMA table_info(players)"
-        ).fetchall()
-    }
-
-    if "energy_updated_at" not in columns:
-        connection.execute(
-            """
-            ALTER TABLE players
-            ADD COLUMN energy_updated_at INTEGER NOT NULL DEFAULT 0
-            """
-        )
+    add_column_if_missing(
+        connection,
+        "damage",
+        "INTEGER NOT NULL DEFAULT 10",
+    )
+    add_column_if_missing(
+        connection,
+        "attack_speed",
+        "REAL NOT NULL DEFAULT 1.0",
+    )
+    add_column_if_missing(
+        connection,
+        "last_attack_at",
+        "REAL NOT NULL DEFAULT 0",
+    )
+    add_column_if_missing(
+        connection,
+        "stage",
+        "INTEGER NOT NULL DEFAULT 1",
+    )
+    add_column_if_missing(
+        connection,
+        "kills_in_stage",
+        "INTEGER NOT NULL DEFAULT 0",
+    )
+    add_column_if_missing(
+        connection,
+        "total_kills",
+        "INTEGER NOT NULL DEFAULT 0",
+    )
+    add_column_if_missing(
+        connection,
+        "enemy_max_hp",
+        "INTEGER NOT NULL DEFAULT 30",
+    )
+    add_column_if_missing(
+        connection,
+        "power",
+        "INTEGER NOT NULL DEFAULT 10",
+    )
 
     connection.execute(
         """
         UPDATE players
-        SET energy_updated_at = updated_at
-        WHERE energy_updated_at = 0
+        SET enemy_max_hp = 30
+        WHERE enemy_max_hp <= 0
+        """
+    )
+
+    connection.execute(
+        """
+        UPDATE players
+        SET enemy_hp = enemy_max_hp
+        WHERE enemy_hp <= 0
         """
     )
 
@@ -85,16 +143,19 @@ def validate_telegram_data(init_data: str) -> dict:
     if not BOT_TOKEN:
         raise HTTPException(
             status_code=500,
-            detail="BOT_TOKEN не настроен на сервере",
+            detail="BOT_TOKEN не настроен",
         )
 
-    parsed_data = dict(parse_qsl(init_data, keep_blank_values=True))
+    parsed_data = dict(
+        parse_qsl(init_data, keep_blank_values=True)
+    )
+
     received_hash = parsed_data.pop("hash", None)
 
     if not received_hash:
         raise HTTPException(
             status_code=401,
-            detail="Отсутствует подпись Telegram",
+            detail="Нет подписи Telegram",
         )
 
     auth_date = int(parsed_data.get("auth_date", "0"))
@@ -122,7 +183,10 @@ def validate_telegram_data(init_data: str) -> dict:
         hashlib.sha256,
     ).hexdigest()
 
-    if not hmac.compare_digest(calculated_hash, received_hash):
+    if not hmac.compare_digest(
+        calculated_hash,
+        received_hash,
+    ):
         raise HTTPException(
             status_code=401,
             detail="Неверная подпись Telegram",
@@ -133,79 +197,10 @@ def validate_telegram_data(init_data: str) -> dict:
     if not user_data:
         raise HTTPException(
             status_code=401,
-            detail="Telegram не передал пользователя",
+            detail="Telegram не передал игрока",
         )
 
     return json.loads(user_data)
-
-
-def restore_energy(
-    connection: sqlite3.Connection,
-    telegram_id: int,
-) -> None:
-    player = connection.execute(
-        """
-        SELECT energy, energy_updated_at
-        FROM players
-        WHERE telegram_id = ?
-        """,
-        (telegram_id,),
-    ).fetchone()
-
-    if not player:
-        return
-
-    current_energy = player["energy"]
-
-    if current_energy >= MAX_ENERGY:
-        connection.execute(
-            """
-            UPDATE players
-            SET energy_updated_at = ?
-            WHERE telegram_id = ?
-            """,
-            (
-                int(time.time()),
-                telegram_id,
-            ),
-        )
-        return
-
-    now = int(time.time())
-    elapsed_seconds = now - player["energy_updated_at"]
-    restored_energy = elapsed_seconds // ENERGY_RESTORE_SECONDS
-
-    if restored_energy <= 0:
-        return
-
-    new_energy = min(
-        MAX_ENERGY,
-        current_energy + restored_energy,
-    )
-
-    used_seconds = restored_energy * ENERGY_RESTORE_SECONDS
-    new_energy_updated_at = (
-        player["energy_updated_at"] + used_seconds
-    )
-
-    if new_energy >= MAX_ENERGY:
-        new_energy_updated_at = now
-
-    connection.execute(
-        """
-        UPDATE players
-        SET energy = ?,
-            energy_updated_at = ?,
-            updated_at = ?
-        WHERE telegram_id = ?
-        """,
-        (
-            new_energy,
-            new_energy_updated_at,
-            now,
-            telegram_id,
-        ),
-    )
 
 
 def get_or_create_player(user: dict) -> dict:
@@ -222,16 +217,14 @@ def get_or_create_player(user: dict) -> dict:
             telegram_id,
             username,
             first_name,
-            updated_at,
-            energy_updated_at
+            updated_at
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?)
         """,
         (
             telegram_id,
             username,
             first_name,
-            now,
             now,
         ),
     )
@@ -252,7 +245,6 @@ def get_or_create_player(user: dict) -> dict:
         ),
     )
 
-    restore_energy(connection, telegram_id)
     connection.commit()
 
     player = connection.execute(
@@ -269,6 +261,27 @@ def get_or_create_player(user: dict) -> dict:
     return dict(player)
 
 
+def build_player_response(
+    player: dict,
+    **extra,
+) -> dict:
+    attack_speed = max(
+        0.1,
+        float(player["attack_speed"]),
+    )
+
+    attack_interval = max(
+        MIN_ATTACK_INTERVAL,
+        1 / attack_speed,
+    )
+
+    return {
+        **player,
+        "attack_interval": attack_interval,
+        **extra,
+    }
+
+
 @app.on_event("startup")
 def startup_event() -> None:
     create_database()
@@ -283,33 +296,79 @@ def health() -> dict:
 def player(
     x_telegram_init_data: str = Header(...),
 ) -> dict:
-    user = validate_telegram_data(x_telegram_init_data)
-    return get_or_create_player(user)
-
-
-@app.post("/fight")
-def fight(
-    x_telegram_init_data: str = Header(...),
-) -> dict:
-    user = validate_telegram_data(x_telegram_init_data)
+    user = validate_telegram_data(
+        x_telegram_init_data
+    )
     player_data = get_or_create_player(user)
 
-    if player_data["energy"] <= 0:
-        return {
-            **player_data,
-            "message": "😴 Энергия закончилась",
-        }
+    return build_player_response(player_data)
 
-    energy = player_data["energy"] - 1
-    enemy_hp = player_data["enemy_hp"] - 10
-    gold = player_data["gold"]
-    message = "⚔️ Ты нанёс 10 урона"
-    now = int(time.time())
 
-    if enemy_hp <= 0:
-        enemy_hp = 30
-        gold += 10
-        message = "🏆 Слизень побеждён! +10 золота"
+@app.post("/attack")
+def attack(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(
+        x_telegram_init_data
+    )
+    player_data = get_or_create_player(user)
+
+    now = time.time()
+
+    attack_speed = max(
+        0.1,
+        float(player_data["attack_speed"]),
+    )
+
+    attack_interval = max(
+        MIN_ATTACK_INTERVAL,
+        1 / attack_speed,
+    )
+
+    elapsed = now - float(
+        player_data["last_attack_at"]
+    )
+
+    if (
+        player_data["last_attack_at"] > 0
+        and elapsed < attack_interval
+    ):
+        retry_after = attack_interval - elapsed
+
+        return build_player_response(
+            player_data,
+            attacked=False,
+            retry_after=retry_after,
+            message="Атака ещё не готова",
+        )
+
+    damage = int(player_data["damage"])
+    enemy_hp = int(player_data["enemy_hp"]) - damage
+    enemy_max_hp = int(player_data["enemy_max_hp"])
+    stage = int(player_data["stage"])
+    kills_in_stage = int(
+        player_data["kills_in_stage"]
+    )
+    total_kills = int(player_data["total_kills"])
+    gold = int(player_data["gold"])
+
+    enemy_defeated = enemy_hp <= 0
+    stage_completed = False
+    reward = 0
+
+    if enemy_defeated:
+        reward = calculate_gold_reward(stage)
+        gold += reward
+        kills_in_stage += 1
+        total_kills += 1
+
+        if kills_in_stage >= ENEMIES_PER_STAGE:
+            stage += 1
+            kills_in_stage = 0
+            stage_completed = True
+
+        enemy_max_hp = calculate_enemy_hp(stage)
+        enemy_hp = enemy_max_hp
 
     connection = get_database()
 
@@ -317,18 +376,24 @@ def fight(
         """
         UPDATE players
         SET gold = ?,
-            energy = ?,
             enemy_hp = ?,
-            energy_updated_at = ?,
+            enemy_max_hp = ?,
+            stage = ?,
+            kills_in_stage = ?,
+            total_kills = ?,
+            last_attack_at = ?,
             updated_at = ?
         WHERE telegram_id = ?
         """,
         (
             gold,
-            energy,
             enemy_hp,
+            enemy_max_hp,
+            stage,
+            kills_in_stage,
+            total_kills,
             now,
-            now,
+            int(now),
             player_data["telegram_id"],
         ),
     )
@@ -346,7 +411,23 @@ def fight(
 
     connection.close()
 
-    return {
-        **dict(updated_player),
-        "message": message,
-    }
+    message = f"⚔️ Нанесено {damage} урона"
+
+    if enemy_defeated:
+        message = (
+            f"🏆 Враг побеждён! +{reward} золота"
+        )
+
+    if stage_completed:
+        message = (
+            f"🚪 Этап пройден! Открыт этап {stage}"
+        )
+
+    return build_player_response(
+        dict(updated_player),
+        attacked=True,
+        enemy_defeated=enemy_defeated,
+        stage_completed=stage_completed,
+        reward=reward,
+        message=message,
+    )
