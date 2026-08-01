@@ -2477,12 +2477,32 @@
       hit: asset("hero_hit.png")
     };
 
-    const MONSTERS = [
-      { key:"slime", name:"Слизень", idle:asset("slime.png"), attack:asset("slime_attack.png") },
-      { key:"goblin", name:"Гоблин", idle:asset("goblin.png"), attack:asset("goblin_attack.png") },
-      { key:"bat", name:"Летучая тварь", idle:asset("bat.png"), attack:asset("bat.png") },
-      { key:"skeleton", name:"Скелет-воин", idle:asset("skeleton.png"), attack:asset("skeleton.png") }
-    ];
+  const FOREST_ENEMIES = [
+    { key:"slime", name:"Слизень", idle:asset("slime.png"), attack:asset("slime_attack.png") },
+    { key:"forest_bee", name:"Лесная пчела", idle:asset("forest_bee.png"), attack:asset("forest_bee.png") },
+    { key:"goblin", name:"Гоблин", idle:asset("goblin.png"), attack:asset("goblin_attack.png") },
+    { key:"bat", name:"Летучая тварь", idle:asset("bat.png"), attack:asset("bat.png") },
+    { key:"thorn_boar", name:"Шипастый кабан", idle:asset("thorn_boar.png"), attack:asset("thorn_boar.png") },
+    { key:"poison_toad", name:"Ядовитая жаба", idle:asset("poison_toad.png"), attack:asset("poison_toad.png") },
+    { key:"skeleton", name:"Скелет-воин", idle:asset("skeleton.png"), attack:asset("skeleton.png") },
+    { key:"root_golem", name:"Корневой голем", idle:asset("root_golem.png"), attack:asset("root_golem.png") },
+    { key:"armored_slime", name:"Бронированный слизень", idle:asset("armored_slime.png"), attack:asset("armored_slime.png") },
+    { key:"goblin_shaman", name:"Гоблин-шаман", idle:asset("goblin_shaman.png"), attack:asset("goblin_shaman.png") }
+  ];
+
+  const FOREST_BOSSES = {
+    10:  { key:"elder_slime", name:"Старейшина слизней", idle:asset("elder_slime.png"), attack:asset("elder_slime.png") },
+    20:  { key:"goblin_shaman", name:"Вождь гоблинов", idle:asset("goblin_shaman.png"), attack:asset("goblin_shaman.png") },
+    30:  { key:"nightwing_queen", name:"Королева ночных крыльев", idle:asset("nightwing_queen.png"), attack:asset("nightwing_queen.png") },
+    40:  { key:"bone_commander", name:"Костяной командир", idle:asset("bone_commander.png"), attack:asset("bone_commander.png") },
+    50:  { key:"forest_bee", name:"Королева улья", idle:asset("forest_bee.png"), attack:asset("forest_bee.png") },
+    60:  { key:"thorn_boar", name:"Безумный лесной кабан", idle:asset("thorn_boar.png"), attack:asset("thorn_boar.png") },
+    70:  { key:"poison_toad", name:"Великая болотная жаба", idle:asset("poison_toad.png"), attack:asset("poison_toad.png") },
+    80:  { key:"root_golem", name:"Страж корней", idle:asset("root_golem.png"), attack:asset("root_golem.png") },
+    90:  { key:"mushroom_knight", name:"Мицелиевый рыцарь", idle:asset("mushroom_knight.png"), attack:asset("mushroom_knight.png") },
+    100: { key:"forest_colossus", name:"Лесной колосс", idle:asset("forest_colossus.png"), attack:asset("forest_colossus.png") }
+  };
+
 
     const SLOT_NAMES = {
       helmet:"Шлем", armor:"Нагрудник", gloves:"Перчатки", pants:"Штаны",
@@ -2524,7 +2544,7 @@
     };
 
     let player = null;
-    let currentMonster = MONSTERS[0];
+    let currentMonster = FOREST_ENEMIES[0];
     let currentBossState = false;
     let battleRunning = false;
     let requestInProgress = false;
@@ -2550,7 +2570,8 @@
     async function preloadAssets() {
       const sources = [
         ...Object.values(HERO_ASSETS),
-        ...MONSTERS.flatMap((monster) => [monster.idle, monster.attack]),
+        ...FOREST_ENEMIES.flatMap((monster) => [monster.idle, monster.attack]),
+      ...Object.values(FOREST_BOSSES).flatMap((monster) => [monster.idle, monster.attack]),
         asset("slash.png"), asset("hit.png"), asset("spore_burst.png"), asset("forest_bg.png")
       ];
       await Promise.all([...new Set(sources)].map((source) => new Promise((resolve) => {
@@ -2582,19 +2603,57 @@
         }
       }, delay);
     }
-    function monsterForStage(stage) { return MONSTERS[Math.max(0, Number(stage || 1) - 1) % MONSTERS.length]; }
-    function updateMonster() {
-      const next = monsterForStage(player?.stage || 1);
-      const boss = Boolean(player?.boss_active);
-      const changed = next.key !== currentMonster.key || boss !== currentBossState;
-      currentMonster = next; currentBossState = boss;
-      const name = boss ? `БОСС: ${next.name}` : next.name;
-      elements.enemyName.textContent = name;
-      elements.enemyNameplate.textContent = name;
-      elements.enemySprite.alt = name;
-      document.body.classList.toggle("boss-active", boss);
-      if (changed || !elements.enemySprite.src.includes(next.key)) elements.enemySprite.src = next.idle;
+  function regularMonsterForBattle(stage, wave) {
+    const safeStage = Math.max(1, Number(stage || 1));
+    const safeWave = Math.max(1, Number(wave || 1));
+    const stageBand = Math.min(9, Math.floor((safeStage - 1) / 10));
+    const unlockedCount = Math.min(
+      FOREST_ENEMIES.length,
+      3 + stageBand
+    );
+    const index = (safeStage + safeWave - 2) % unlockedCount;
+    return FOREST_ENEMIES[index];
+  }
+
+  function monsterForBattle(stage, wave, bossActive) {
+    const safeStage = Math.max(1, Number(stage || 1));
+
+    if (
+      bossActive &&
+      safeStage % 10 === 0 &&
+      FOREST_BOSSES[safeStage]
+    ) {
+      return FOREST_BOSSES[safeStage];
     }
+
+    return regularMonsterForBattle(safeStage, wave);
+  }
+
+  function updateMonster() {
+    const boss = Boolean(player?.boss_active);
+    const next = monsterForBattle(
+      player?.stage || 1,
+      player?.wave || 1,
+      boss
+    );
+
+    const changed =
+      next.key !== currentMonster.key ||
+      boss !== currentBossState;
+
+    currentMonster = next;
+    currentBossState = boss;
+
+    const name = boss ? `БОСС: ${next.name}` : next.name;
+    elements.enemyName.textContent = name;
+    elements.enemyNameplate.textContent = name;
+    elements.enemySprite.alt = name;
+    document.body.classList.toggle("boss-active", boss);
+
+    if (changed) {
+      elements.enemySprite.src = next.idle;
+    }
+  }
 
     function levelProgress(data) {
       const detail = data?.level_exp || {};
