@@ -1,15 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-  <title>Idle Wars</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<title>Idle Wars</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
     :root {
       --text: #ffffff;
       --muted: rgba(241, 247, 255, 0.76);
@@ -63,7 +60,7 @@
           rgba(4, 12, 12, 0.08) 62%,
           rgba(3, 8, 10, 0.62) 100%
         ),
-        url("assets/forest_bg.png?v=10") center / cover no-repeat;
+        url("assets/forest_bg.png?v=8") center / cover no-repeat;
       isolation: isolate;
     }
 
@@ -1098,7 +1095,7 @@
       overflow: hidden;
       background:
         linear-gradient(180deg, rgba(11, 32, 26, 0.76), rgba(3, 12, 13, 0.96)),
-        url("assets/forest_bg.png?v=10") center / cover no-repeat;
+        url("assets/forest_bg.png?v=8") center / cover no-repeat;
       opacity: 1;
       transform: translateY(0);
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -1529,7 +1526,7 @@
       z-index: 70;
       background:
         linear-gradient(180deg, rgba(8, 27, 22, 0.97), rgba(3, 12, 13, 0.99)),
-        url("assets/forest_bg.png?v=10") center / cover no-repeat;
+        url("assets/forest_bg.png?v=8") center / cover no-repeat;
     }
 
     .game-nav {
@@ -1938,578 +1935,539 @@
     }
 
   
-    /* ===== Реальная система сундуков и экипировки ===== */
-    .dock-chest { position: relative; }
-    .chest-count {
+
+    /* ===== V5: прогресс, боссы, сундуки, характеристики и рейтинг ===== */
+    .leaderboard-button {
       position: absolute;
-      top: -7px;
-      right: -7px;
-      z-index: 3;
+      top: calc(91px + env(safe-area-inset-top));
+      left: 10px;
+      z-index: 46;
       display: grid;
-      min-width: 21px;
-      height: 21px;
-      padding: 0 5px;
+      width: 42px;
+      height: 42px;
       place-items: center;
-      border: 2px solid rgba(7, 22, 21, 0.95);
-      border-radius: 999px;
-      background: linear-gradient(180deg, #ffdd63, #e99825);
-      color: #362000;
-      font-size: 9px;
-      font-weight: 950;
-      box-shadow: 0 3px 9px rgba(0,0,0,.42);
+      border: 1px solid rgba(255, 222, 111, 0.42);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(83, 57, 16, .94), rgba(27, 21, 12, .94));
+      box-shadow: 0 9px 23px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.12);
+      font-size: 21px;
+      cursor: pointer;
+      backdrop-filter: blur(9px);
     }
-    .dock-chest.no-chests { filter: saturate(.55); opacity: .72; }
-    .gear-slot { position: relative; }
-    .gear-slot.equipped { background: linear-gradient(180deg, rgba(28,48,40,.96), rgba(8,21,20,.96)); }
-    .gear-rarity {
-      position: absolute;
-      right: 4px;
-      bottom: 4px;
-      width: 6px;
-      height: 6px;
-      border: 1px solid rgba(255,255,255,.5);
-      border-radius: 999px;
-      background: rgba(196,208,204,.35);
-      box-shadow: 0 0 6px currentColor;
-    }
-    .gear-slot.rarity-common { border-color: rgba(203,214,210,.42); }
-    .gear-slot.rarity-common .gear-rarity { background: #cbd5d1; }
-    .gear-slot.rarity-rare { border-color: rgba(75,174,255,.75); box-shadow: inset 0 0 10px rgba(45,142,255,.16); }
-    .gear-slot.rarity-rare .gear-rarity { background: #4badff; }
-    .gear-slot.rarity-epic { border-color: rgba(192,91,255,.78); box-shadow: inset 0 0 12px rgba(174,65,255,.18); }
-    .gear-slot.rarity-epic .gear-rarity { background: #c05bff; }
-    .gear-slot.rarity-legendary { border-color: rgba(255,181,49,.85); box-shadow: inset 0 0 13px rgba(255,155,25,.2), 0 0 9px rgba(255,159,27,.18); }
-    .gear-slot.rarity-legendary .gear-rarity { background: #ffb531; }
+    body.section-open .leaderboard-button,
+    body.section-open .auto-toggle { display: none; }
 
-    .loot-card { position: relative; width: min(92%, 350px); }
-    .loot-card.rarity-common { border-color: rgba(210,220,216,.34); }
-    .loot-card.rarity-rare { border-color: rgba(75,174,255,.75); box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 32px rgba(50,151,255,.18); }
-    .loot-card.rarity-epic { border-color: rgba(192,91,255,.8); box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 34px rgba(174,65,255,.2); }
-    .loot-card.rarity-legendary { border-color: rgba(255,181,49,.88); box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 38px rgba(255,155,25,.24); }
-    .loot-rarity { margin-bottom: 4px; color: #bfcac7; font-size: 9px; font-weight: 950; letter-spacing: .13em; }
-    .rarity-rare .loot-rarity { color: #64b8ff; }
-    .rarity-epic .loot-rarity { color: #ce7cff; }
-    .rarity-legendary .loot-rarity { color: #ffc14f; }
-    .loot-slot-name { margin-top: -3px; margin-bottom: 13px; color: rgba(234,243,240,.62); font-size: 10px; }
-    .loot-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0 0 11px; }
-    .loot-stat { padding: 8px 4px; border: 1px solid rgba(255,255,255,.11); border-radius: 11px; background: rgba(255,255,255,.045); }
-    .loot-stat span { display: block; margin-bottom: 3px; color: rgba(232,242,239,.55); font-size: 7px; font-weight: 850; }
-    .loot-stat strong { color: #edffc5; font-size: 12px; }
-    .loot-comparison { min-height: 34px; margin-bottom: 13px; padding: 8px 9px; border-radius: 10px; background: rgba(1,10,11,.48); color: rgba(237,246,243,.76); font-size: 10px; line-height: 1.45; }
-    .loot-comparison.upgrade { color: #aef27f; }
-    .loot-comparison.downgrade { color: #ffbd84; }
-    .loot-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .loot-action { min-height: 42px; border: 0; border-radius: 12px; font: inherit; font-size: 11px; font-weight: 950; cursor: pointer; }
-    .loot-action.sell { background: linear-gradient(135deg,#4e5a5b,#293334); color:#f1f5f4; }
-    .loot-action.equip { background: linear-gradient(135deg,#bde954,#56c86c); color:#08210d; }
-    .loot-action:disabled { opacity:.55; cursor:wait; }
-    .loot-card-button.hidden, .loot-actions.hidden { display:none; }
-
-
-    /* ===== Уровни сундука и улучшение качества добычи ===== */
-    .chest-level-badge {
-      position: absolute;
-      top: -7px;
-      left: -8px;
-      z-index: 3;
-      display: grid;
-      min-width: 29px;
-      height: 20px;
-      padding: 0 5px;
-      place-items: center;
-      border: 2px solid rgba(7, 22, 21, 0.95);
-      border-radius: 999px;
-      background: linear-gradient(180deg, #8fe45a, #3fae55);
-      color: #09230e;
-      font-size: 7px;
-      font-weight: 950;
-      letter-spacing: .02em;
-      box-shadow: 0 3px 9px rgba(0,0,0,.42);
-    }
-
-    .gear-slot.rarity-uncommon {
-      border-color: rgba(83, 214, 116, .72);
-      box-shadow: inset 0 0 11px rgba(57, 192, 93, .16);
-    }
-    .gear-slot.rarity-uncommon .gear-rarity { background: #59d47c; }
-    .gear-slot.rarity-mythic {
-      border-color: rgba(255, 72, 110, .88);
-      box-shadow: inset 0 0 14px rgba(255, 54, 96, .22), 0 0 11px rgba(255, 54, 96, .18);
-    }
-    .gear-slot.rarity-mythic .gear-rarity { background: #ff486e; }
-
-    .loot-card.rarity-uncommon {
-      border-color: rgba(83, 214, 116, .78);
-      box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 30px rgba(57,192,93,.18);
-    }
-    .loot-card.rarity-mythic {
-      border-color: rgba(255, 72, 110, .92);
-      box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 40px rgba(255,54,96,.25);
-    }
-    .rarity-uncommon .loot-rarity { color: #6ee593; }
-    .rarity-mythic .loot-rarity { color: #ff6d8c; }
-
-    .chest-panel.hidden,
-    .loot-stats.hidden,
-    .loot-comparison.hidden {
-      display: none;
-    }
-
-    .chest-panel {
-      margin-top: 2px;
-    }
-
-    .chest-level-line {
+    .stage-title {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-      padding: 9px 10px;
-      border: 1px solid rgba(255, 225, 115, .22);
-      border-radius: 12px;
-      background: rgba(36, 28, 10, .46);
+      gap: 7px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
     }
-
-    .chest-level-copy {
-      text-align: left;
-    }
-
-    .chest-level-copy span {
-      display: block;
-      margin-bottom: 2px;
-      color: rgba(243, 246, 239, .58);
-      font-size: 7px;
-      font-weight: 850;
-      letter-spacing: .08em;
-    }
-
-    .chest-level-copy strong {
-      color: #ffe67d;
-      font-size: 16px;
-    }
-
-    .chest-stock {
-      min-width: 76px;
-      padding: 6px 8px;
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 10px;
-      background: rgba(255,255,255,.04);
-      color: rgba(240,247,244,.68);
-      font-size: 8px;
-      font-weight: 850;
-      text-align: center;
-    }
-
-    .chest-stock strong {
-      display: block;
-      margin-top: 2px;
+    .boss-button {
+      padding: 4px 9px;
+      border: 1px solid rgba(255, 94, 103, .58);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #b93043, #671c2b);
       color: #fff;
-      font-size: 13px;
-    }
-
-    .rarity-chances {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-      margin-bottom: 11px;
-    }
-
-    .rarity-chance {
-      padding: 7px 3px;
-      border: 1px solid rgba(255,255,255,.09);
-      border-radius: 10px;
-      background: rgba(255,255,255,.035);
-      font-size: 7px;
-      font-weight: 850;
-      text-align: center;
-    }
-
-    .rarity-chance strong {
-      display: block;
-      margin-top: 3px;
-      font-size: 10px;
-    }
-
-    .rarity-chance.common { color: #cbd5d1; }
-    .rarity-chance.uncommon { color: #6ee593; }
-    .rarity-chance.rare { color: #64b8ff; }
-    .rarity-chance.epic { color: #ce7cff; }
-    .rarity-chance.legendary { color: #ffc14f; }
-    .rarity-chance.mythic { color: #ff6d8c; }
-
-    .chest-quality-note {
-      margin-bottom: 11px;
-      padding: 8px 9px;
-      border-radius: 10px;
-      background: rgba(1,10,11,.48);
-      color: rgba(237,246,243,.7);
-      font-size: 9px;
-      line-height: 1.4;
-      text-align: left;
-    }
-
-    .chest-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .chest-action {
-      min-height: 43px;
-      padding: 7px 6px;
-      border: 0;
-      border-radius: 12px;
       font: inherit;
-      font-size: 10px;
+      font-size: 9px;
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow: 0 0 13px rgba(255,62,78,.35);
+    }
+    .hidden { display: none !important; }
+    body.boss-active .enemy-sprite {
+      width: clamp(190px, 35vw, 340px);
+      max-width: 110%;
+      filter: drop-shadow(0 15px 12px rgba(0,0,0,.46)) drop-shadow(0 0 16px rgba(181,73,255,.42));
+    }
+    body.boss-active .enemy-panel {
+      border-color: rgba(222, 115, 255, .38);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 18px rgba(160,63,255,.15);
+    }
+
+    .chest-count-badge,
+    .chest-level-badge {
+      position: absolute;
+      z-index: 2;
+      border-radius: 999px;
+      background: rgba(5, 13, 13, .92);
+      color: #fff4b4;
+      font-weight: 950;
+      line-height: 1;
+    }
+    .chest-count-badge { top: -7px; right: -6px; min-width: 21px; padding: 4px 5px; font-size: 8px; }
+    .chest-level-badge { bottom: -6px; left: 50%; padding: 3px 6px; font-size: 6px; transform: translateX(-50%); white-space: nowrap; }
+    .auto-toggle {
+      position: absolute;
+      left: calc(50% + 48px);
+      bottom: calc(119px + env(safe-area-inset-bottom));
+      z-index: 46;
+      min-width: 45px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      background: rgba(7,18,18,.88);
+      color: rgba(235,244,241,.68);
+      font: inherit;
+      font-size: 7px;
       font-weight: 950;
       cursor: pointer;
     }
-
-    .chest-action.open {
-      background: linear-gradient(135deg, #bde954, #56c86c);
-      color: #08210d;
+    .auto-toggle.active {
+      border-color: rgba(115,255,143,.45);
+      background: linear-gradient(180deg, rgba(55,145,75,.95), rgba(18,77,40,.95));
+      color: #eaffd9;
+      box-shadow: 0 0 14px rgba(86,233,112,.26);
     }
 
-    .chest-action.upgrade {
-      background: linear-gradient(135deg, #ffd667, #e79a29);
-      color: #352000;
-    }
+    .gear-slot.equipped { border-color: rgba(255,224,119,.46); box-shadow: 0 0 11px rgba(255,220,99,.13); }
+    .gear-slot.rarity-uncommon { border-color: rgba(90,220,120,.55); }
+    .gear-slot.rarity-rare { border-color: rgba(83,159,255,.65); }
+    .gear-slot.rarity-epic { border-color: rgba(184,92,255,.68); }
+    .gear-slot.rarity-legendary { border-color: rgba(255,174,50,.75); }
+    .gear-slot.rarity-mythic { border-color: rgba(255,77,104,.78); }
+    .gear-slot.rarity-ancient { border-color: rgba(48,231,205,.78); }
+    .gear-slot.rarity-divine { border-color: rgba(255,245,139,.9); box-shadow: 0 0 12px rgba(255,238,92,.35); }
+    .gear-slot.rarity-celestial { border-color: rgba(194,226,255,.95); box-shadow: 0 0 15px rgba(139,205,255,.48); }
+    .gear-slot.equipped .gear-empty { background: #84f59c; border-color: #dfffe6; }
 
-    .chest-action:disabled {
-      opacity: .5;
-      cursor: not-allowed;
+    .game-modal {
+      position: absolute;
+      inset: 0;
+      z-index: 120;
+      display: grid;
+      place-items: center;
+      padding: calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+      background: rgba(2,8,10,.76);
+      backdrop-filter: blur(8px);
     }
+    .modal-panel {
+      position: relative;
+      width: min(100%, 390px);
+      max-height: min(88dvh, 720px);
+      overflow: auto;
+      padding: 20px 16px 17px;
+      border: 1px solid rgba(255,255,255,.17);
+      border-radius: 23px;
+      background: linear-gradient(180deg, rgba(10,30,27,.98), rgba(4,13,15,.99));
+      box-shadow: 0 22px 55px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.07);
+    }
+    .modal-close {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      display: grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 11px;
+      background: rgba(3,12,13,.8);
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .modal-title { margin: 2px 38px 15px; color: #fff0a0; font-size: 21px; font-weight: 950; text-align: center; }
+    .primary-game-button,
+    .secondary-game-button,
+    .loot-action {
+      padding: 11px 10px;
+      border: 0;
+      border-radius: 13px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+    .primary-game-button { background: linear-gradient(135deg,#bde955,#55c86e); color:#09200d; }
+    .secondary-game-button { border: 1px solid rgba(255,220,98,.32); background: linear-gradient(180deg,#6a4817,#302313); color:#fff0ad; }
+    button:disabled { opacity: .5; cursor: default; }
 
-  </style>
+    .chest-summary-row { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
+    .chest-summary-row > div { padding:8px 5px; border:1px solid rgba(255,255,255,.11); border-radius:12px; background:rgba(255,255,255,.045); text-align:center; }
+    .chest-summary-row span { display:block; margin-bottom:3px; color:rgba(236,244,241,.6); font-size:7px; font-weight:900; }
+    .chest-summary-row strong { color:#ffe98c; font-size:12px; }
+    .upgrade-copy { margin-bottom:6px; color:#eef8f3; font-size:10px; font-weight:850; text-align:center; }
+    .upgrade-track { height:9px; overflow:hidden; border-radius:999px; background:rgba(12,37,31,.92); }
+    .upgrade-track > div { width:0; height:100%; border-radius:inherit; background:linear-gradient(90deg,#78d957,#d9f56b); transition:width .2s; }
+    .chest-main-actions { display:grid; grid-template-columns:1.2fr 1fr; gap:7px; margin-top:14px; }
+    .upgrade-cost { margin:8px 0 13px; color:rgba(239,247,244,.68); font-size:9px; text-align:center; }
+    .rarity-title { margin-bottom:7px; color:#fff4be; font-size:10px; font-weight:950; }
+    .rarity-chances { display:grid; grid-template-columns:repeat(2,1fr); gap:5px; }
+    .rarity-row { display:flex; justify-content:space-between; padding:6px 8px; border:1px solid rgba(255,255,255,.09); border-radius:10px; background:rgba(255,255,255,.035); font-size:8px; }
+
+    .loot-result-card { position:relative; width:min(94%,360px); padding-top:18px; }
+    .loot-rarity { margin:-2px 0 5px; font-size:10px; font-weight:950; letter-spacing:.06em; }
+    .equipped-item-name { margin:-1px 0 11px; color:rgba(235,244,240,.68); font-size:9px; }
+    .comparison-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:13px 0 10px; }
+    .comparison-card { padding:9px 4px 8px; border:1px solid rgba(255,255,255,.11); border-radius:13px; background:rgba(255,255,255,.045); text-align:center; }
+    .comparison-card span { display:block; margin-bottom:5px; color:rgba(236,244,241,.58); font-size:7px; font-weight:900; }
+    .comparison-card strong { display:block; color:#eef4f3; font-size:11px; line-height:1.25; }
+    .comparison-card small { display:block; margin-top:4px; font-size:9px; font-weight:950; }
+    .comparison-card.better small { color:#72ed91; }
+    .comparison-card.worse small { color:#ff7080; }
+    .comparison-card.equal small { color:#a7b2b0; }
+    .loot-meta { margin-bottom:12px; color:rgba(238,246,243,.67); font-size:9px; line-height:1.45; }
+    .loot-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .loot-action.equip { background:linear-gradient(135deg,#bde955,#55c86e); color:#08200d; }
+    .loot-action.sell { background:linear-gradient(135deg,#ffd064,#d68b2c); color:#2a1605; }
+
+    .offline-panel { text-align:center; }
+    .offline-icon { font-size:48px; }
+    .offline-text { margin:-7px 0 15px; color:rgba(236,244,241,.65); font-size:10px; }
+    .offline-rewards { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+    .offline-rewards > div { padding:12px 6px; border:1px solid rgba(255,255,255,.11); border-radius:14px; background:rgba(255,255,255,.04); font-size:21px; }
+    .offline-rewards strong { display:block; color:#ffe687; font-size:22px; }
+    .offline-rewards span { display:block; color:rgba(236,244,241,.62); font-size:8px; }
+    .offline-panel .primary-game-button { width:100%; }
+
+    .leaderboard-panel { width:min(100%,430px); }
+    .leaderboard-rule { margin:-8px 0 11px; color:rgba(235,244,241,.58); font-size:8px; text-align:center; }
+    .leaderboard-list { display:flex; max-height:58dvh; flex-direction:column; gap:5px; overflow:auto; }
+    .leader-row { display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; gap:7px; padding:8px; border:1px solid rgba(255,255,255,.09); border-radius:12px; background:rgba(255,255,255,.035); }
+    .leader-row.me { border-color:rgba(126,239,147,.43); background:rgba(58,135,72,.14); }
+    .leader-rank { color:#ffe685; font-size:12px; font-weight:950; text-align:center; }
+    .leader-name { overflow:hidden; color:#fff; font-size:10px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
+    .leader-stage { margin-top:2px; color:#ffe69a; font-size:8px; font-weight:850; }
+    .leader-wave { margin-top:2px; color:rgba(235,244,241,.55); font-size:7px; }
+    .leader-power { color:#8df0a4; font-size:9px; font-weight:950; white-space:nowrap; }
+    .leaderboard-me { margin-top:9px; padding-top:9px; border-top:1px solid rgba(255,255,255,.12); }
+
+    .hero-profile-card { justify-content:flex-start; overflow:auto; padding-top:12px; }
+    .hero-profile-glow { top:3%; width:44%; }
+    .hero-profile-image { width:min(38%,170px); max-height:31%; }
+    .hero-profile-power { margin-top:-5px; }
+    .hero-stats-panel { position:relative; z-index:2; width:100%; margin-top:10px; }
+    .hero-stat-section-title { margin-bottom:5px; color:rgba(244,250,247,.62); font-size:7px; font-weight:950; letter-spacing:.08em; }
+    .hero-total-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .hero-stat-tile { padding:7px 4px; border:1px solid rgba(255,255,255,.1); border-radius:11px; background:rgba(255,255,255,.04); text-align:center; }
+    .hero-stat-tile span { display:block; margin-bottom:3px; color:rgba(234,244,240,.56); font-size:6.5px; font-weight:900; }
+    .hero-stat-tile strong { color:#fff0a1; font-size:10px; }
+    .hero-stat-columns { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:7px; }
+    .hero-stat-column { padding:8px; border:1px solid rgba(255,255,255,.09); border-radius:11px; background:rgba(255,255,255,.035); color:rgba(239,247,244,.69); font-size:8px; line-height:1.7; }
+    .hero-stat-column > div:not(.hero-stat-section-title) { display:flex; justify-content:space-between; }
+    .hero-stat-column strong { color:#f9ffea; }
+    .hero-xp-detail { margin-top:7px; color:rgba(235,244,241,.58); font-size:8px; text-align:center; }
+
+    @media (max-width:430px) {
+      .leaderboard-button { top:calc(82px + env(safe-area-inset-top)); left:7px; width:36px; height:36px; border-radius:12px; font-size:18px; }
+      .auto-toggle { left:calc(50% + 42px); bottom:calc(105px + env(safe-area-inset-bottom)); min-width:40px; padding:5px 6px; font-size:6px; }
+      body.boss-active .enemy-sprite { width:58vw; }
+      .modal-panel { padding:18px 13px 14px; }
+      .hero-profile-image { width:min(34%,135px); max-height:26%; }
+    }
+</style>
 </head>
-
 <body>
-  <main class="app">
-    <section class="top-hud">
-      <div class="level-card">
-        <div class="level-row">
-          <span class="level-caption">УРОВЕНЬ</span>
-          <strong class="level-value" id="level">1</strong>
-        </div>
-        <div class="xp-row">
-          <span>ОПЫТ</span>
-          <span id="xpText">0 / 10</span>
-        </div>
-        <div class="xp-track">
-          <div class="xp-fill" id="xpBar"></div>
-        </div>
-      </div>
-
-      <div class="resources">
-        <div class="resource-pill bm-pill">
-          <span class="resource-icon">⚔️</span>
-          <span class="resource-copy">
-            <span class="resource-label">БМ</span>
-            <strong class="resource-value" id="bm">10</strong>
-          </span>
-        </div>
-
-        <div class="resource-pill gold-pill">
-          <span class="resource-icon">🪙</span>
-          <span class="resource-copy">
-            <span class="resource-label">ЗОЛОТО</span>
-            <strong class="resource-value" id="gold">0</strong>
-          </span>
-        </div>
-      </div>
-    </section>
-
-    <section class="battlefield" id="battlefield">
-      <div class="enemy-hud">
-        <div class="stage-title">
-          ЭТАП <span id="stage">1</span>
-        </div>
-
-        <div class="enemy-panel">
-          <div class="enemy-hud-row">
-            <span id="enemyName">Слизень</span>
-            <span class="enemy-hp-text">
-              <span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span> HP
+<main class="app">
+<section class="top-hud">
+<div class="level-card">
+<div class="level-row">
+<span class="level-caption">УРОВЕНЬ</span>
+<strong class="level-value" id="level">1</strong>
+</div>
+<div class="xp-row">
+<span>ОПЫТ</span>
+<span id="xpText">0 / 10</span>
+</div>
+<div class="xp-track">
+<div class="xp-fill" id="xpBar"></div>
+</div>
+</div>
+<div class="resources">
+<div class="resource-pill bm-pill">
+<span class="resource-icon">⚔️</span>
+<span class="resource-copy">
+<span class="resource-label">БМ</span>
+<strong class="resource-value" id="bm">10</strong>
+</span>
+</div>
+<div class="resource-pill gold-pill">
+<span class="resource-icon">🪙</span>
+<span class="resource-copy">
+<span class="resource-label">ЗОЛОТО</span>
+<strong class="resource-value" id="gold">0</strong>
+</span>
+</div>
+</div>
+</section>
+<button aria-label="Открыть лидерборд" class="leaderboard-button" id="leaderboardButton" type="button">🏆</button><section class="battlefield" id="battlefield">
+<div class="enemy-hud">
+<div class="stage-title"><span id="stageProgress">Этап 1 • 1/10</span><button class="boss-button hidden" id="bossButton" type="button">БОСС</button></div>
+<div class="enemy-panel">
+<div class="enemy-hud-row">
+<span id="enemyName">Слизень</span>
+<span class="enemy-hp-text">
+<span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span> HP
             </span>
-          </div>
-
-          <div class="hp-track">
-            <div class="hp-fill" id="enemyHpBar"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="fighters-layer">
-        <div class="fighter-slot hero-slot">
-          <div class="fighter-shadow"></div>
-          <img
-            class="fighter-sprite hero-sprite"
-            id="heroSprite"
-            src="assets/hero.png?v=10"
-            alt="Грибной воин"
-          >
-          <div class="hero-health">
-            <div class="hero-health-row">
-              <span>❤️ HP</span>
-              <span><span id="heroHp">100</span>/<span id="heroMaxHp">100</span></span>
-            </div>
-            <div class="hero-hp-track">
-              <div class="hero-hp-fill" id="heroHpBar"></div>
-            </div>
-          </div>
-          <div class="fighter-name" id="heroName">Герой</div>
-        </div>
-
-        <div class="fighter-slot enemy-slot">
-          <div class="fighter-shadow"></div>
-          <img
-            class="fighter-sprite enemy-sprite"
-            id="enemySprite"
-            src="assets/slime.png?v=10"
-            alt="Монстр"
-          >
-          <div class="fighter-name" id="enemyNameplate">Слизень</div>
-        </div>
-      </div>
-
-      <div class="effects-layer">
-        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=10" alt="">
-        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=10" alt="">
-        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=10" alt="">
-        <div class="damage-number" id="damageNumber">-10</div>
-        <div class="hero-hit-flash" id="heroHitFlash"></div>
-      </div>
-
-      <div class="battle-bottom">
-        <div class="battle-message" id="message">
+</div>
+<div class="hp-track">
+<div class="hp-fill" id="enemyHpBar"></div>
+</div>
+</div>
+</div>
+<div class="fighters-layer">
+<div class="fighter-slot hero-slot">
+<div class="fighter-shadow"></div>
+<img alt="Грибной воин" class="fighter-sprite hero-sprite" id="heroSprite" src="assets/hero.png?v=9"/>
+<div class="hero-health">
+<div class="hero-health-row">
+<span>❤️ HP</span>
+<span><span id="heroHp">100</span>/<span id="heroMaxHp">100</span></span>
+</div>
+<div class="hero-hp-track">
+<div class="hero-hp-fill" id="heroHpBar"></div>
+</div>
+</div>
+<div class="fighter-name" id="heroName">Герой</div>
+</div>
+<div class="fighter-slot enemy-slot">
+<div class="fighter-shadow"></div>
+<img alt="Монстр" class="fighter-sprite enemy-sprite" id="enemySprite" src="assets/slime.png?v=9"/>
+<div class="fighter-name" id="enemyNameplate">Слизень</div>
+</div>
+</div>
+<div class="effects-layer">
+<img alt="" class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=9"/>
+<img alt="" class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=9"/>
+<img alt="" class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=9"/>
+<div class="damage-number" id="damageNumber">-10</div>
+<div class="hero-hit-flash" id="heroHitFlash"></div>
+</div>
+<div class="battle-bottom">
+<div class="battle-message" id="message">
           Подключаемся к серверу…
         </div>
-      </div>
-
-      <div class="equipment-dock" aria-label="Экипировка героя">
-        <div class="equipment-dock-inner">
-          <button class="gear-slot" type="button" data-slot="helmet" data-gear-name="Шлем" aria-label="Шлем">
-            <span class="gear-icon" id="gearIcon-helmet">🪖</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="armor" data-gear-name="Нагрудник" aria-label="Нагрудник">
-            <span class="gear-icon" id="gearIcon-armor">🛡️</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="gloves" data-gear-name="Перчатки" aria-label="Перчатки">
-            <span class="gear-icon" id="gearIcon-gloves">🧤</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="pants" data-gear-name="Штаны" aria-label="Штаны">
-            <span class="gear-icon" id="gearIcon-pants">👖</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="boots" data-gear-name="Обувь" aria-label="Обувь">
-            <span class="gear-icon" id="gearIcon-boots">🥾</span><span class="gear-rarity"></span>
-          </button>
-
-          <button class="dock-chest" id="lootButton" type="button" aria-label="Открыть сундук">
-            <span class="chest-level-badge" id="chestLevelBadge">УР. 1</span>
-            <span class="chest-count" id="chestCount">0</span>
-            <span class="dock-chest-icon">🧰</span>
-            <span class="dock-chest-label">СУНДУК</span>
-          </button>
-
-          <button class="gear-slot" type="button" data-slot="weapon" data-gear-name="Оружие" aria-label="Оружие">
-            <span class="gear-icon" id="gearIcon-weapon">🗡️</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="necklace" data-gear-name="Ожерелье" aria-label="Ожерелье">
-            <span class="gear-icon" id="gearIcon-necklace">📿</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="ring" data-gear-name="Кольцо" aria-label="Кольцо">
-            <span class="gear-icon" id="gearIcon-ring">💍</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="belt" data-gear-name="Пояс" aria-label="Пояс">
-            <span class="gear-icon" id="gearIcon-belt">🧷</span><span class="gear-rarity"></span>
-          </button>
-          <button class="gear-slot" type="button" data-slot="talisman" data-gear-name="Талисман" aria-label="Талисман">
-            <span class="gear-icon" id="gearIcon-talisman">🔮</span><span class="gear-rarity"></span>
-          </button>
-        </div>
-      </div>
-
-<nav class="game-nav" aria-label="Основные игровые разделы">
-        <button class="game-nav-button" type="button" data-screen="hero" aria-label="Герой">
-          <span class="game-nav-icon">🍄</span>
-          <span class="game-nav-label">ГЕРОЙ</span>
-        </button>
-
-        <button class="game-nav-button" type="button" data-screen="companions" aria-label="Спутники">
-          <span class="game-nav-icon">🐾</span>
-          <span class="game-nav-label">СПУТНИКИ</span>
-        </button>
-
-        <button class="game-nav-button active" type="button" data-screen="battle" aria-label="Бой">
-          <span class="game-nav-icon">⚔️</span>
-          <span class="game-nav-label">БОЙ</span>
-        </button>
-
-        <button class="game-nav-button" type="button" data-screen="trials" aria-label="Испытания">
-          <span class="game-nav-icon">🏰</span>
-          <span class="game-nav-label">ИСПЫТАНИЯ</span>
-        </button>
-
-        <button class="game-nav-button" type="button" data-screen="clan" aria-label="Клан">
-          <span class="game-nav-icon">🏳️</span>
-          <span class="game-nav-label">КЛАН</span>
-        </button>
-
-        <button class="game-nav-button" type="button" data-screen="shop" aria-label="Магазин">
-          <span class="game-nav-icon">🛒</span>
-          <span class="game-nav-label">МАГАЗИН</span>
-        </button>
-      </nav>
-
-      <section class="game-screen hidden" id="heroScreen" aria-label="Герой">
-        <header class="screen-header">
-          <button class="screen-close" type="button" data-close-screen aria-label="Вернуться в бой">‹</button>
-          <div class="screen-title">Герой</div>
-          <div class="screen-header-spacer"></div>
-        </header>
-
-        <div class="hero-summary">
-          <div class="hero-summary-main">
-            <div class="hero-summary-level">
+</div>
+<div aria-label="Экипировка героя" class="equipment-dock">
+<div class="equipment-dock-inner">
+<button aria-label="Шлем" class="gear-slot gear-helmet" data-gear-name="Шлем" data-slot="helmet" type="button">
+<span class="gear-icon">🪖</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Нагрудник" class="gear-slot gear-armor" data-gear-name="Нагрудник" data-slot="armor" type="button">
+<span class="gear-icon">🛡️</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Перчатки" class="gear-slot gear-gloves" data-gear-name="Перчатки" data-slot="gloves" type="button">
+<span class="gear-icon">🧤</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Штаны" class="gear-slot gear-pants" data-gear-name="Штаны" data-slot="pants" type="button">
+<span class="gear-icon">👖</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Обувь" class="gear-slot gear-boots" data-gear-name="Обувь" data-slot="boots" type="button">
+<span class="gear-icon">🥾</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Открыть сундук" class="dock-chest" id="lootButton" type="button"><span class="dock-chest-icon">🧰</span><span class="dock-chest-label">СУНДУК</span><span class="chest-count-badge" id="chestCount">0</span><span class="chest-level-badge" id="chestLevelBadge">УР. 1</span></button>
+<button aria-label="Оружие" class="gear-slot gear-weapon" data-gear-name="Оружие" data-slot="weapon" type="button">
+<span class="gear-icon">🗡️</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Ожерелье" class="gear-slot gear-necklace" data-gear-name="Ожерелье" data-slot="necklace" type="button">
+<span class="gear-icon">📿</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Кольцо" class="gear-slot gear-ring" data-gear-name="Кольцо" data-slot="ring" type="button">
+<span class="gear-icon">💍</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Пояс" class="gear-slot gear-belt" data-gear-name="Пояс" data-slot="belt" type="button">
+<span class="gear-icon">🧷</span>
+<span class="gear-empty"></span>
+</button>
+<button aria-label="Талисман" class="gear-slot gear-talisman" data-gear-name="Талисман" data-slot="talisman" type="button">
+<span class="gear-icon">🔮</span>
+<span class="gear-empty"></span>
+</button>
+</div>
+</div><button aria-pressed="false" class="auto-toggle" id="autoToggle" type="button">АВТО</button>
+<nav aria-label="Основные игровые разделы" class="game-nav">
+<button aria-label="Герой" class="game-nav-button" data-screen="hero" type="button">
+<span class="game-nav-icon">🍄</span>
+<span class="game-nav-label">ГЕРОЙ</span>
+</button>
+<button aria-label="Спутники" class="game-nav-button" data-screen="companions" type="button">
+<span class="game-nav-icon">🐾</span>
+<span class="game-nav-label">СПУТНИКИ</span>
+</button>
+<button aria-label="Бой" class="game-nav-button active" data-screen="battle" type="button">
+<span class="game-nav-icon">⚔️</span>
+<span class="game-nav-label">БОЙ</span>
+</button>
+<button aria-label="Испытания" class="game-nav-button" data-screen="trials" type="button">
+<span class="game-nav-icon">🏰</span>
+<span class="game-nav-label">ИСПЫТАНИЯ</span>
+</button>
+<button aria-label="Клан" class="game-nav-button" data-screen="clan" type="button">
+<span class="game-nav-icon">🏳️</span>
+<span class="game-nav-label">КЛАН</span>
+</button>
+<button aria-label="Магазин" class="game-nav-button" data-screen="shop" type="button">
+<span class="game-nav-icon">🛒</span>
+<span class="game-nav-label">МАГАЗИН</span>
+</button>
+</nav>
+<section aria-label="Герой" class="game-screen hidden" id="heroScreen">
+<header class="screen-header">
+<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<div class="screen-title">Герой</div>
+<div class="screen-header-spacer"></div>
+</header>
+<div class="hero-summary">
+<div class="hero-summary-main">
+<div class="hero-summary-level">
               Уровень <span id="heroScreenLevel">1</span>
-            </div>
-            <div class="hero-summary-xp">
-              <div class="hero-summary-xp-fill" id="heroScreenXp"></div>
-            </div>
-          </div>
-
-          <div class="hero-summary-stat">
-            <span>БМ</span>
-            <strong id="heroScreenBm">10</strong>
-          </div>
-
-          <div class="hero-summary-stat">
-            <span>ЗОЛОТО</span>
-            <strong id="heroScreenGold">0</strong>
-          </div>
-        </div>
-
-        <div class="hero-profile-card">
-          <div class="hero-profile-glow"></div>
-          <img
-            class="hero-profile-image"
-            src="assets/hero.png?v=10"
-            alt="Грибной герой"
-          >
-          <div class="hero-profile-power">
+</div>
+<div class="hero-summary-xp">
+<div class="hero-summary-xp-fill" id="heroScreenXp"></div>
+</div>
+</div>
+<div class="hero-summary-stat">
+<span>БМ</span>
+<strong id="heroScreenBm">10</strong>
+</div>
+<div class="hero-summary-stat">
+<span>ЗОЛОТО</span>
+<strong id="heroScreenGold">0</strong>
+</div>
+</div>
+<div class="hero-profile-card">
+<div class="hero-profile-glow"></div>
+<img alt="Грибной герой" class="hero-profile-image" src="assets/hero.png?v=9"/>
+<div class="hero-profile-power">
             Боевая мощь <strong id="equipmentBm">10</strong>
-          </div>
-          <div class="hero-profile-note">
-            Здесь позже будут внешность, характеристики и развитие героя.
-            Экипировка теперь находится на главном экране рядом с сундуком.
-          </div>
-        </div>
-      </section>
-
-      <section class="game-screen hidden" id="comingScreen" aria-label="Игровой раздел">
-        <header class="screen-header">
-          <button class="screen-close" type="button" data-close-screen aria-label="Вернуться в бой">‹</button>
-          <div class="screen-title" id="comingHeader">Раздел</div>
-          <div class="screen-header-spacer"></div>
-        </header>
-
-        <div class="coming-content">
-          <div class="coming-card">
-            <div class="coming-icon" id="comingIcon">✨</div>
-            <div class="coming-title" id="comingTitle">Скоро</div>
-            <div class="coming-text" id="comingText">
+</div>
+<div class="hero-stats-panel" id="heroStatsPanel">
+<div class="hero-stat-section-title">ИТОГОВЫЕ ХАРАКТЕРИСТИКИ</div>
+<div class="hero-total-grid">
+<div class="hero-stat-tile"><span>БМ</span><strong id="heroTotalPower">10</strong></div>
+<div class="hero-stat-tile"><span>УРОН</span><strong id="heroTotalDamage">10</strong></div>
+<div class="hero-stat-tile"><span>МАКС. HP</span><strong id="heroTotalHp">100</strong></div>
+<div class="hero-stat-tile"><span>СКОРОСТЬ</span><strong id="heroAttackSpeed">1.00</strong></div>
+<div class="hero-stat-tile"><span>ШАНС КРИТА</span><strong id="heroCritChance">5%</strong></div>
+<div class="hero-stat-tile"><span>КРИТ. УРОН</span><strong id="heroCritDamage">150%</strong></div>
+</div>
+<div class="hero-stat-columns">
+<div class="hero-stat-column">
+<div class="hero-stat-section-title">БАЗА</div>
+<div>БМ <strong id="heroBasePower">10</strong></div>
+<div>Урон <strong id="heroBaseDamage">10</strong></div>
+<div>HP <strong id="heroBaseHp">100</strong></div>
+</div>
+<div class="hero-stat-column">
+<div class="hero-stat-section-title">ЭКИПИРОВКА</div>
+<div>БМ <strong id="heroGearPower">+0</strong></div>
+<div>Урон <strong id="heroGearDamage">+0</strong></div>
+<div>HP <strong id="heroGearHp">+0</strong></div>
+</div>
+</div>
+<div class="hero-xp-detail" id="heroXpDetail">Опыт: 0 / 1</div>
+</div>
+</div>
+</section>
+<section aria-label="Игровой раздел" class="game-screen hidden" id="comingScreen">
+<header class="screen-header">
+<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<div class="screen-title" id="comingHeader">Раздел</div>
+<div class="screen-header-spacer"></div>
+</header>
+<div class="coming-content">
+<div class="coming-card">
+<div class="coming-icon" id="comingIcon">✨</div>
+<div class="coming-title" id="comingTitle">Скоро</div>
+<div class="coming-text" id="comingText">
               Этот игровой раздел подключим после системы экипировки.
             </div>
-          </div>
-        </div>
-      </section>
-
-      <div class="loot-overlay hidden" id="lootOverlay">
-        <div class="loot-card rarity-common" id="lootCard">
-          <div class="loot-card-icon" id="lootItemIcon">🧰</div>
-          <div class="loot-rarity" id="lootItemRarity">ОБЫЧНЫЙ</div>
-          <div class="loot-card-title" id="lootItemName">Предмет</div>
-          <div class="loot-slot-name" id="lootItemSlot">Экипировка</div>
-
-
-          <div class="chest-panel hidden" id="chestPanel">
-            <div class="chest-level-line">
-              <div class="chest-level-copy">
-                <span>УРОВЕНЬ СУНДУКА</span>
-                <strong id="chestLevelValue">1 / 20</strong>
-              </div>
-              <div class="chest-stock">
-                ДОСТУПНО
-                <strong id="chestAvailable">0</strong>
-              </div>
-            </div>
-
-            <div class="rarity-chances" id="rarityChances"></div>
-
-            <div class="chest-quality-note" id="chestQualityNote">
-              Улучшайте сундук за золото: предметы станут сильнее, а шанс высокой редкости вырастет.
-            </div>
-
-            <div class="chest-actions">
-              <button class="chest-action open" id="chestOpenButton" type="button">
-                Открыть сундук
-              </button>
-              <button class="chest-action upgrade" id="chestUpgradeButton" type="button">
-                Улучшить · <span id="chestUpgradeCost">0</span> 🪙
-              </button>
-            </div>
-          </div>
-
-          <div class="loot-stats" id="lootStats">
-            <div class="loot-stat"><span>БМ</span><strong id="lootPower">+0</strong></div>
-            <div class="loot-stat"><span>УРОН</span><strong id="lootDamage">+0</strong></div>
-            <div class="loot-stat"><span>HP</span><strong id="lootHp">+0</strong></div>
-          </div>
-
-          <div class="loot-comparison" id="lootComparison">Сравниваем с экипировкой…</div>
-
-          <div class="loot-actions" id="lootActions">
-            <button class="loot-action sell" id="lootSellButton" type="button">
-              Продать · <span id="lootSellPrice">0</span> 🪙
-            </button>
-            <button class="loot-action equip" id="lootEquipButton" type="button">
-              Надеть
-            </button>
-          </div>
-
-          <button class="loot-card-button hidden" id="lootCloseButton" type="button">Закрыть</button>
-        </div>
-      </div>
-
-      <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-box">
-          <div class="loading-title" id="loadingTitle">Загружаем бой</div>
-          <div class="loading-text" id="loadingText">
+</div>
+</div>
+</section>
+<div class="loot-overlay hidden" id="lootOverlay">
+<div class="loot-card loot-result-card" id="lootResultCard">
+<button aria-label="Закрыть" class="modal-close" id="lootModalClose" type="button">×</button>
+<div class="loot-card-icon" id="lootItemIcon">🧰</div>
+<div class="loot-rarity" id="lootRarity">Обычный</div>
+<div class="loot-card-title" id="lootItemName">Предмет</div>
+<div class="equipped-item-name hidden" id="equippedItemName"></div>
+<div class="comparison-grid">
+<div class="comparison-card" id="comparePower"><span>БМ</span><strong>0</strong><small>0</small></div>
+<div class="comparison-card" id="compareDamage"><span>УРОН</span><strong>0</strong><small>0</small></div>
+<div class="comparison-card" id="compareHp"><span>HP</span><strong>0</strong><small>0</small></div>
+</div>
+<div class="loot-meta" id="lootMeta"></div>
+<div class="loot-actions">
+<button class="loot-action equip" id="equipLootButton" type="button">НАДЕТЬ</button>
+<button class="loot-action sell" id="sellLootButton" type="button">ПРОДАТЬ</button>
+</div>
+</div>
+</div>
+<div class="game-modal hidden" id="leaderboardModal">
+<div class="modal-panel leaderboard-panel">
+<button class="modal-close" id="leaderboardClose" type="button">×</button>
+<div class="modal-title">🏆 Лидерборд</div>
+<div class="leaderboard-rule">Волна → БМ → кто раньше достиг результата</div>
+<div class="leaderboard-list" id="leaderboardList"></div>
+<div class="leaderboard-me hidden" id="leaderboardMe"></div>
+</div>
+</div><div class="game-modal hidden" id="offlineModal">
+<div class="modal-panel offline-panel">
+<div class="offline-icon">🌙</div>
+<div class="modal-title">Офлайн-награда</div>
+<div class="offline-text">Накопление идёт до 4 часов</div>
+<div class="offline-rewards">
+<div>🧰 <strong id="offlineChests">0</strong><span>сундуков</span></div>
+<div>✨ <strong id="offlineExp">0</strong><span>опыта</span></div>
+</div>
+<button class="primary-game-button" id="claimOfflineButton" type="button">ЗАБРАТЬ</button>
+</div>
+</div><div class="game-modal hidden" id="chestModal">
+<div class="modal-panel chest-panel">
+<button class="modal-close" id="chestModalClose" type="button">×</button>
+<div class="modal-title">🧰 Сундук</div>
+<div class="chest-summary-row">
+<div><span>УРОВЕНЬ</span><strong id="chestModalLevel">1 / 25</strong></div>
+<div><span>СУНДУКИ</span><strong id="chestModalCount">0</strong></div>
+<div><span>ЗОЛОТО</span><strong id="chestModalGold">0</strong></div>
+</div>
+<div class="upgrade-copy" id="chestUpgradeText">Улучшение 0/1</div>
+<div class="upgrade-track"><div id="chestUpgradeBar"></div></div>
+<div class="chest-main-actions">
+<button class="primary-game-button" id="openChestButton" type="button">ОТКРЫТЬ СУНДУК</button>
+<button class="secondary-game-button" id="upgradeChestButton" type="button">УЛУЧШИТЬ</button>
+</div>
+<div class="upgrade-cost" id="chestUpgradeCost">Стоимость: 0 золота</div>
+<div class="rarity-title">Шансы редкости</div>
+<div class="rarity-chances" id="rarityChances"></div>
+</div>
+</div><div class="loading-overlay" id="loadingOverlay">
+<div class="loading-box">
+<div class="loading-title" id="loadingTitle">Загружаем бой</div>
+<div class="loading-text" id="loadingText">
             Подготавливаем героя и монстров…
           </div>
-        </div>
-      </div>
-
-      <div class="defeat-overlay hidden" id="defeatOverlay">
-        <div class="defeat-card">
-          <div class="defeat-title">Герой повержен</div>
-          <div class="defeat-text" id="defeatText">
+</div>
+</div>
+<div class="defeat-overlay hidden" id="defeatOverlay">
+<div class="defeat-card">
+<div class="defeat-title">Герой повержен</div>
+<div class="defeat-text" id="defeatText">
             Возрождение через 3 секунды…
           </div>
-          <button class="respawn-button" id="respawnButton" type="button">
+<button class="respawn-button" id="respawnButton" type="button">
             Возродиться сейчас
           </button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script>
+</div>
+</div>
+</section>
+</main>
+<script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
-    const ASSET_VERSION = "v10";
-
+    const ASSET_VERSION = "v9";
     const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
 
     const HERO_ASSETS = {
@@ -2520,112 +2478,54 @@
     };
 
     const MONSTERS = [
-      {
-        key: "slime",
-        name: "Слизень",
-        idle: asset("slime.png"),
-        attack: asset("slime_attack.png")
-      },
-      {
-        key: "goblin",
-        name: "Гоблин",
-        idle: asset("goblin.png"),
-        attack: asset("goblin_attack.png")
-      },
-      {
-        key: "bat",
-        name: "Летучая тварь",
-        idle: asset("bat.png"),
-        attack: asset("bat.png")
-      },
-      {
-        key: "skeleton",
-        name: "Скелет-воин",
-        idle: asset("skeleton.png"),
-        attack: asset("skeleton.png")
-      }
+      { key:"slime", name:"Слизень", idle:asset("slime.png"), attack:asset("slime_attack.png") },
+      { key:"goblin", name:"Гоблин", idle:asset("goblin.png"), attack:asset("goblin_attack.png") },
+      { key:"bat", name:"Летучая тварь", idle:asset("bat.png"), attack:asset("bat.png") },
+      { key:"skeleton", name:"Скелет-воин", idle:asset("skeleton.png"), attack:asset("skeleton.png") }
     ];
 
-    const EFFECT_ASSETS = [
-      asset("slash.png"),
-      asset("hit.png"),
-      asset("spore_burst.png"),
-      asset("forest_bg.png")
-    ];
+    const SLOT_NAMES = {
+      helmet:"Шлем", armor:"Нагрудник", gloves:"Перчатки", pants:"Штаны",
+      boots:"Обувь", weapon:"Оружие", necklace:"Ожерелье", ring:"Кольцо",
+      belt:"Пояс", talisman:"Талисман"
+    };
+    const RARITY_NAMES = {
+      common:"Обычный", uncommon:"Необычный", rare:"Редкий", epic:"Эпический",
+      legendary:"Легендарный", mythic:"Мифический", ancient:"Древний",
+      divine:"Божественный", celestial:"Небесный"
+    };
+    const RARITY_COLORS = {
+      common:"#c7cfcc", uncommon:"#72e58c", rare:"#68a9ff", epic:"#c47cff",
+      legendary:"#ffb84e", mythic:"#ff627c", ancient:"#47e6d0",
+      divine:"#fff08b", celestial:"#d2ecff"
+    };
 
     telegram.ready();
     telegram.expand();
-
     try {
       telegram.setHeaderColor("#173728");
       telegram.setBackgroundColor("#10281c");
-    } catch (error) {
-      // Старые клиенты Telegram могут не поддерживать настройку цветов.
-    }
+    } catch (_) {}
 
+    const $ = (id) => document.getElementById(id);
     const elements = {
-      stage: document.getElementById("stage"),
-      gold: document.getElementById("gold"),
-      bm: document.getElementById("bm"),
-      level: document.getElementById("level"),
-      xpText: document.getElementById("xpText"),
-      xpBar: document.getElementById("xpBar"),
-      enemyName: document.getElementById("enemyName"),
-      enemyNameplate: document.getElementById("enemyNameplate"),
-      enemyHp: document.getElementById("enemyHp"),
-      enemyMaxHp: document.getElementById("enemyMaxHp"),
-      enemyHpBar: document.getElementById("enemyHpBar"),
-      heroHp: document.getElementById("heroHp"),
-      heroMaxHp: document.getElementById("heroMaxHp"),
-      heroHpBar: document.getElementById("heroHpBar"),
-      heroName: document.getElementById("heroName"),
-      heroSprite: document.getElementById("heroSprite"),
-      enemySprite: document.getElementById("enemySprite"),
-      slashEffect: document.getElementById("slashEffect"),
-      hitEffect: document.getElementById("hitEffect"),
-      sporeEffect: document.getElementById("sporeEffect"),
-      damageNumber: document.getElementById("damageNumber"),
-      heroHitFlash: document.getElementById("heroHitFlash"),
-      message: document.getElementById("message"),
-      loadingOverlay: document.getElementById("loadingOverlay"),
-      loadingTitle: document.getElementById("loadingTitle"),
-      loadingText: document.getElementById("loadingText"),
-      defeatOverlay: document.getElementById("defeatOverlay"),
-      defeatText: document.getElementById("defeatText"),
-      respawnButton: document.getElementById("respawnButton"),
-      heroScreenLevel: document.getElementById("heroScreenLevel"),
-      heroScreenXp: document.getElementById("heroScreenXp"),
-      heroScreenBm: document.getElementById("heroScreenBm"),
-      heroScreenGold: document.getElementById("heroScreenGold"),
-      equipmentBm: document.getElementById("equipmentBm"),
-      chestCount: document.getElementById("chestCount"),
-      chestLevelBadge: document.getElementById("chestLevelBadge"),
-      chestPanel: document.getElementById("chestPanel"),
-      chestLevelValue: document.getElementById("chestLevelValue"),
-      chestAvailable: document.getElementById("chestAvailable"),
-      rarityChances: document.getElementById("rarityChances"),
-      chestQualityNote: document.getElementById("chestQualityNote"),
-      chestOpenButton: document.getElementById("chestOpenButton"),
-      chestUpgradeButton: document.getElementById("chestUpgradeButton"),
-      chestUpgradeCost: document.getElementById("chestUpgradeCost"),
-      lootStats: document.getElementById("lootStats"),
-      lootCard: document.getElementById("lootCard"),
-      lootItemIcon: document.getElementById("lootItemIcon"),
-      lootItemRarity: document.getElementById("lootItemRarity"),
-      lootItemName: document.getElementById("lootItemName"),
-      lootItemSlot: document.getElementById("lootItemSlot"),
-      lootPower: document.getElementById("lootPower"),
-      lootDamage: document.getElementById("lootDamage"),
-      lootHp: document.getElementById("lootHp"),
-      lootComparison: document.getElementById("lootComparison"),
-      lootActions: document.getElementById("lootActions"),
-      lootSellButton: document.getElementById("lootSellButton"),
-      lootEquipButton: document.getElementById("lootEquipButton"),
-      lootSellPrice: document.getElementById("lootSellPrice")
+      stageProgress: $("stageProgress"), bossButton: $("bossButton"), gold: $("gold"), bm: $("bm"),
+      level: $("level"), xpText: $("xpText"), xpBar: $("xpBar"), enemyName: $("enemyName"),
+      enemyNameplate: $("enemyNameplate"), enemyHp: $("enemyHp"), enemyMaxHp: $("enemyMaxHp"),
+      enemyHpBar: $("enemyHpBar"), heroHp: $("heroHp"), heroMaxHp: $("heroMaxHp"),
+      heroHpBar: $("heroHpBar"), heroName: $("heroName"), heroSprite: $("heroSprite"),
+      enemySprite: $("enemySprite"), slashEffect: $("slashEffect"), hitEffect: $("hitEffect"),
+      sporeEffect: $("sporeEffect"), damageNumber: $("damageNumber"), heroHitFlash: $("heroHitFlash"),
+      message: $("message"), loadingOverlay: $("loadingOverlay"), loadingTitle: $("loadingTitle"),
+      loadingText: $("loadingText"), defeatOverlay: $("defeatOverlay"), defeatText: $("defeatText"),
+      respawnButton: $("respawnButton"), chestCount: $("chestCount"), chestLevelBadge: $("chestLevelBadge"),
+      autoToggle: $("autoToggle"), heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
+      heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm")
     };
 
     let player = null;
     let currentMonster = MONSTERS[0];
+    let currentBossState = false;
     let battleRunning = false;
     let requestInProgress = false;
     let enemyRequestInProgress = false;
@@ -2634,953 +2534,465 @@
     let heroAttackTimer = null;
     let monsterAttackTimer = null;
     let respawnTimer = null;
+    let autoOpenTimer = null;
+    let autoRequestInProgress = false;
     let attackCounter = 0;
-    let lootRequestInProgress = false;
-    let currentLoot = null;
+    let pendingPlayerAfterDefeat = null;
 
-    const wait = (milliseconds) =>
-      new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-    function preloadImage(source) {
-      return new Promise((resolve) => {
-        const image = new Image();
-        image.onload = () => resolve();
-        image.onerror = () => resolve();
-        image.src = source;
-      });
+    const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+    const compactNumber = new Intl.NumberFormat("ru-RU", { notation:"compact", maximumFractionDigits:1 });
+    const fullNumber = new Intl.NumberFormat("ru-RU");
+    function formatNumber(value) {
+      const number = Number(value || 0);
+      return Math.abs(number) < 10000 ? fullNumber.format(number) : compactNumber.format(number);
     }
 
     async function preloadAssets() {
       const sources = [
         ...Object.values(HERO_ASSETS),
-        ...MONSTERS.flatMap((monster) => [
-          monster.idle,
-          monster.attack
-        ]),
-        ...EFFECT_ASSETS
+        ...MONSTERS.flatMap((monster) => [monster.idle, monster.attack]),
+        asset("slash.png"), asset("hit.png"), asset("spore_burst.png"), asset("forest_bg.png")
       ];
-
-      await Promise.all([...new Set(sources)].map(preloadImage));
+      await Promise.all([...new Set(sources)].map((source) => new Promise((resolve) => {
+        const image = new Image(); image.onload = resolve; image.onerror = resolve; image.src = source;
+      })));
     }
 
     async function apiRequest(path, method = "GET") {
       const response = await fetch(`${API_URL}${path}`, {
-        method,
-        cache: "no-store",
-        headers: {
-          "X-Telegram-Init-Data": telegram.initData
-        }
+        method, cache:"no-store", headers:{ "X-Telegram-Init-Data": telegram.initData }
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Ошибка сервера");
-      }
-
+      let data;
+      try { data = await response.json(); } catch (_) { throw new Error("Сервер вернул некорректный ответ"); }
+      if (!response.ok) throw new Error(data.detail || "Ошибка сервера");
       return data;
     }
 
-    function monsterForStage(stage) {
-      const index = Math.max(0, Number(stage || 1) - 1) % MONSTERS.length;
-      return MONSTERS[index];
-    }
-
-    function setSprite(element, source) {
-      if (element.src.endsWith(source)) {
-        return;
-      }
-
-      element.src = source;
-    }
-
     function restartAnimation(element, className) {
-      element.classList.remove(className);
-      void element.offsetWidth;
-      element.classList.add(className);
+      element.classList.remove(className); void element.offsetWidth; element.classList.add(className);
     }
-
     function restoreHeroIdle(delay = 0) {
-      setTimeout(() => {
-        elements.heroSprite.className =
-          "fighter-sprite hero-sprite";
-        elements.heroSprite.src = HERO_ASSETS.idle;
-      }, delay);
+      setTimeout(() => { elements.heroSprite.className = "fighter-sprite hero-sprite"; elements.heroSprite.src = HERO_ASSETS.idle; }, delay);
     }
-
     function restoreEnemyIdle(delay = 0) {
       setTimeout(() => {
         if (!enemyDefeating) {
-          elements.enemySprite.className =
-            "fighter-sprite enemy-sprite";
+          elements.enemySprite.className = "fighter-sprite enemy-sprite";
           elements.enemySprite.src = currentMonster.idle;
         }
       }, delay);
     }
-
-    function updateMonsterFromStage() {
-      const nextMonster = monsterForStage(player.stage);
-      const changed = nextMonster.key !== currentMonster.key;
-
-      currentMonster = nextMonster;
-      elements.enemyName.textContent = currentMonster.name;
-      elements.enemyNameplate.textContent = currentMonster.name;
-      elements.enemySprite.alt = currentMonster.name;
-
-      if (changed || !elements.enemySprite.src.includes(currentMonster.key)) {
-        elements.enemySprite.src = currentMonster.idle;
-      }
+    function monsterForStage(stage) { return MONSTERS[Math.max(0, Number(stage || 1) - 1) % MONSTERS.length]; }
+    function updateMonster() {
+      const next = monsterForStage(player?.stage || 1);
+      const boss = Boolean(player?.boss_active);
+      const changed = next.key !== currentMonster.key || boss !== currentBossState;
+      currentMonster = next; currentBossState = boss;
+      const name = boss ? `БОСС: ${next.name}` : next.name;
+      elements.enemyName.textContent = name;
+      elements.enemyNameplate.textContent = name;
+      elements.enemySprite.alt = name;
+      document.body.classList.toggle("boss-active", boss);
+      if (changed || !elements.enemySprite.src.includes(next.key)) elements.enemySprite.src = next.idle;
     }
 
-    const compactNumber = new Intl.NumberFormat("ru-RU", {
-      notation: "compact",
-      maximumFractionDigits: 1
-    });
-
-    function formatNumber(value) {
-      const number = Number(value || 0);
-      return number < 10000
-        ? new Intl.NumberFormat("ru-RU").format(number)
-        : compactNumber.format(number);
-    }
-
-    function experienceProgress(data) {
-      const explicitCurrent = Number(
-        data.current_xp ?? data.experience ?? data.xp
-      );
-      const explicitRequired = Number(
-        data.xp_to_next_level ?? data.experience_to_next_level
-      );
-
-      if (
-        Number.isFinite(explicitCurrent) &&
-        Number.isFinite(explicitRequired) &&
-        explicitRequired > 0
-      ) {
-        return {
-          level: Math.max(1, Number(data.level || 1)),
-          current: Math.max(0, explicitCurrent),
-          required: explicitRequired
-        };
-      }
-
-      // Пока отдельного опыта на сервере нет, 1 победа даёт 1 опыт.
-      // Каждые 10 побед повышают отображаемый уровень.
-      const victories = Math.max(0, Number(data.total_kills || 0));
+    function levelProgress(data) {
+      const detail = data?.level_exp || {};
       return {
-        level: Math.max(
-          Number(data.level || 1),
-          Math.floor(victories / 10) + 1
-        ),
-        current: victories % 10,
-        required: 10
+        current: Number(detail.current || 0), required: Number(detail.required || 0),
+        progress: detail.max_level ? 1 : Number(detail.progress || 0), max: Boolean(detail.max_level)
       };
     }
 
-
-    const GEAR_SLOT_LABELS = {
-      helmet: "Шлем",
-      armor: "Нагрудник",
-      gloves: "Перчатки",
-      pants: "Штаны",
-      boots: "Обувь",
-      weapon: "Оружие",
-      necklace: "Ожерелье",
-      ring: "Кольцо",
-      belt: "Пояс",
-      talisman: "Талисман"
-    };
-
-    function updateEquipmentDock() {
-      const equipment = player?.equipment || {};
-      const chestCount = Math.max(0, Number(player?.chests || 0));
-      const chestLevel = Math.max(1, Number(player?.chest_level || 1));
-      elements.chestCount.textContent = formatNumber(chestCount);
-      elements.chestLevelBadge.textContent = `УР. ${chestLevel}`;
-      document.getElementById("lootButton").classList.toggle("no-chests", chestCount <= 0);
-
-      document.querySelectorAll(".gear-slot[data-slot]").forEach((slotButton) => {
-        const slotKey = slotButton.dataset.slot;
-        const item = equipment[slotKey];
-        slotButton.classList.remove(
-          "equipped", "rarity-common", "rarity-uncommon", "rarity-rare",
-          "rarity-epic", "rarity-legendary", "rarity-mythic"
-        );
-
-        if (!item) {
-          slotButton.title = `${GEAR_SLOT_LABELS[slotKey]}: пусто`;
-          return;
+    function setText(id, value) { const el = $(id); if (el) el.textContent = value; }
+    function renderEquipment() {
+      document.querySelectorAll(".gear-slot[data-slot]").forEach((button) => {
+        const slot = button.dataset.slot;
+        const item = player?.equipment?.[slot];
+        button.className = `gear-slot gear-${slot}`;
+        button.title = item ? `${item.name}: БМ +${formatNumber(item.power)}, урон +${formatNumber(item.damage)}, HP +${formatNumber(item.hp)}` : `${SLOT_NAMES[slot]}: пусто`;
+        if (item) {
+          button.classList.add("equipped", `rarity-${item.rarity || "common"}`);
+          const icon = button.querySelector(".gear-icon");
+          if (icon) icon.textContent = item.icon || icon.textContent;
         }
-
-        slotButton.classList.add("equipped", `rarity-${item.rarity || "common"}`);
-        slotButton.title = `${item.name} · БМ +${item.power || 0}`;
       });
     }
 
-    function updateScreen() {
-      if (!player) {
-        return;
-      }
+    function renderHeroStats() {
+      const stats = player?.hero_stats || {};
+      const base = stats.base || {};
+      const gear = stats.equipment || {};
+      const total = stats.total || {};
+      setText("heroTotalPower", formatNumber(total.power ?? player?.power));
+      setText("heroTotalDamage", formatNumber(total.damage ?? player?.damage));
+      setText("heroTotalHp", formatNumber(total.hero_max_hp ?? player?.hero_max_hp));
+      setText("heroAttackSpeed", Number(total.attack_speed || player?.attack_speed || 1).toFixed(2));
+      setText("heroCritChance", `${Number(total.crit_chance || player?.crit_chance || 0).toFixed(1)}%`);
+      setText("heroCritDamage", `${Number(total.crit_damage || player?.crit_damage || 0).toFixed(0)}%`);
+      setText("heroBasePower", formatNumber(base.power));
+      setText("heroBaseDamage", formatNumber(base.damage));
+      setText("heroBaseHp", formatNumber(base.hero_max_hp));
+      setText("heroGearPower", `+${formatNumber(gear.power)}`);
+      setText("heroGearDamage", `+${formatNumber(gear.damage)}`);
+      setText("heroGearHp", `+${formatNumber(gear.hero_max_hp)}`);
+      const xp = levelProgress(player);
+      setText("heroXpDetail", xp.max ? "Максимальный уровень" : `Опыт: ${formatNumber(xp.current)} / ${formatNumber(xp.required)}`);
+    }
 
-      updateMonsterFromStage();
+    function renderChestModal() {
+      if (!player) return;
+      setText("chestModalLevel", `${player.chest_level} / ${player.chest_max_level}`);
+      setText("chestModalCount", formatNumber(player.chests));
+      setText("chestModalGold", formatNumber(player.gold));
+      const required = Number(player.chest_upgrade_steps_required || 0);
+      const step = Number(player.chest_upgrade_step || 0);
+      const maxed = Number(player.chest_level) >= Number(player.chest_max_level);
+      setText("chestUpgradeText", maxed ? "Максимальный уровень" : `Улучшение ${step}/${required}`);
+      $("chestUpgradeBar").style.width = maxed ? "100%" : `${required ? Math.min(100, step / required * 100) : 0}%`;
+      setText("chestUpgradeCost", maxed ? "Сундук полностью улучшен" : `Следующий шаг: ${formatNumber(player.chest_upgrade_cost)} золота`);
+      $("openChestButton").disabled = Number(player.chests) <= 0 || Boolean(player.pending_loot);
+      $("upgradeChestButton").disabled = maxed || Number(player.gold) < Number(player.chest_upgrade_cost || 0);
+      $("upgradeChestButton").textContent = maxed ? "МАКС. УРОВЕНЬ" : "УЛУЧШИТЬ";
+      const rarityBox = $("rarityChances"); rarityBox.innerHTML = "";
+      Object.entries(player.chest_rarity_chances || {}).forEach(([key, chance]) => {
+        if (Number(chance) <= 0) return;
+        const row = document.createElement("div"); row.className = "rarity-row";
+        row.innerHTML = `<span style="color:${RARITY_COLORS[key] || '#fff'}">${RARITY_NAMES[key] || key}</span><strong>${chance}%</strong>`;
+        rarityBox.appendChild(row);
+      });
+    }
 
-      elements.stage.textContent = player.stage;
+    function renderPlayer() {
+      if (!player) return;
+      updateMonster();
+      elements.stageProgress.textContent = player.stage_progress_label || `Этап ${player.stage} • ${player.wave}/10`;
+      elements.bossButton.classList.toggle("hidden", !player.boss_button_visible);
       elements.gold.textContent = formatNumber(player.gold);
       elements.bm.textContent = formatNumber(player.power);
-
-      const experience = experienceProgress(player);
-      const experiencePercent = Math.max(
-        0,
-        Math.min(100, (experience.current / experience.required) * 100)
-      );
-
-      elements.level.textContent = experience.level;
-      elements.xpText.textContent =
-        `${experience.current} / ${experience.required}`;
-      elements.xpBar.style.width = `${experiencePercent}%`;
-
-      elements.heroScreenLevel.textContent = experience.level;
-      elements.heroScreenXp.style.width = `${experiencePercent}%`;
+      const xp = levelProgress(player);
+      elements.level.textContent = player.level;
+      elements.xpText.textContent = xp.max ? "МАКС. УРОВЕНЬ" : `${formatNumber(xp.current)} / ${formatNumber(xp.required)}`;
+      elements.xpBar.style.width = `${Math.max(0, Math.min(100, xp.progress * 100))}%`;
+      elements.heroScreenLevel.textContent = player.level;
+      elements.heroScreenXp.style.width = elements.xpBar.style.width;
       elements.heroScreenBm.textContent = formatNumber(player.power);
       elements.heroScreenGold.textContent = formatNumber(player.gold);
       elements.equipmentBm.textContent = formatNumber(player.power);
-
-      elements.enemyHp.textContent = player.enemy_hp;
-      elements.enemyMaxHp.textContent = player.enemy_max_hp;
-      elements.heroHp.textContent = player.hero_hp;
-      elements.heroMaxHp.textContent = player.hero_max_hp;
+      elements.enemyHp.textContent = formatNumber(player.enemy_hp);
+      elements.enemyMaxHp.textContent = formatNumber(player.enemy_max_hp);
+      elements.heroHp.textContent = formatNumber(player.hero_hp);
+      elements.heroMaxHp.textContent = formatNumber(player.hero_max_hp);
       elements.heroName.textContent = player.first_name || "Герой";
-
-      const heroHpPercent = Math.max(
-        0,
-        Math.min(
-          100,
-          (Number(player.hero_hp) / Number(player.hero_max_hp)) * 100
-        )
-      );
-      elements.heroHpBar.style.width = `${heroHpPercent}%`;
-
-      const hpPercent = Math.max(
-        0,
-        Math.min(
-          100,
-          (Number(player.enemy_hp) / Number(player.enemy_max_hp)) * 100
-        )
-      );
-      elements.enemyHpBar.style.width = `${hpPercent}%`;
-      updateEquipmentDock();
+      const heroPercent = Number(player.hero_max_hp) > 0 ? Number(player.hero_hp) / Number(player.hero_max_hp) * 100 : 0;
+      const enemyPercent = Number(player.enemy_max_hp) > 0 ? Number(player.enemy_hp) / Number(player.enemy_max_hp) * 100 : 0;
+      elements.heroHpBar.style.width = `${Math.max(0, Math.min(100, heroPercent))}%`;
+      elements.enemyHpBar.style.width = `${Math.max(0, Math.min(100, enemyPercent))}%`;
+      elements.chestCount.textContent = formatNumber(player.chests);
+      elements.chestLevelBadge.textContent = `УР. ${player.chest_level}`;
+      const autoEnabled = Boolean(Number(player.auto_open_enabled));
+      elements.autoToggle.classList.toggle("active", autoEnabled);
+      elements.autoToggle.setAttribute("aria-pressed", String(autoEnabled));
+      elements.autoToggle.textContent = autoEnabled ? "АВТО: ВКЛ" : "АВТО";
+      renderEquipment(); renderHeroStats(); renderChestModal();
+      scheduleAutoOpen();
     }
 
-    function showDamage(amount) {
-      elements.damageNumber.textContent = `-${amount}`;
+    function setMessage(text, isError = false) {
+      elements.message.classList.toggle("error", isError); elements.message.textContent = text;
+    }
+    function showDamage(amount, critical = false) {
+      elements.damageNumber.textContent = critical ? `КРИТ -${formatNumber(amount)}` : `-${formatNumber(amount)}`;
       restartAnimation(elements.damageNumber, "fx-damage");
     }
-
-    function showHitEffect() {
-      restartAnimation(elements.hitEffect, "fx-hit");
-    }
-
     function animateHeroAttack(useSkill) {
       if (useSkill) {
-        elements.heroSprite.src = HERO_ASSETS.skill;
-        elements.heroSprite.className =
-          "fighter-sprite anim-hero-skill";
-        restartAnimation(elements.sporeEffect, "fx-spore");
-        restoreHeroIdle(720);
-        return;
+        elements.heroSprite.src = HERO_ASSETS.skill; elements.heroSprite.className = "fighter-sprite anim-hero-skill";
+        restartAnimation(elements.sporeEffect, "fx-spore"); restoreHeroIdle(720);
+      } else {
+        elements.heroSprite.src = HERO_ASSETS.attack; elements.heroSprite.className = "fighter-sprite anim-hero-attack";
+        restartAnimation(elements.slashEffect, "fx-slash"); restoreHeroIdle(430);
       }
-
-      elements.heroSprite.src = HERO_ASSETS.attack;
-      elements.heroSprite.className =
-        "fighter-sprite anim-hero-attack";
-      restartAnimation(elements.slashEffect, "fx-slash");
-      restoreHeroIdle(430);
     }
-
     function animateEnemyHit() {
-      elements.enemySprite.className =
-        "fighter-sprite anim-enemy-hit";
-      showHitEffect();
-      restoreEnemyIdle(330);
+      elements.enemySprite.className = "fighter-sprite anim-enemy-hit"; restartAnimation(elements.hitEffect, "fx-hit"); restoreEnemyIdle(330);
+    }
+    async function animateEnemyDefeat(result) {
+      enemyDefeating = true; clearTimeout(monsterAttackTimer);
+      elements.enemyHp.textContent = "0"; elements.enemyHpBar.style.width = "0%";
+      restartAnimation(elements.hitEffect, "fx-hit"); elements.enemySprite.className = "fighter-sprite anim-enemy-death";
+      await wait(450); player = result; renderPlayer();
+      elements.enemySprite.className = "fighter-sprite anim-enemy-spawn"; elements.enemySprite.src = currentMonster.idle;
+      await wait(430); enemyDefeating = false; restoreEnemyIdle();
     }
 
-    async function animateEnemyDefeat() {
-      enemyDefeating = true;
-
-      elements.enemyHp.textContent = "0";
-      elements.enemyHpBar.style.width = "0%";
-      showHitEffect();
-
-      elements.enemySprite.className =
-        "fighter-sprite anim-enemy-death";
-
-      await wait(450);
-
-      player = pendingPlayerAfterDefeat;
-      updateScreen();
-
-      elements.enemySprite.className =
-        "fighter-sprite anim-enemy-spawn";
-      elements.enemySprite.src = currentMonster.idle;
-
-      await wait(430);
-
-      enemyDefeating = false;
-      restoreEnemyIdle();
+    function stopBattle() {
+      battleRunning = false; clearTimeout(heroAttackTimer); clearTimeout(monsterAttackTimer);
+      heroAttackTimer = null; monsterAttackTimer = null;
     }
-
-    let pendingPlayerAfterDefeat = null;
-
-    function scheduleHeroAttack(delaySeconds) {
+    function scheduleHeroAttack(seconds) {
+      if (!battleRunning || !player?.can_attack) return;
+      clearTimeout(heroAttackTimer); heroAttackTimer = setTimeout(performAttack, Math.max(.1, Number(seconds || 1)) * 1000);
+    }
+    function scheduleMonsterAttack(seconds) {
+      if (!battleRunning || !player?.can_attack || heroDefeated) return;
+      clearTimeout(monsterAttackTimer); monsterAttackTimer = setTimeout(performMonsterAttack, Math.max(.15, Number(seconds || 2)) * 1000);
+    }
+    function syncBattleState() {
+      if (!player || document.hidden) { stopBattle(); return; }
+      if (!player.hero_alive || Number(player.hero_hp) <= 0) { if (!heroDefeated) handleHeroDefeat(); return; }
+      if (!player.can_attack) { stopBattle(); return; }
       if (!battleRunning) {
-        return;
-      }
-
-      clearTimeout(heroAttackTimer);
-
-      const safeDelay = Math.max(0.1, Number(delaySeconds || 1));
-
-      heroAttackTimer = setTimeout(
-        performAttack,
-        safeDelay * 1000
-      );
-    }
-
-    function scheduleMonsterAttack(delaySeconds) {
-      if (!battleRunning || heroDefeated) {
-        return;
-      }
-
-      clearTimeout(monsterAttackTimer);
-
-      const safeDelay = Math.max(
-        0.15,
-        Number(delaySeconds || player?.enemy_attack_interval || 2)
-      );
-
-      monsterAttackTimer = setTimeout(
-        performMonsterAttack,
-        safeDelay * 1000
-      );
-    }
-
-    async function performMonsterAttack() {
-      if (
-        !battleRunning ||
-        heroDefeated ||
-        enemyRequestInProgress ||
-        enemyDefeating ||
-        document.hidden
-      ) {
-        scheduleMonsterAttack(0.35);
-        return;
-      }
-
-      enemyRequestInProgress = true;
-
-      try {
-        const result = await apiRequest("/enemy-attack", "POST");
-
-        if (!result.enemy_attacked) {
-          player = result;
-          updateScreen();
-
-          if (result.hero_defeated) {
-            await handleHeroDefeat();
-            return;
-          }
-
-          scheduleMonsterAttack(
-            result.retry_after || result.enemy_attack_interval
-          );
-          return;
-        }
-
-        elements.enemySprite.src = currentMonster.attack;
-        elements.enemySprite.className =
-          "fighter-sprite anim-enemy-attack";
-
-        await wait(180);
-
-        player = result;
-        updateScreen();
-
-        elements.heroSprite.src = HERO_ASSETS.hit;
-        elements.heroSprite.className =
-          "fighter-sprite anim-hero-hit";
-        restartAnimation(elements.heroHitFlash, "fx-hero-hit");
-
-        elements.message.classList.remove("error");
-        elements.message.textContent = result.message;
-
-        try {
-          if (telegram.HapticFeedback) {
-            telegram.HapticFeedback.impactOccurred("medium");
-          }
-        } catch (error) {
-          // В некоторых клиентах вибрация недоступна.
-        }
-
-        restoreEnemyIdle(510);
-
-        if (result.hero_defeated) {
-          await handleHeroDefeat();
-          return;
-        }
-
-        restoreHeroIdle(390);
-        scheduleMonsterAttack(result.enemy_attack_interval);
-      } catch (error) {
-        elements.message.classList.add("error");
-        elements.message.textContent = `❌ ${error.message}`;
-        scheduleMonsterAttack(3);
-      } finally {
-        enemyRequestInProgress = false;
-      }
-    }
-
-    async function handleHeroDefeat() {
-      heroDefeated = true;
-      stopBattle();
-      elements.heroSprite.src = HERO_ASSETS.hit;
-      elements.heroSprite.className =
-        "fighter-sprite hero-defeated";
-      elements.message.classList.add("error");
-      elements.message.textContent = "💀 Герой повержен";
-      elements.defeatText.textContent =
-        "Возрождение через 3 секунды…";
-      elements.respawnButton.disabled = false;
-      elements.respawnButton.textContent = "Возродиться сейчас";
-      elements.defeatOverlay.classList.remove("hidden");
-
-      try {
-        if (telegram.HapticFeedback) {
-          telegram.HapticFeedback.notificationOccurred("error");
-        }
-      } catch (error) {
-        // В некоторых клиентах вибрация недоступна.
-      }
-
-      clearTimeout(respawnTimer);
-      respawnTimer = setTimeout(respawnHero, 3000);
-    }
-
-    async function respawnHero() {
-      if (!heroDefeated) {
-        return;
-      }
-
-      clearTimeout(respawnTimer);
-      elements.respawnButton.disabled = true;
-      elements.respawnButton.textContent = "Возрождаем…";
-
-      try {
-        const result = await apiRequest("/respawn", "POST");
-        player = result;
-        heroDefeated = false;
-        updateScreen();
-        elements.defeatOverlay.classList.add("hidden");
-        elements.heroSprite.className =
-          "fighter-sprite hero-sprite";
-        elements.heroSprite.src = HERO_ASSETS.idle;
-        elements.message.classList.remove("error");
-        elements.message.textContent = result.message;
-
-        battleRunning = true;
-        scheduleHeroAttack(result.attack_interval);
-        scheduleMonsterAttack(result.enemy_attack_interval);
-      } catch (error) {
-        elements.defeatText.textContent = error.message;
-        elements.respawnButton.disabled = false;
-        elements.respawnButton.textContent = "Повторить возрождение";
+        battleRunning = true; scheduleHeroAttack(.25); scheduleMonsterAttack(player.enemy_attack_interval);
       }
     }
 
     async function performAttack() {
-      if (
-        !battleRunning ||
-        heroDefeated ||
-        requestInProgress ||
-        enemyDefeating ||
-        document.hidden
-      ) {
-        return;
-      }
-
+      if (!battleRunning || !player?.can_attack || heroDefeated || requestInProgress || enemyDefeating || document.hidden) return;
       requestInProgress = true;
-
       try {
         const result = await apiRequest("/attack", "POST");
-
         if (!result.attacked) {
-          scheduleHeroAttack(
-            result.retry_after || result.attack_interval
-          );
+          player = result; renderPlayer();
+          if (result.hero_defeated) await handleHeroDefeat();
+          else if (result.retry_after && player.can_attack) scheduleHeroAttack(result.retry_after);
+          else syncBattleState();
           return;
         }
-
         attackCounter += 1;
         const useSkill = attackCounter % 5 === 0;
-
         animateHeroAttack(useSkill);
-        showDamage(result.damage);
-
+        showDamage(result.damage_dealt || player.damage, result.critical);
         if (result.enemy_defeated) {
-          pendingPlayerAfterDefeat = result;
-
-          elements.message.classList.remove("error");
-          elements.message.textContent =
-            result.stage_completed
-              ? `🚪 Этап пройден! Открыт этап ${result.stage}`
-              : `🏆 ${currentMonster.name} побеждён! +${result.reward} золота`;
-
-          await animateEnemyDefeat();
-
-          try {
-            if (telegram.HapticFeedback) {
-              telegram.HapticFeedback.notificationOccurred("success");
-            }
-          } catch (error) {
-            // В некоторых клиентах вибрация недоступна.
-          }
+          setMessage(result.message || "Враг побеждён");
+          await animateEnemyDefeat(result);
+          try { telegram.HapticFeedback?.notificationOccurred("success"); } catch (_) {}
         } else {
-          player = result;
-          updateScreen();
-          animateEnemyHit();
-
-          elements.message.classList.remove("error");
-          elements.message.textContent =
-            useSkill
-              ? `🍄 Споровый удар! Нанесено ${result.damage} урона`
-              : result.message;
-
-          try {
-            if (telegram.HapticFeedback) {
-              telegram.HapticFeedback.impactOccurred("light");
-            }
-          } catch (error) {
-            // В некоторых клиентах вибрация недоступна.
-          }
+          player = result; renderPlayer(); animateEnemyHit();
+          setMessage(result.message || `Нанесено ${result.damage_dealt} урона`);
+          try { telegram.HapticFeedback?.impactOccurred("light"); } catch (_) {}
         }
-
-        scheduleHeroAttack(result.attack_interval);
+        syncBattleState();
+        if (battleRunning) { scheduleHeroAttack(result.attack_interval); scheduleMonsterAttack(result.enemy_attack_interval); }
       } catch (error) {
-        elements.message.classList.add("error");
-        elements.message.textContent = `❌ ${error.message}`;
-        scheduleHeroAttack(3);
-      } finally {
-        requestInProgress = false;
-      }
+        setMessage(`❌ ${error.message}`, true); if (battleRunning) scheduleHeroAttack(3);
+      } finally { requestInProgress = false; }
     }
 
-    function stopBattle() {
-      battleRunning = false;
-      clearTimeout(heroAttackTimer);
-      clearTimeout(monsterAttackTimer);
-      heroAttackTimer = null;
-      monsterAttackTimer = null;
+    async function performMonsterAttack() {
+      if (!battleRunning || !player?.can_attack || heroDefeated || enemyRequestInProgress || enemyDefeating || document.hidden) return;
+      enemyRequestInProgress = true;
+      try {
+        const result = await apiRequest("/enemy-attack", "POST");
+        player = result; renderPlayer();
+        if (!result.enemy_attacked) {
+          if (result.hero_defeated) await handleHeroDefeat();
+          else if (result.retry_after && battleRunning) scheduleMonsterAttack(result.retry_after);
+          return;
+        }
+        elements.enemySprite.src = currentMonster.attack; elements.enemySprite.className = "fighter-sprite anim-enemy-attack";
+        await wait(180); elements.heroSprite.src = HERO_ASSETS.hit; elements.heroSprite.className = "fighter-sprite anim-hero-hit";
+        restartAnimation(elements.heroHitFlash, "fx-hero-hit"); setMessage(result.message);
+        try { telegram.HapticFeedback?.impactOccurred("medium"); } catch (_) {}
+        restoreEnemyIdle(510);
+        if (result.hero_defeated) { await handleHeroDefeat(); return; }
+        restoreHeroIdle(390); if (battleRunning) scheduleMonsterAttack(result.enemy_attack_interval);
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true); if (battleRunning) scheduleMonsterAttack(3);
+      } finally { enemyRequestInProgress = false; }
     }
 
-    function resumeBattle() {
-      if (!player || battleRunning || heroDefeated) {
-        return;
+    async function handleHeroDefeat() {
+      if (heroDefeated) return;
+      heroDefeated = true; stopBattle();
+      elements.heroSprite.src = HERO_ASSETS.hit; elements.heroSprite.className = "fighter-sprite hero-defeated";
+      setMessage(player?.boss_waiting ? "💀 Босс победил. После возрождения нажмите «Босс»" : "💀 Герой повержен", true);
+      elements.defeatText.textContent = "Возрождение через 3 секунды…";
+      elements.respawnButton.disabled = false; elements.respawnButton.textContent = "Возродиться сейчас";
+      elements.defeatOverlay.classList.remove("hidden");
+      try { telegram.HapticFeedback?.notificationOccurred("error"); } catch (_) {}
+      clearTimeout(respawnTimer); respawnTimer = setTimeout(respawnHero, 3000);
+    }
+    async function respawnHero() {
+      if (!heroDefeated) return;
+      clearTimeout(respawnTimer); elements.respawnButton.disabled = true; elements.respawnButton.textContent = "Возрождаем…";
+      try {
+        player = await apiRequest("/respawn", "POST"); heroDefeated = false; renderPlayer();
+        elements.defeatOverlay.classList.add("hidden"); restoreHeroIdle(); setMessage(player.message || "✨ Герой возродился"); syncBattleState();
+      } catch (error) {
+        elements.defeatText.textContent = error.message; elements.respawnButton.disabled = false; elements.respawnButton.textContent = "Повторить";
       }
+    }
+    async function startBoss() {
+      elements.bossButton.disabled = true;
+      try { player = await apiRequest("/boss/start", "POST"); renderPlayer(); setMessage(player.message); syncBattleState(); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { elements.bossButton.disabled = false; }
+    }
 
-      battleRunning = true;
-      elements.message.classList.remove("error");
-      elements.message.textContent = "⚔️ Автобой продолжен";
-      scheduleHeroAttack(0.25);
-      scheduleMonsterAttack(player.enemy_attack_interval);
+    function modalShow(id) { $(id).classList.remove("hidden"); }
+    function modalHide(id) { $(id).classList.add("hidden"); }
+    function comparisonCard(id, data, emptySlot) {
+      const card = $(id); const delta = Number(data?.delta || 0);
+      card.className = `comparison-card ${delta > 0 ? 'better' : delta < 0 ? 'worse' : 'equal'}`;
+      card.querySelector("strong").textContent = emptySlot ? `${delta >= 0 ? '+' : ''}${formatNumber(delta)}` : `${formatNumber(data?.old)} → ${formatNumber(data?.new)}`;
+      card.querySelector("small").textContent = `${delta > 0 ? '+' : ''}${formatNumber(delta)}`;
+    }
+    function showLootModal(loot = player?.pending_loot, comparison = player?.pending_loot_comparison) {
+      if (!loot) return;
+      comparison = comparison || player?.pending_loot_comparison || {};
+      setText("lootItemIcon", loot.icon || "🧰");
+      setText("lootRarity", loot.rarity_name || RARITY_NAMES[loot.rarity] || "Предмет");
+      $("lootRarity").style.color = RARITY_COLORS[loot.rarity] || "#fff";
+      setText("lootItemName", loot.name || "Предмет");
+      const equipped = $("equippedItemName");
+      if (comparison.equipped_item_name) { equipped.textContent = `Надето: ${comparison.equipped_item_name}`; equipped.classList.remove("hidden"); }
+      else equipped.classList.add("hidden");
+      comparisonCard("comparePower", comparison.power, comparison.is_empty_slot);
+      comparisonCard("compareDamage", comparison.damage, comparison.is_empty_slot);
+      comparisonCard("compareHp", comparison.hp, comparison.is_empty_slot);
+      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} золота`);
+      $("sellLootButton").textContent = `ПРОДАТЬ +${formatNumber(loot.sell_price)}`;
+      modalShow("lootOverlay");
+    }
+    async function openChest() {
+      $("openChestButton").disabled = true;
+      try {
+        const result = await apiRequest("/loot/open", "POST"); player = result; renderPlayer(); setMessage(result.message);
+        if (result.loot || result.pending_loot) { modalHide("chestModal"); showLootModal(result.loot || result.pending_loot, result.comparison || result.pending_loot_comparison); }
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { renderChestModal(); }
+    }
+    async function upgradeChest() {
+      $("upgradeChestButton").disabled = true;
+      try { player = await apiRequest("/chest/upgrade", "POST"); renderPlayer(); setMessage(player.message); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { renderChestModal(); }
+    }
+    async function resolveLoot(path) {
+      $("equipLootButton").disabled = true; $("sellLootButton").disabled = true;
+      try {
+        player = await apiRequest(path, "POST"); renderPlayer(); modalHide("lootOverlay"); setMessage(player.message); scheduleAutoOpen(450);
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { $("equipLootButton").disabled = false; $("sellLootButton").disabled = false; }
+    }
+
+    function scheduleAutoOpen(delay = 700) {
+      clearTimeout(autoOpenTimer);
+      if (!player || !Number(player.auto_open_enabled) || Number(player.chests) <= 0 || player.pending_loot || document.hidden) return;
+      autoOpenTimer = setTimeout(autoOpenOnce, delay);
+    }
+    async function autoOpenOnce() {
+      if (autoRequestInProgress || !player || !Number(player.auto_open_enabled) || player.pending_loot || Number(player.chests) <= 0) return;
+      autoRequestInProgress = true;
+      try {
+        const result = await apiRequest("/loot/auto/open", "POST"); player = result; renderPlayer(); setMessage(result.message);
+        if (result.pending_loot || (result.opened && !result.auto_sold)) showLootModal(result.loot || result.pending_loot, result.comparison || result.pending_loot_comparison);
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { autoRequestInProgress = false; scheduleAutoOpen(); }
+    }
+    async function toggleAuto() {
+      elements.autoToggle.disabled = true;
+      try {
+        const enable = !Number(player?.auto_open_enabled);
+        player = await apiRequest(enable ? "/loot/auto/enable" : "/loot/auto/disable", "POST");
+        renderPlayer(); setMessage(player.message); if (enable) scheduleAutoOpen(250); else clearTimeout(autoOpenTimer);
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { elements.autoToggle.disabled = false; }
+    }
+
+    async function claimOffline() {
+      $("claimOfflineButton").disabled = true;
+      try { player = await apiRequest("/offline/claim", "POST"); renderPlayer(); modalHide("offlineModal"); setMessage(player.message); syncBattleState(); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); $("claimOfflineButton").disabled = false; }
+    }
+    function showOfflineIfAvailable() {
+      const reward = player?.offline_reward;
+      if (!reward?.available) return;
+      setText("offlineChests", formatNumber(reward.chests)); setText("offlineExp", formatNumber(reward.experience)); modalShow("offlineModal");
+    }
+
+    function leaderRowHtml(entry) {
+      return `<div class="leader-row ${entry.is_me ? 'me' : ''}">
+        <div class="leader-rank">${entry.rank}</div>
+        <div><div class="leader-name">${entry.name}</div><div class="leader-stage">${entry.stage_label}</div><div class="leader-wave">Волна ${entry.wave}</div></div>
+        <div class="leader-power">БМ ${formatNumber(entry.power)}</div>
+      </div>`;
+    }
+    async function openLeaderboard() {
+      modalShow("leaderboardModal"); $("leaderboardList").innerHTML = '<div class="loading-text">Загружаем рейтинг…</div>';
+      try {
+        const result = await apiRequest("/leaderboard");
+        $("leaderboardList").innerHTML = result.entries.length ? result.entries.map(leaderRowHtml).join("") : '<div class="loading-text">Игроков пока нет</div>';
+        const meBox = $("leaderboardMe");
+        if (result.me && result.me.rank > 100) { meBox.innerHTML = `<div class="leaderboard-rule">Ваше место</div>${leaderRowHtml(result.me)}`; meBox.classList.remove("hidden"); }
+        else meBox.classList.add("hidden");
+      } catch (error) { $("leaderboardList").innerHTML = `<div class="loading-text">${error.message}</div>`; }
+    }
+
+    const heroScreen = $("heroScreen");
+    const comingScreen = $("comingScreen");
+    const navButtons = [...document.querySelectorAll(".game-nav-button")];
+    const SCREEN_COPY = {
+      companions:{ title:"Спутники", icon:"🐾", heading:"Спутники", text:"Здесь будут питомцы и боевые помощники героя." },
+      trials:{ title:"Испытания", icon:"🏰", heading:"Испытания", text:"Здесь появятся подземелья и ежедневные испытания." },
+      clan:{ title:"Клан", icon:"🏳️", heading:"Клан", text:"Здесь будут клан, совместные задания и награды." },
+      shop:{ title:"Магазин", icon:"🛒", heading:"Магазин", text:"Здесь будут игровые товары и специальные предложения." }
+    };
+    function setActiveNav(name) { navButtons.forEach((b) => b.classList.toggle("active", b.dataset.screen === name)); }
+    function openBattleScreen() { heroScreen.classList.add("hidden"); comingScreen.classList.add("hidden"); document.body.classList.remove("section-open"); setActiveNav("battle"); }
+    function openHeroScreen() { comingScreen.classList.add("hidden"); heroScreen.classList.remove("hidden"); document.body.classList.add("section-open"); setActiveNav("hero"); renderHeroStats(); }
+    function openComingScreen(name) {
+      const copy = SCREEN_COPY[name]; if (!copy) return;
+      heroScreen.classList.add("hidden"); document.body.classList.add("section-open");
+      setText("comingHeader", copy.title); setText("comingIcon", copy.icon); setText("comingTitle", copy.heading); setText("comingText", copy.text);
+      comingScreen.classList.remove("hidden"); setActiveNav(name);
     }
 
     async function startGame() {
       try {
-        if (!telegram.initData) {
-          throw new Error(
-            "Открой игру через кнопку Mini App внутри Telegram"
-          );
-        }
-
-        elements.loadingText.textContent =
-          "Загружаем игровые ассеты…";
-
-        await preloadAssets();
-
-        elements.loadingText.textContent =
-          "Загружаем прогресс героя…";
-
-        player = await apiRequest("/player");
-        updateScreen();
-
-        if (player.pending_loot) {
-          showLoot(player.pending_loot);
-        }
-
-        elements.loadingOverlay.classList.add("hidden");
-        elements.message.classList.remove("error");
-        elements.message.textContent = "⚔️ Герой вступил в автобой";
-
-        if (player.hero_alive === false || Number(player.hero_hp) <= 0) {
-          await handleHeroDefeat();
-        } else {
-          battleRunning = true;
-          scheduleHeroAttack(0.35);
-          scheduleMonsterAttack(player.enemy_attack_interval);
-        }
+        if (!telegram.initData) throw new Error("Открой игру через кнопку Mini App внутри Telegram");
+        elements.loadingText.textContent = "Загружаем игровые ассеты…"; await preloadAssets();
+        elements.loadingText.textContent = "Загружаем прогресс героя…"; player = await apiRequest("/player"); renderPlayer();
+        elements.loadingOverlay.classList.add("hidden"); setMessage(player.game_completed ? "🏆 Все 1000 этапов пройдены" : "⚔️ Герой вступил в автобой");
+        if (player.pending_loot) showLootModal();
+        showOfflineIfAvailable();
+        if (!player.hero_alive || Number(player.hero_hp) <= 0) await handleHeroDefeat(); else syncBattleState();
       } catch (error) {
-        elements.loadingTitle.textContent = "Ошибка";
-        elements.loadingText.textContent = error.message;
-        elements.message.classList.add("error");
-        elements.message.textContent = `❌ ${error.message}`;
+        elements.loadingTitle.textContent = "Ошибка"; elements.loadingText.textContent = error.message; setMessage(`❌ ${error.message}`, true);
       }
     }
 
-
-    const heroScreen = document.getElementById("heroScreen");
-    const comingScreen = document.getElementById("comingScreen");
-    const comingHeader = document.getElementById("comingHeader");
-    const comingIcon = document.getElementById("comingIcon");
-    const comingTitle = document.getElementById("comingTitle");
-    const comingText = document.getElementById("comingText");
-    const lootButton = document.getElementById("lootButton");
-    const lootOverlay = document.getElementById("lootOverlay");
-    const lootCloseButton = document.getElementById("lootCloseButton");
-    const navButtons = [...document.querySelectorAll(".game-nav-button")];
-
-    const SCREEN_COPY = {
-      companions: {
-        title: "Спутники",
-        icon: "🐾",
-        heading: "Спутники",
-        text: "Здесь будут питомцы и боевые помощники героя."
-      },
-      trials: {
-        title: "Испытания",
-        icon: "🏰",
-        heading: "Испытания",
-        text: "Здесь появятся боссы, подземелья и ежедневные испытания."
-      },
-      clan: {
-        title: "Клан",
-        icon: "🏳️",
-        heading: "Клан",
-        text: "Здесь будут клан, совместные задания и клановые награды."
-      },
-      shop: {
-        title: "Магазин",
-        icon: "🛒",
-        heading: "Магазин",
-        text: "Здесь будут игровые товары и специальные предложения."
-      }
-    };
-
-    function setActiveNav(screenName) {
-      navButtons.forEach((button) => {
-        button.classList.toggle(
-          "active",
-          button.dataset.screen === screenName
-        );
-      });
-    }
-
-    function openBattleScreen() {
-      heroScreen.classList.add("hidden");
-      comingScreen.classList.add("hidden");
-      document.body.classList.remove("section-open");
-      setActiveNav("battle");
-    }
-
-    function openHeroScreen() {
-      comingScreen.classList.add("hidden");
-      heroScreen.classList.remove("hidden");
-      document.body.classList.add("section-open");
-      setActiveNav("hero");
-    }
-
-    function openComingScreen(screenName) {
-      const copy = SCREEN_COPY[screenName];
-      if (!copy) {
-        return;
-      }
-
-      heroScreen.classList.add("hidden");
-      document.body.classList.add("section-open");
-      comingHeader.textContent = copy.title;
-      comingIcon.textContent = copy.icon;
-      comingTitle.textContent = copy.heading;
-      comingText.textContent = copy.text;
-      comingScreen.classList.remove("hidden");
-      setActiveNav(screenName);
-    }
-
-    navButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const screenName = button.dataset.screen;
-
-        if (screenName === "battle") {
-          openBattleScreen();
-          return;
-        }
-
-        if (screenName === "hero") {
-          openHeroScreen();
-          return;
-        }
-
-        openComingScreen(screenName);
-      });
-    });
-
-    document.querySelectorAll("[data-close-screen]").forEach((button) => {
-      button.addEventListener("click", openBattleScreen);
-    });
-
-
-    const RARITY_ORDER = [
-      ["common", "Обыч."],
-      ["uncommon", "Необыч."],
-      ["rare", "Редк."],
-      ["epic", "Эпич."],
-      ["legendary", "Легенд."],
-      ["mythic", "Мифич."]
-    ];
-
-    function formatChance(value) {
-      const number = Number(value || 0);
-      if (number <= 0) return "0%";
-      return number < 1 ? `${number.toFixed(2)}%` : `${number.toFixed(1)}%`;
-    }
-
-    function setChestButtonsDisabled(disabled) {
-      elements.chestOpenButton.disabled = disabled;
-      elements.chestUpgradeButton.disabled = disabled;
-    }
-
-    function showChestPanel() {
-      currentLoot = null;
-      const chestLevel = Math.max(1, Number(player?.chest_level || 1));
-      const maxLevel = Math.max(chestLevel, Number(player?.chest_max_level || 20));
-      const chestCount = Math.max(0, Number(player?.chests || 0));
-      const upgradeCost = player?.chest_upgrade_cost;
-      const chances = player?.chest_rarity_chances || {};
-
-      elements.lootCard.className = "loot-card rarity-common";
-      elements.lootItemIcon.textContent = "🧰";
-      elements.lootItemRarity.textContent = "СУНДУК ЭКИПИРОВКИ";
-      elements.lootItemName.textContent = `Уровень ${chestLevel}`;
-      elements.lootItemSlot.textContent = "Чем выше уровень, тем лучше добыча";
-
-      elements.chestLevelValue.textContent = `${chestLevel} / ${maxLevel}`;
-      elements.chestAvailable.textContent = formatNumber(chestCount);
-      elements.rarityChances.innerHTML = RARITY_ORDER.map(([key, label]) => (
-        `<div class="rarity-chance ${key}">${label}<strong>${formatChance(chances[key])}</strong></div>`
-      )).join("");
-
-      elements.chestOpenButton.textContent = chestCount > 0
-        ? `Открыть · ${formatNumber(chestCount)}`
-        : "Нет сундуков";
-      elements.chestOpenButton.disabled = chestCount <= 0;
-
-      if (upgradeCost === null || chestLevel >= maxLevel) {
-        elements.chestUpgradeButton.textContent = "Максимальный уровень";
-        elements.chestUpgradeButton.disabled = true;
-        elements.chestQualityNote.textContent =
-          "Сундук достиг максимального уровня. Шансы лучшей экипировки уже максимальны.";
-      } else {
-        elements.chestUpgradeButton.innerHTML =
-          `Улучшить · <span id="chestUpgradeCost">${formatNumber(upgradeCost)}</span> 🪙`;
-        elements.chestUpgradeCost = document.getElementById("chestUpgradeCost");
-        elements.chestUpgradeButton.disabled = Number(player?.gold || 0) < Number(upgradeCost);
-        elements.chestQualityNote.textContent = Number(player?.gold || 0) >= Number(upgradeCost)
-          ? "Улучшение повысит силу выпадающих предметов и шанс высокой редкости."
-          : `Не хватает ${formatNumber(Number(upgradeCost) - Number(player?.gold || 0))} золота для улучшения.`;
-      }
-
-      elements.chestPanel.classList.remove("hidden");
-      elements.lootStats.classList.add("hidden");
-      elements.lootComparison.classList.add("hidden");
-      elements.lootActions.classList.add("hidden");
-      lootCloseButton.textContent = "Закрыть";
-      lootCloseButton.classList.remove("hidden");
-      lootOverlay.classList.remove("hidden");
-    }
-
-    async function upgradeChest() {
-      if (lootRequestInProgress) return;
-      lootRequestInProgress = true;
-      setChestButtonsDisabled(true);
-      try {
-        const result = await apiRequest("/chest/upgrade", "POST");
-        player = result;
-        updateScreen();
-        showChestPanel();
-        elements.message.classList.toggle("error", !result.upgraded);
-        elements.message.textContent = result.message || "Сундук обновлён";
-      } catch (error) {
-        elements.message.classList.add("error");
-        elements.message.textContent = `❌ ${error.message}`;
-      } finally {
-        lootRequestInProgress = false;
-        if (!lootOverlay.classList.contains("hidden")) {
-          showChestPanel();
-        }
-      }
-    }
-
-    function signed(value) {
-      const number = Number(value || 0);
-      return number > 0 ? `+${number}` : `${number}`;
-    }
-
-    function describeComparison(item) {
-      const equipped = player?.equipment?.[item.slot];
-      if (!equipped) {
-        elements.lootComparison.className = "loot-comparison upgrade";
-        return "Свободный слот — предмет сразу повысит характеристики.";
-      }
-
-      const powerDelta = Number(item.power || 0) - Number(equipped.power || 0);
-      const damageDelta = Number(item.damage || 0) - Number(equipped.damage || 0);
-      const hpDelta = Number(item.hp || 0) - Number(equipped.hp || 0);
-      const totalDelta = powerDelta + damageDelta + hpDelta;
-      elements.lootComparison.className =
-        `loot-comparison ${totalDelta >= 0 ? "upgrade" : "downgrade"}`;
-
-      return `Сейчас: ${equipped.name}. Разница: БМ ${signed(powerDelta)}, ` +
-        `урон ${signed(damageDelta)}, HP ${signed(hpDelta)}.`;
-    }
-
-    function showLoot(item) {
-      if (!item) return;
-      currentLoot = item;
-      elements.chestPanel.classList.add("hidden");
-      elements.lootStats.classList.remove("hidden");
-      elements.lootComparison.classList.remove("hidden");
-      elements.lootCard.className = `loot-card rarity-${item.rarity || "common"}`;
-      elements.lootItemIcon.textContent = item.icon || "🎁";
-      elements.lootItemRarity.textContent = String(item.rarity_name || "Обычный").toUpperCase();
-      elements.lootItemName.textContent = item.name || "Новый предмет";
-      elements.lootItemSlot.textContent = item.slot_name || GEAR_SLOT_LABELS[item.slot] || "Экипировка";
-      elements.lootPower.textContent = `+${Number(item.power || 0)}`;
-      elements.lootDamage.textContent = `+${Number(item.damage || 0)}`;
-      elements.lootHp.textContent = `+${Number(item.hp || 0)}`;
-      elements.lootSellPrice.textContent = formatNumber(item.sell_price || 0);
-      elements.lootComparison.textContent = describeComparison(item);
-      elements.lootActions.classList.remove("hidden");
-      lootCloseButton.classList.add("hidden");
-      lootOverlay.classList.remove("hidden");
-    }
-
-    function showLootNotice(title, text) {
-      currentLoot = null;
-      elements.chestPanel.classList.add("hidden");
-      elements.lootStats.classList.remove("hidden");
-      elements.lootComparison.classList.remove("hidden");
-      elements.lootCard.className = "loot-card rarity-common";
-      elements.lootItemIcon.textContent = "🧰";
-      elements.lootItemRarity.textContent = "СУНДУК";
-      elements.lootItemName.textContent = title;
-      elements.lootItemSlot.textContent = "";
-      elements.lootPower.textContent = "—";
-      elements.lootDamage.textContent = "—";
-      elements.lootHp.textContent = "—";
-      elements.lootComparison.className = "loot-comparison";
-      elements.lootComparison.textContent = text;
-      elements.lootActions.classList.add("hidden");
-      lootCloseButton.classList.remove("hidden");
-      lootOverlay.classList.remove("hidden");
-    }
-
-    function setLootButtonsDisabled(disabled) {
-      elements.lootEquipButton.disabled = disabled;
-      elements.lootSellButton.disabled = disabled;
-    }
-
-    async function openChest() {
-      if (lootRequestInProgress) return;
-      lootRequestInProgress = true;
-      try {
-        elements.message.classList.remove("error");
-        elements.message.textContent = "🧰 Открываем сундук…";
-        const result = await apiRequest("/loot/open", "POST");
-        player = result;
-        updateScreen();
-
-        const item = result.loot || result.pending_loot;
-        if (item) {
-          showLoot(item);
-          elements.message.textContent = `🎁 ${item.name}`;
-        } else {
-          showChestPanel();
-          elements.message.textContent = "🧰 Победите врага и получите новый сундук";
-        }
-      } catch (error) {
-        elements.message.classList.add("error");
-        elements.message.textContent = `❌ ${error.message}`;
-      } finally {
-        lootRequestInProgress = false;
-      }
-    }
-
-    async function resolveLoot(path) {
-      if (!currentLoot || lootRequestInProgress) return;
-      lootRequestInProgress = true;
-      setLootButtonsDisabled(true);
-      try {
-        const result = await apiRequest(path, "POST");
-        player = result;
-        currentLoot = null;
-        updateScreen();
-        showChestPanel();
-        elements.message.classList.remove("error");
-        elements.message.textContent = result.message || "Готово";
-      } catch (error) {
-        elements.message.classList.add("error");
-        elements.message.textContent = `❌ ${error.message}`;
-      } finally {
-        lootRequestInProgress = false;
-        setLootButtonsDisabled(false);
-      }
-    }
-
-    lootButton.addEventListener("click", () => {
-      if (player?.pending_loot) {
-        showLoot(player.pending_loot);
-      } else {
-        showChestPanel();
-      }
-    });
-    elements.chestOpenButton.addEventListener("click", openChest);
-    elements.chestUpgradeButton.addEventListener("click", upgradeChest);
-    elements.lootEquipButton.addEventListener("click", () => resolveLoot("/loot/equip"));
-    elements.lootSellButton.addEventListener("click", () => resolveLoot("/loot/sell"));
-    lootCloseButton.addEventListener("click", () => lootOverlay.classList.add("hidden"));
-
-    document.querySelectorAll(".gear-slot[data-slot]").forEach((slotButton) => {
-      slotButton.addEventListener("click", () => {
-        const slotKey = slotButton.dataset.slot;
-        const item = player?.equipment?.[slotKey];
-        elements.message.classList.remove("error");
-        elements.message.textContent = item
-          ? `🎒 ${item.name}: БМ +${item.power}, урон +${item.damage}, HP +${item.hp}`
-          : `🎒 ${GEAR_SLOT_LABELS[slotKey]}: слот пока пуст`;
-      });
-    });
-
+    navButtons.forEach((button) => button.addEventListener("click", () => {
+      const name = button.dataset.screen; if (name === "battle") openBattleScreen(); else if (name === "hero") openHeroScreen(); else openComingScreen(name);
+    }));
+    document.querySelectorAll("[data-close-screen]").forEach((button) => button.addEventListener("click", openBattleScreen));
+    document.querySelectorAll(".gear-slot[data-slot]").forEach((button) => button.addEventListener("click", () => {
+      const item = player?.equipment?.[button.dataset.slot];
+      setMessage(item ? `🎒 ${item.name}: БМ +${formatNumber(item.power)}, урон +${formatNumber(item.damage)}, HP +${formatNumber(item.hp)}` : `🎒 ${SLOT_NAMES[button.dataset.slot]}: слот пуст`);
+    }));
+    $("lootButton").addEventListener("click", () => { renderChestModal(); modalShow("chestModal"); });
+    $("chestModalClose").addEventListener("click", () => modalHide("chestModal"));
+    $("openChestButton").addEventListener("click", openChest);
+    $("upgradeChestButton").addEventListener("click", upgradeChest);
+    $("lootModalClose").addEventListener("click", () => { if (!player?.pending_loot) modalHide("lootOverlay"); else setMessage("Сначала наденьте или продайте предмет", true); });
+    $("equipLootButton").addEventListener("click", () => resolveLoot("/loot/equip"));
+    $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
+    elements.autoToggle.addEventListener("click", toggleAuto);
+    elements.bossButton.addEventListener("click", startBoss);
+    $("claimOfflineButton").addEventListener("click", claimOffline);
+    $("leaderboardButton").addEventListener("click", openLeaderboard);
+    $("leaderboardClose").addEventListener("click", () => modalHide("leaderboardModal"));
     elements.respawnButton.addEventListener("click", respawnHero);
-
+    ["chestModal", "leaderboardModal"].forEach((id) => $(id).addEventListener("click", (event) => { if (event.target === $(id)) modalHide(id); }));
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        stopBattle();
-      } else {
-        resumeBattle();
-      }
+      if (document.hidden) { stopBattle(); clearTimeout(autoOpenTimer); }
+      else { syncBattleState(); scheduleAutoOpen(300); }
     });
-
-    window.addEventListener("pagehide", stopBattle);
-    window.addEventListener("beforeunload", stopBattle);
+    window.addEventListener("pagehide", () => { stopBattle(); clearTimeout(autoOpenTimer); });
+    window.addEventListener("beforeunload", () => { stopBattle(); clearTimeout(autoOpenTimer); });
 
     startGame();
-  </script>
+</script>
 </body>
 </html>
