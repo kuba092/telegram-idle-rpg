@@ -6,19 +6,20 @@
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
-  <title>Idle RPG</title>
+  <title>Idle Wars</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     :root {
-      --panel: rgba(17, 24, 39, 0.78);
-      --panel-strong: rgba(8, 13, 24, 0.9);
-      --border: rgba(255, 255, 255, 0.15);
       --text: #ffffff;
-      --muted: #c7d0df;
-      --gold: #ffd56a;
-      --green: #75f0a3;
-      --danger: #ff5d6c;
+      --muted: rgba(241, 247, 255, 0.76);
+      --glass: rgba(10, 22, 24, 0.68);
+      --glass-strong: rgba(7, 15, 18, 0.86);
+      --line: rgba(255, 255, 255, 0.17);
+      --gold: #ffd768;
+      --green: #7cf39b;
+      --danger: #ff6070;
+      --xp: #74c8ff;
     }
 
     * {
@@ -28,16 +29,18 @@
 
     html,
     body {
+      width: 100%;
+      height: 100%;
       margin: 0;
-      min-height: 100%;
-      background: #07101b;
+      overflow: hidden;
+      background: #10281c;
       color: var(--text);
-      font-family: Arial, Helvetica, sans-serif;
-      overflow-x: hidden;
+      font-family: Inter, Arial, Helvetica, sans-serif;
     }
 
     body {
       min-height: 100vh;
+      min-height: 100dvh;
     }
 
     button,
@@ -47,124 +50,228 @@
     }
 
     .app {
-      width: 100%;
-      max-width: 520px;
-      min-height: 100vh;
-      margin: 0 auto;
-      padding:
-        calc(10px + env(safe-area-inset-top))
-        10px
-        calc(16px + env(safe-area-inset-bottom));
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
       background:
-        radial-gradient(circle at top, #203451 0%, #0b1625 45%, #060b12 100%);
+        linear-gradient(
+          to bottom,
+          rgba(8, 26, 20, 0.22) 0%,
+          rgba(8, 19, 17, 0.02) 34%,
+          rgba(4, 12, 12, 0.08) 62%,
+          rgba(3, 8, 10, 0.62) 100%
+        ),
+        url("assets/forest_bg.png?v=5") center / cover no-repeat;
+      isolation: isolate;
     }
 
-    .top-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 9px;
+    .app::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(
+          circle at 50% 44%,
+          rgba(255, 243, 171, 0.11),
+          transparent 42%
+        ),
+        linear-gradient(
+          to right,
+          rgba(3, 11, 10, 0.16),
+          transparent 24%,
+          transparent 76%,
+          rgba(3, 11, 10, 0.16)
+        );
     }
 
-    .stat-card {
+    .top-hud {
+      position: absolute;
+      top: calc(10px + env(safe-area-inset-top));
+      right: 12px;
+      left: 12px;
+      z-index: 35;
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 10px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .level-card,
+    .resource-pill {
+      border: 1px solid var(--line);
+      background: var(--glass);
+      box-shadow:
+        0 10px 28px rgba(0, 0, 0, 0.23),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .level-card {
+      flex: 1 1 320px;
       min-width: 0;
-      padding: 9px 6px;
-      text-align: center;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: var(--panel);
-      backdrop-filter: blur(10px);
+      max-width: 410px;
+      padding: 10px 12px 11px;
+      border-radius: 17px;
     }
 
-    .stat-label {
-      display: block;
-      margin-bottom: 3px;
+    .level-row,
+    .xp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .level-row {
+      margin-bottom: 7px;
+    }
+
+    .level-caption {
       color: var(--muted);
       font-size: 10px;
-      letter-spacing: 0.05em;
+      font-weight: 800;
+      letter-spacing: 0.1em;
     }
 
-    .stat-value {
-      display: block;
+    .level-value {
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 950;
+      line-height: 1;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .xp-row {
+      margin-bottom: 4px;
+      color: rgba(232, 246, 255, 0.78);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .xp-track {
+      height: 9px;
       overflow: hidden;
-      font-size: 18px;
-      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 999px;
+      background: rgba(4, 24, 39, 0.82);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.36);
+    }
+
+    .xp-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #3daeff, #8ee7ff);
+      box-shadow: 0 0 13px rgba(79, 191, 255, 0.65);
+      transition: width 0.28s ease-out;
+    }
+
+    .resources {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .resource-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 106px;
+      padding: 9px 11px;
+      border-radius: 16px;
+    }
+
+    .resource-icon {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      place-items: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.09);
+      font-size: 17px;
+    }
+
+    .resource-copy {
+      min-width: 0;
+    }
+
+    .resource-label {
+      display: block;
+      margin-bottom: 1px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .resource-value {
+      display: block;
+      max-width: 92px;
+      overflow: hidden;
+      font-size: 16px;
+      font-weight: 950;
+      line-height: 1.1;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .battlefield {
-      position: relative;
-      height: clamp(455px, 68vh, 610px);
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      background:
-        linear-gradient(
-          to bottom,
-          rgba(8, 17, 29, 0.05) 0%,
-          rgba(8, 17, 29, 0.03) 52%,
-          rgba(5, 10, 17, 0.62) 100%
-        ),
-        url("assets/forest_bg.png?v=3") center / cover no-repeat;
-      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
-      isolation: isolate;
+    .bm-pill .resource-value {
+      color: #9dffb3;
     }
 
-    .battlefield::after {
-      content: "";
-      position: absolute;
-      inset: auto 0 0;
-      z-index: 0;
-      height: 36%;
-      background:
-        linear-gradient(
-          to top,
-          rgba(5, 10, 17, 0.64),
-          rgba(5, 10, 17, 0)
-        );
-      pointer-events: none;
-    }
-
-    .battle-top {
-      position: relative;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 11px;
-    }
-
-    .stage-badge,
-    .battle-speed {
-      padding: 7px 10px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 999px;
-      background: rgba(6, 12, 20, 0.72);
-      backdrop-filter: blur(8px);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .stage-badge {
+    .gold-pill .resource-value {
       color: var(--gold);
     }
 
-    .battle-speed {
-      color: var(--green);
+    .battlefield {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
     }
 
     .enemy-hud {
-      position: relative;
-      z-index: 20;
-      width: calc(100% - 22px);
-      margin: 0 11px;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(6, 12, 20, 0.74);
+      position: absolute;
+      top: calc(112px + env(safe-area-inset-top));
+      left: 50%;
+      z-index: 30;
+      width: min(calc(100% - 28px), 480px);
+      transform: translateX(-50%);
+    }
+
+    .stage-title {
+      width: max-content;
+      margin: 0 auto 7px;
+      padding: 5px 12px;
+      border: 1px solid rgba(255, 226, 126, 0.26);
+      border-radius: 999px;
+      background: rgba(9, 18, 18, 0.72);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: 0.09em;
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(8px);
+    }
+
+    .enemy-panel {
+      padding: 10px 12px 11px;
+      border: 1px solid rgba(255, 255, 255, 0.17);
+      border-radius: 16px;
+      background: rgba(8, 14, 17, 0.72);
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.23),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
     }
 
     .enemy-hud-row {
@@ -174,74 +281,81 @@
       gap: 10px;
       margin-bottom: 7px;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 900;
     }
 
     .enemy-hp-text {
-      color: #ffd4d8;
+      color: #ffdbe0;
+      font-size: 11px;
       white-space: nowrap;
     }
 
     .hp-track {
-      height: 13px;
+      height: 12px;
       overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 999px;
-      background: rgba(65, 13, 24, 0.92);
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+      background: rgba(65, 12, 24, 0.94);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.48);
     }
 
     .hp-fill {
       width: 100%;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, #ff344f, #ff7b48);
+      background: linear-gradient(90deg, #ff314c, #ff7b49);
+      box-shadow: 0 0 14px rgba(255, 62, 80, 0.55);
       transition: width 0.18s ease-out;
     }
 
     .fighters-layer {
       position: absolute;
-      inset: 105px 0 72px;
-      z-index: 5;
+      top: calc(180px + env(safe-area-inset-top));
+      bottom: 58px;
+      left: 50%;
+      z-index: 8;
+      width: min(100%, 980px);
+      transform: translateX(-50%);
+      pointer-events: none;
     }
 
     .fighter-slot {
       position: absolute;
       bottom: 0;
-      width: 47%;
-      height: 82%;
-      pointer-events: none;
+      width: 44%;
+      height: 100%;
     }
 
     .hero-slot {
-      left: 0;
+      left: 3%;
     }
 
     .enemy-slot {
-      right: 0;
+      right: 3%;
     }
 
     .fighter-shadow {
       position: absolute;
       left: 50%;
       bottom: 4%;
-      width: 60%;
+      width: min(72%, 250px);
       height: 8%;
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.34);
-      filter: blur(5px);
+      filter: blur(7px);
       transform: translateX(-50%);
     }
 
     .fighter-sprite {
       position: absolute;
       left: 50%;
-      bottom: 5%;
-      width: min(43vw, 205px);
-      max-width: 92%;
-      height: 88%;
+      bottom: 6%;
+      width: clamp(150px, 29vw, 285px);
+      max-width: 98%;
+      height: 80%;
       object-fit: contain;
       object-position: center bottom;
-      filter: drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38));
+      filter: drop-shadow(0 13px 10px rgba(0, 0, 0, 0.42));
       transform: translateX(-50%);
       transform-origin: 50% 88%;
       will-change: transform, filter, opacity;
@@ -258,16 +372,16 @@
     .fighter-name {
       position: absolute;
       left: 50%;
-      bottom: -3px;
-      z-index: 8;
+      bottom: -1px;
+      z-index: 11;
       max-width: 90%;
-      padding: 5px 9px;
+      padding: 5px 10px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 999px;
-      background: rgba(5, 10, 17, 0.68);
-      font-size: 12px;
-      font-weight: 700;
+      background: rgba(5, 11, 13, 0.7);
+      font-size: 11px;
+      font-weight: 850;
       text-overflow: ellipsis;
       white-space: nowrap;
       transform: translateX(-50%);
@@ -278,14 +392,14 @@
       position: absolute;
       left: 50%;
       bottom: 29px;
-      z-index: 9;
-      width: min(88%, 180px);
-      padding: 5px 7px 6px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 11px;
-      background: rgba(5, 10, 17, 0.76);
+      z-index: 12;
+      width: min(86%, 210px);
+      padding: 6px 8px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      background: rgba(5, 13, 13, 0.75);
       transform: translateX(-50%);
-      backdrop-filter: blur(7px);
+      backdrop-filter: blur(8px);
     }
 
     .hero-health-row {
@@ -294,24 +408,25 @@
       justify-content: space-between;
       gap: 6px;
       margin-bottom: 4px;
-      color: #dfffe9;
-      font-size: 10px;
-      font-weight: 800;
+      color: #e3ffeb;
+      font-size: 9px;
+      font-weight: 900;
     }
 
     .hero-hp-track {
-      height: 7px;
+      height: 8px;
       overflow: hidden;
       border-radius: 999px;
-      background: rgba(12, 61, 36, 0.92);
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.48);
+      background: rgba(11, 63, 35, 0.94);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.48);
     }
 
     .hero-hp-fill {
       width: 100%;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, #32d66b, #9cf57c);
+      background: linear-gradient(90deg, #2ed56a, #a3f67f);
+      box-shadow: 0 0 12px rgba(83, 231, 116, 0.48);
       transition: width 0.2s ease-out;
     }
 
@@ -325,7 +440,7 @@
     .effects-layer {
       position: absolute;
       inset: 0;
-      z-index: 12;
+      z-index: 14;
       pointer-events: none;
     }
 
@@ -338,48 +453,48 @@
     }
 
     .slash-effect {
-      left: 39%;
-      top: 42%;
-      width: 47%;
+      left: 48%;
+      top: 56%;
+      width: min(46vw, 390px);
       transform: translate(-50%, -50%) rotate(-7deg) scale(0.5);
     }
 
     .hit-effect {
-      left: 72%;
-      top: 54%;
-      width: 26%;
+      left: 70%;
+      top: 58%;
+      width: min(25vw, 220px);
       transform: translate(-50%, -50%) scale(0.35);
     }
 
     .spore-effect {
-      left: 64%;
-      top: 52%;
-      width: 52%;
+      left: 63%;
+      top: 56%;
+      width: min(48vw, 420px);
       transform: translate(-50%, -50%) scale(0.45);
     }
 
     .damage-number {
       position: absolute;
-      left: 72%;
-      top: 39%;
+      left: 70%;
+      top: 43%;
       z-index: 18;
       opacity: 0;
-      color: #fff1aa;
-      font-size: 27px;
-      font-weight: 900;
+      color: #fff2a9;
+      font-size: clamp(25px, 5vw, 38px);
+      font-weight: 950;
       text-shadow:
         0 2px 0 #7f2600,
-        0 0 10px rgba(255, 196, 73, 0.9);
+        0 0 12px rgba(255, 196, 73, 0.92);
       transform: translate(-50%, 0);
       pointer-events: none;
     }
 
     .hero-hit-flash {
       position: absolute;
-      left: 25%;
-      top: 54%;
+      left: 29%;
+      top: 59%;
       z-index: 14;
-      width: 28%;
+      width: min(27vw, 220px);
       aspect-ratio: 1;
       opacity: 0;
       border-radius: 50%;
@@ -396,100 +511,73 @@
 
     .battle-bottom {
       position: absolute;
-      right: 10px;
-      bottom: 10px;
-      left: 10px;
-      z-index: 25;
+      right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      left: 12px;
+      z-index: 32;
+      display: flex;
+      justify-content: center;
     }
 
     .battle-message {
-      min-height: 41px;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      background: rgba(6, 12, 20, 0.78);
-      color: #ffe5a3;
-      font-size: 13px;
-      font-weight: 700;
+      width: min(100%, 540px);
+      min-height: 38px;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      background: rgba(5, 12, 14, 0.74);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+      color: #ffe8a9;
+      font-size: 12px;
+      font-weight: 850;
       text-align: center;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(9px);
     }
 
     .battle-message.error {
       color: #ff9ba6;
     }
 
-    .progress-line {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 7px;
-      color: #d6ddea;
-      font-size: 11px;
-    }
-
-    .details-panel {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 7px;
-      margin-top: 9px;
-    }
-
-    .detail {
-      min-width: 0;
-      padding: 9px 5px;
-      text-align: center;
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      background: var(--panel);
-    }
-
-    .detail-label {
-      display: block;
-      margin-bottom: 4px;
-      color: var(--muted);
-      font-size: 9px;
-      letter-spacing: 0.04em;
-    }
-
-    .detail-value {
-      display: block;
-      overflow: hidden;
-      font-size: 14px;
-      font-weight: 800;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .loading-overlay {
+    .loading-overlay,
+    .defeat-overlay {
       position: absolute;
       inset: 0;
-      z-index: 50;
+      z-index: 60;
       display: grid;
       place-items: center;
       padding: 24px;
-      background: rgba(4, 9, 16, 0.78);
       text-align: center;
-      backdrop-filter: blur(8px);
-      transition: opacity 0.25s;
+      transition: opacity 0.22s ease;
     }
 
-    .loading-overlay.hidden {
+    .loading-overlay {
+      background: rgba(4, 11, 12, 0.76);
+      backdrop-filter: blur(10px);
+    }
+
+    .loading-overlay.hidden,
+    .defeat-overlay.hidden {
       opacity: 0;
       pointer-events: none;
     }
 
+    .loading-box,
+    .defeat-card {
+      width: min(90%, 320px);
+      border: 1px solid rgba(255, 255, 255, 0.17);
+      border-radius: 21px;
+      background: var(--glass-strong);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.42);
+    }
+
     .loading-box {
-      padding: 18px 20px;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      background: var(--panel-strong);
+      padding: 19px 21px;
     }
 
     .loading-title {
       margin-bottom: 6px;
       color: var(--gold);
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .loading-text {
@@ -498,42 +586,25 @@
     }
 
     .defeat-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 46;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      background: rgba(4, 7, 13, 0.72);
-      text-align: center;
-      backdrop-filter: blur(5px);
-      transition: opacity 0.2s ease;
-    }
-
-    .defeat-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
+      background: rgba(4, 7, 10, 0.7);
+      backdrop-filter: blur(6px);
     }
 
     .defeat-card {
-      width: min(90%, 300px);
-      padding: 21px 18px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 20px;
-      background: rgba(20, 12, 22, 0.94);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+      padding: 22px 19px;
+      background: rgba(22, 12, 23, 0.94);
     }
 
     .defeat-title {
       margin-bottom: 7px;
       color: #ff8792;
-      font-size: 24px;
-      font-weight: 900;
+      font-size: 25px;
+      font-weight: 950;
     }
 
     .defeat-text {
-      margin-bottom: 15px;
-      color: #e0d6e5;
+      margin-bottom: 16px;
+      color: #e5dbe9;
       font-size: 13px;
       line-height: 1.4;
     }
@@ -542,12 +613,13 @@
       width: 100%;
       padding: 12px 15px;
       border: 0;
-      border-radius: 13px;
-      background: linear-gradient(135deg, #72e58f, #36bf75);
-      color: #07150d;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #79ea94, #35bd73);
+      color: #06150c;
       font-size: 14px;
-      font-weight: 900;
+      font-weight: 950;
       cursor: pointer;
+      box-shadow: 0 9px 20px rgba(44, 198, 111, 0.28);
     }
 
     .respawn-button:disabled {
@@ -555,261 +627,271 @@
       cursor: default;
     }
 
-    .fx-slash {
-      animation: slashFx 0.34s ease-out both;
-    }
-
-    .fx-hit {
-      animation: hitFx 0.28s ease-out both;
-    }
-
-    .fx-spore {
-      animation: sporeFx 0.72s ease-out both;
-    }
-
-    .fx-damage {
-      animation: damageFloat 0.72s ease-out both;
-    }
-
-    .fx-hero-hit {
-      animation: heroHitFlash 0.3s ease-out both;
-    }
-
-    .anim-hero-attack {
-      animation: heroAttack 0.42s ease-out both !important;
-    }
-
-    .anim-hero-skill {
-      animation: heroSkill 0.72s ease-out both !important;
-    }
-
-    .anim-hero-hit {
-      animation: heroHit 0.38s ease-out both !important;
-    }
-
-    .anim-enemy-hit {
-      animation: enemyHit 0.32s ease-out both !important;
-    }
-
-    .anim-enemy-attack {
-      animation: enemyAttack 0.5s ease-out both !important;
-    }
-
-    .anim-enemy-death {
-      animation: enemyDeath 0.45s ease-in both !important;
-    }
-
-    .anim-enemy-spawn {
-      animation: enemySpawn 0.42s ease-out both !important;
-    }
+    .fx-slash { animation: slashFx 0.34s ease-out both; }
+    .fx-hit { animation: hitFx 0.28s ease-out both; }
+    .fx-spore { animation: sporeFx 0.72s ease-out both; }
+    .fx-damage { animation: damageFloat 0.72s ease-out both; }
+    .fx-hero-hit { animation: heroHitFlash 0.3s ease-out both; }
+    .anim-hero-attack { animation: heroAttack 0.42s ease-out both !important; }
+    .anim-hero-skill { animation: heroSkill 0.72s ease-out both !important; }
+    .anim-hero-hit { animation: heroHit 0.38s ease-out both !important; }
+    .anim-enemy-hit { animation: enemyHit 0.32s ease-out both !important; }
+    .anim-enemy-attack { animation: enemyAttack 0.5s ease-out both !important; }
+    .anim-enemy-death { animation: enemyDeath 0.45s ease-in both !important; }
+    .anim-enemy-spawn { animation: enemySpawn 0.42s ease-out both !important; }
 
     @keyframes heroIdle {
-      0%,
-      100% {
-        transform: translateX(-50%) translateY(0) rotate(-1deg);
-      }
-      50% {
-        transform: translateX(-50%) translateY(-5px) rotate(1deg);
-      }
+      0%, 100% { transform: translateX(-50%) translateY(0) rotate(-1deg); }
+      50% { transform: translateX(-50%) translateY(-5px) rotate(1deg); }
     }
 
     @keyframes enemyIdle {
-      0%,
-      100% {
-        transform: translateX(-50%) translateY(0) scale(1);
-      }
-      50% {
-        transform: translateX(-50%) translateY(-4px) scale(1.015);
-      }
+      0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+      50% { transform: translateX(-50%) translateY(-4px) scale(1.015); }
     }
 
     @keyframes heroAttack {
-      0% {
-        transform: translateX(-50%) translateX(0) scale(1);
-      }
-      45% {
-        transform: translateX(-50%) translateX(42px) scale(1.07) rotate(2deg);
-      }
-      100% {
-        transform: translateX(-50%) translateX(0) scale(1);
-      }
+      0% { transform: translateX(-50%) translateX(0) scale(1); }
+      45% { transform: translateX(-50%) translateX(42px) scale(1.07) rotate(2deg); }
+      100% { transform: translateX(-50%) translateX(0) scale(1); }
     }
 
     @keyframes heroSkill {
       0% {
         transform: translateX(-50%) scale(0.94);
-        filter:
-          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
-          brightness(1);
+        filter: drop-shadow(0 13px 10px rgba(0, 0, 0, 0.42)) brightness(1);
       }
       45% {
         transform: translateX(-50%) scale(1.08) translateY(-6px);
         filter:
-          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          drop-shadow(0 13px 10px rgba(0, 0, 0, 0.42))
           brightness(1.22)
           drop-shadow(0 0 18px rgba(118, 255, 132, 0.88));
       }
-      100% {
-        transform: translateX(-50%) scale(1);
-      }
+      100% { transform: translateX(-50%) scale(1); }
     }
 
     @keyframes heroHit {
-      0% {
-        transform: translateX(-50%) translateX(0) rotate(0);
-      }
+      0% { transform: translateX(-50%) translateX(0) rotate(0); }
       35% {
         transform: translateX(-50%) translateX(-18px) rotate(-7deg);
         filter:
-          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          drop-shadow(0 13px 10px rgba(0, 0, 0, 0.42))
           brightness(1.35)
           saturate(0.65);
       }
-      100% {
-        transform: translateX(-50%) translateX(0) rotate(0);
-      }
+      100% { transform: translateX(-50%) translateX(0) rotate(0); }
     }
 
     @keyframes enemyHit {
-      0% {
-        transform: translateX(-50%) translateX(0) rotate(0);
-      }
+      0% { transform: translateX(-50%) translateX(0) rotate(0); }
       35% {
         transform: translateX(-50%) translateX(17px) rotate(6deg) scale(0.98);
         filter:
-          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          drop-shadow(0 13px 10px rgba(0, 0, 0, 0.42))
           brightness(1.65)
           saturate(0.35);
       }
-      100% {
-        transform: translateX(-50%) translateX(0) rotate(0);
-      }
+      100% { transform: translateX(-50%) translateX(0) rotate(0); }
     }
 
     @keyframes enemyAttack {
-      0% {
-        transform: translateX(-50%) translateX(0) scale(1);
-      }
-      52% {
-        transform: translateX(-50%) translateX(-42px) scale(1.08) rotate(-3deg);
-      }
-      100% {
-        transform: translateX(-50%) translateX(0) scale(1);
-      }
+      0% { transform: translateX(-50%) translateX(0) scale(1); }
+      52% { transform: translateX(-50%) translateX(-42px) scale(1.08) rotate(-3deg); }
+      100% { transform: translateX(-50%) translateX(0) scale(1); }
     }
 
     @keyframes enemyDeath {
-      0% {
-        opacity: 1;
-        transform: translateX(-50%) scale(1) rotate(0);
-      }
+      0% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0); }
       100% {
         opacity: 0;
         transform: translateX(-50%) translateY(16px) scale(0.28) rotate(13deg);
-        filter:
-          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
-          grayscale(0.45);
+        filter: drop-shadow(0 13px 10px rgba(0, 0, 0, 0.42)) grayscale(0.45);
       }
     }
 
     @keyframes enemySpawn {
-      0% {
-        opacity: 0;
-        transform: translateX(-50%) translateX(35px) scale(0.65);
-      }
-      100% {
-        opacity: 1;
-        transform: translateX(-50%) translateX(0) scale(1);
-      }
+      0% { opacity: 0; transform: translateX(-50%) translateX(35px) scale(0.65); }
+      100% { opacity: 1; transform: translateX(-50%) translateX(0) scale(1); }
     }
 
     @keyframes slashFx {
-      0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) rotate(-8deg) scale(0.45);
-      }
-      35% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) rotate(2deg) scale(1.08);
-      }
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(0.45); }
+      35% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -50%) rotate(2deg) scale(1.08); }
     }
 
     @keyframes hitFx {
-      0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.25);
-      }
-      45% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
-      100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(1.28);
-      }
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.25); }
+      45% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.28); }
     }
 
     @keyframes sporeFx {
-      0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.35) rotate(-7deg);
-      }
-      35% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(1.16) rotate(8deg);
-      }
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.35) rotate(-7deg); }
+      35% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.16) rotate(8deg); }
     }
 
     @keyframes damageFloat {
-      0% {
-        opacity: 0;
-        transform: translate(-50%, 8px) scale(0.75);
-      }
-      22% {
-        opacity: 1;
-        transform: translate(-50%, -4px) scale(1.08);
-      }
-      100% {
-        opacity: 0;
-        transform: translate(-50%, -44px) scale(1);
-      }
+      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.75); }
+      22% { opacity: 1; transform: translate(-50%, -4px) scale(1.08); }
+      100% { opacity: 0; transform: translate(-50%, -44px) scale(1); }
     }
 
     @keyframes heroHitFlash {
-      0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.3);
-      }
-      40% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(1.12);
-      }
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+      40% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.12); }
     }
 
-    @media (max-width: 360px) {
-      .battlefield {
-        height: 470px;
+    @media (max-width: 650px) {
+      .top-hud {
+        gap: 7px;
       }
 
-      .details-panel {
-        gap: 5px;
+      .level-card {
+        flex-basis: 44%;
+        padding: 9px 10px 10px;
       }
 
-      .detail {
-        padding: 8px 3px;
+      .resources {
+        gap: 6px;
+      }
+
+      .resource-pill {
+        min-width: 84px;
+        padding: 8px 9px;
+      }
+
+      .resource-icon {
+        width: 26px;
+        height: 26px;
+        flex-basis: 26px;
+        font-size: 15px;
+      }
+
+      .resource-value {
+        max-width: 62px;
+        font-size: 14px;
+      }
+
+      .enemy-hud {
+        top: calc(104px + env(safe-area-inset-top));
+      }
+
+      .fighters-layer {
+        top: calc(170px + env(safe-area-inset-top));
       }
 
       .fighter-sprite {
-        width: 43vw;
+        width: clamp(138px, 42vw, 220px);
+        height: 78%;
+      }
+
+      .hero-slot { left: 1%; }
+      .enemy-slot { right: 1%; }
+    }
+
+    @media (max-width: 430px) {
+      .top-hud {
+        right: 8px;
+        left: 8px;
+        gap: 5px;
+      }
+
+      .level-card {
+        flex-basis: 40%;
+        padding: 8px 8px 9px;
+        border-radius: 14px;
+      }
+
+      .level-caption {
+        font-size: 8px;
+      }
+
+      .level-value {
+        font-size: 17px;
+      }
+
+      .xp-row {
+        font-size: 8px;
+      }
+
+      .resources {
+        gap: 5px;
+      }
+
+      .resource-pill {
+        min-width: 74px;
+        gap: 5px;
+        padding: 7px;
+        border-radius: 13px;
+      }
+
+      .resource-icon {
+        width: 24px;
+        height: 24px;
+        flex-basis: 24px;
+        font-size: 14px;
+      }
+
+      .resource-label {
+        font-size: 8px;
+      }
+
+      .resource-value {
+        max-width: 49px;
+        font-size: 13px;
+      }
+
+      .enemy-hud {
+        top: calc(94px + env(safe-area-inset-top));
+        width: calc(100% - 18px);
+      }
+
+      .fighters-layer {
+        top: calc(157px + env(safe-area-inset-top));
+        bottom: 54px;
+      }
+
+      .fighter-slot {
+        width: 49%;
+      }
+
+      .hero-slot { left: 0; }
+      .enemy-slot { right: 0; }
+
+      .fighter-sprite {
+        width: 48vw;
+        height: 77%;
+      }
+
+      .fighter-name {
+        font-size: 10px;
+      }
+
+      .hero-health {
+        width: 94%;
+      }
+
+      .battle-message {
+        font-size: 11px;
+      }
+    }
+
+    @media (max-height: 610px) {
+      .enemy-hud {
+        top: calc(88px + env(safe-area-inset-top));
+      }
+
+      .fighters-layer {
+        top: calc(145px + env(safe-area-inset-top));
+        bottom: 48px;
+      }
+
+      .fighter-sprite {
+        height: 76%;
       }
     }
   </style>
@@ -817,44 +899,57 @@
 
 <body>
   <main class="app">
-    <section class="top-stats">
-      <div class="stat-card">
-        <span class="stat-label">ЭТАП</span>
-        <span class="stat-value" id="stageTop">1</span>
+    <section class="top-hud">
+      <div class="level-card">
+        <div class="level-row">
+          <span class="level-caption">УРОВЕНЬ</span>
+          <strong class="level-value" id="level">1</strong>
+        </div>
+        <div class="xp-row">
+          <span>ОПЫТ</span>
+          <span id="xpText">0 / 10</span>
+        </div>
+        <div class="xp-track">
+          <div class="xp-fill" id="xpBar"></div>
+        </div>
       </div>
 
-      <div class="stat-card">
-        <span class="stat-label">ЗОЛОТО</span>
-        <span class="stat-value" id="gold">0</span>
-      </div>
+      <div class="resources">
+        <div class="resource-pill bm-pill">
+          <span class="resource-icon">⚔️</span>
+          <span class="resource-copy">
+            <span class="resource-label">БМ</span>
+            <strong class="resource-value" id="bm">10</strong>
+          </span>
+        </div>
 
-      <div class="stat-card">
-        <span class="stat-label">СИЛА</span>
-        <span class="stat-value" id="power">10</span>
+        <div class="resource-pill gold-pill">
+          <span class="resource-icon">🪙</span>
+          <span class="resource-copy">
+            <span class="resource-label">ЗОЛОТО</span>
+            <strong class="resource-value" id="gold">0</strong>
+          </span>
+        </div>
       </div>
     </section>
 
     <section class="battlefield" id="battlefield">
-      <div class="battle-top">
-        <div class="stage-badge">
-          Этап <span id="stage">1</span>
-        </div>
-
-        <div class="battle-speed" id="battleSpeed">
-          ⚔️ 1.00 атака/с
-        </div>
-      </div>
-
       <div class="enemy-hud">
-        <div class="enemy-hud-row">
-          <span id="enemyName">Слизень</span>
-          <span class="enemy-hp-text">
-            <span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span> HP
-          </span>
+        <div class="stage-title">
+          ЭТАП <span id="stage">1</span>
         </div>
 
-        <div class="hp-track">
-          <div class="hp-fill" id="enemyHpBar"></div>
+        <div class="enemy-panel">
+          <div class="enemy-hud-row">
+            <span id="enemyName">Слизень</span>
+            <span class="enemy-hp-text">
+              <span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span> HP
+            </span>
+          </div>
+
+          <div class="hp-track">
+            <div class="hp-fill" id="enemyHpBar"></div>
+          </div>
         </div>
       </div>
 
@@ -864,12 +959,12 @@
           <img
             class="fighter-sprite hero-sprite"
             id="heroSprite"
-            src="assets/hero.png?v=3"
+            src="assets/hero.png?v=5"
             alt="Грибной воин"
           >
           <div class="hero-health">
             <div class="hero-health-row">
-              <span>❤️ Здоровье</span>
+              <span>❤️ HP</span>
               <span><span id="heroHp">100</span>/<span id="heroMaxHp">100</span></span>
             </div>
             <div class="hero-hp-track">
@@ -884,7 +979,7 @@
           <img
             class="fighter-sprite enemy-sprite"
             id="enemySprite"
-            src="assets/slime.png?v=3"
+            src="assets/slime.png?v=5"
             alt="Монстр"
           >
           <div class="fighter-name" id="enemyNameplate">Слизень</div>
@@ -892,24 +987,9 @@
       </div>
 
       <div class="effects-layer">
-        <img
-          class="effect slash-effect"
-          id="slashEffect"
-          src="assets/slash.png?v=3"
-          alt=""
-        >
-        <img
-          class="effect hit-effect"
-          id="hitEffect"
-          src="assets/hit.png?v=3"
-          alt=""
-        >
-        <img
-          class="effect spore-effect"
-          id="sporeEffect"
-          src="assets/spore_burst.png?v=3"
-          alt=""
-        >
+        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=5" alt="">
+        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=5" alt="">
+        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=5" alt="">
         <div class="damage-number" id="damageNumber">-10</div>
         <div class="hero-hit-flash" id="heroHitFlash"></div>
       </div>
@@ -917,17 +997,6 @@
       <div class="battle-bottom">
         <div class="battle-message" id="message">
           Подключаемся к серверу…
-        </div>
-
-        <div class="progress-line">
-          <span>
-            Враги этапа:
-            <strong><span id="killsInStage">0</span>/10</strong>
-          </span>
-          <span>
-            Всего побед:
-            <strong id="totalKillsMini">0</strong>
-          </span>
         </div>
       </div>
 
@@ -939,7 +1008,6 @@
           </div>
         </div>
       </div>
-
 
       <div class="defeat-overlay hidden" id="defeatOverlay">
         <div class="defeat-card">
@@ -953,34 +1021,12 @@
         </div>
       </div>
     </section>
-
-    <section class="details-panel">
-      <div class="detail">
-        <span class="detail-label">УРОН</span>
-        <span class="detail-value" id="damage">10</span>
-      </div>
-
-      <div class="detail">
-        <span class="detail-label">СКОРОСТЬ</span>
-        <span class="detail-value" id="attackSpeed">1.00</span>
-      </div>
-
-      <div class="detail">
-        <span class="detail-label">УРОВЕНЬ</span>
-        <span class="detail-value" id="level">1</span>
-      </div>
-
-      <div class="detail">
-        <span class="detail-label">УБИЙСТВА</span>
-        <span class="detail-value" id="totalKills">0</span>
-      </div>
-    </section>
   </main>
 
   <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
-    const ASSET_VERSION = "v2";
+    const ASSET_VERSION = "v5";
 
     const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
 
@@ -1028,18 +1074,20 @@
     telegram.ready();
     telegram.expand();
 
+    try {
+      telegram.setHeaderColor("#173728");
+      telegram.setBackgroundColor("#10281c");
+    } catch (error) {
+      // Старые клиенты Telegram могут не поддерживать настройку цветов.
+    }
+
     const elements = {
-      stageTop: document.getElementById("stageTop"),
       stage: document.getElementById("stage"),
       gold: document.getElementById("gold"),
-      power: document.getElementById("power"),
+      bm: document.getElementById("bm"),
       level: document.getElementById("level"),
-      damage: document.getElementById("damage"),
-      attackSpeed: document.getElementById("attackSpeed"),
-      battleSpeed: document.getElementById("battleSpeed"),
-      totalKills: document.getElementById("totalKills"),
-      totalKillsMini: document.getElementById("totalKillsMini"),
-      killsInStage: document.getElementById("killsInStage"),
+      xpText: document.getElementById("xpText"),
+      xpBar: document.getElementById("xpBar"),
       enemyName: document.getElementById("enemyName"),
       enemyNameplate: document.getElementById("enemyNameplate"),
       enemyHp: document.getElementById("enemyHp"),
@@ -1171,6 +1219,51 @@
       }
     }
 
+    const compactNumber = new Intl.NumberFormat("ru-RU", {
+      notation: "compact",
+      maximumFractionDigits: 1
+    });
+
+    function formatNumber(value) {
+      const number = Number(value || 0);
+      return number < 10000
+        ? new Intl.NumberFormat("ru-RU").format(number)
+        : compactNumber.format(number);
+    }
+
+    function experienceProgress(data) {
+      const explicitCurrent = Number(
+        data.current_xp ?? data.experience ?? data.xp
+      );
+      const explicitRequired = Number(
+        data.xp_to_next_level ?? data.experience_to_next_level
+      );
+
+      if (
+        Number.isFinite(explicitCurrent) &&
+        Number.isFinite(explicitRequired) &&
+        explicitRequired > 0
+      ) {
+        return {
+          level: Math.max(1, Number(data.level || 1)),
+          current: Math.max(0, explicitCurrent),
+          required: explicitRequired
+        };
+      }
+
+      // Пока отдельного опыта на сервере нет, 1 победа даёт 1 опыт.
+      // Каждые 10 побед повышают отображаемый уровень.
+      const victories = Math.max(0, Number(data.total_kills || 0));
+      return {
+        level: Math.max(
+          Number(data.level || 1),
+          Math.floor(victories / 10) + 1
+        ),
+        current: victories % 10,
+        required: 10
+      };
+    }
+
     function updateScreen() {
       if (!player) {
         return;
@@ -1178,17 +1271,21 @@
 
       updateMonsterFromStage();
 
-      elements.stageTop.textContent = player.stage;
       elements.stage.textContent = player.stage;
-      elements.gold.textContent = player.gold;
-      elements.power.textContent = player.power;
-      elements.level.textContent = player.level;
-      elements.damage.textContent = player.damage;
-      elements.attackSpeed.textContent =
-        Number(player.attack_speed).toFixed(2);
-      elements.totalKills.textContent = player.total_kills;
-      elements.totalKillsMini.textContent = player.total_kills;
-      elements.killsInStage.textContent = player.kills_in_stage;
+      elements.gold.textContent = formatNumber(player.gold);
+      elements.bm.textContent = formatNumber(player.power);
+
+      const experience = experienceProgress(player);
+      const experiencePercent = Math.max(
+        0,
+        Math.min(100, (experience.current / experience.required) * 100)
+      );
+
+      elements.level.textContent = experience.level;
+      elements.xpText.textContent =
+        `${experience.current} / ${experience.required}`;
+      elements.xpBar.style.width = `${experiencePercent}%`;
+
       elements.enemyHp.textContent = player.enemy_hp;
       elements.enemyMaxHp.textContent = player.enemy_max_hp;
       elements.heroHp.textContent = player.hero_hp;
@@ -1211,13 +1308,7 @@
           (Number(player.enemy_hp) / Number(player.enemy_max_hp)) * 100
         )
       );
-
       elements.enemyHpBar.style.width = `${hpPercent}%`;
-
-      const speed = Math.max(0.1, Number(player.attack_speed || 1));
-
-      elements.battleSpeed.textContent =
-        `⚔️ ${speed.toFixed(2)} атака/с`;
     }
 
     function showDamage(amount) {
