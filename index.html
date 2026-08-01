@@ -106,7 +106,7 @@
           rgba(8, 17, 29, 0.03) 52%,
           rgba(5, 10, 17, 0.62) 100%
         ),
-        url("assets/forest_bg.png?v=2") center / cover no-repeat;
+        url("assets/forest_bg.png?v=3") center / cover no-repeat;
       box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
       isolation: isolate;
     }
@@ -272,6 +272,54 @@
       white-space: nowrap;
       transform: translateX(-50%);
       backdrop-filter: blur(7px);
+    }
+
+    .hero-health {
+      position: absolute;
+      left: 50%;
+      bottom: 29px;
+      z-index: 9;
+      width: min(88%, 180px);
+      padding: 5px 7px 6px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 11px;
+      background: rgba(5, 10, 17, 0.76);
+      transform: translateX(-50%);
+      backdrop-filter: blur(7px);
+    }
+
+    .hero-health-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 4px;
+      color: #dfffe9;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .hero-hp-track {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(12, 61, 36, 0.92);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.48);
+    }
+
+    .hero-hp-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #32d66b, #9cf57c);
+      transition: width 0.2s ease-out;
+    }
+
+    .hero-defeated {
+      opacity: 0.45 !important;
+      filter: grayscale(0.75) brightness(0.7) !important;
+      transform: translateX(-50%) translateY(13px) rotate(-8deg) !important;
+      animation: none !important;
     }
 
     .effects-layer {
@@ -447,6 +495,64 @@
     .loading-text {
       color: var(--muted);
       font-size: 13px;
+    }
+
+    .defeat-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 46;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(4, 7, 13, 0.72);
+      text-align: center;
+      backdrop-filter: blur(5px);
+      transition: opacity 0.2s ease;
+    }
+
+    .defeat-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .defeat-card {
+      width: min(90%, 300px);
+      padding: 21px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 20px;
+      background: rgba(20, 12, 22, 0.94);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+    }
+
+    .defeat-title {
+      margin-bottom: 7px;
+      color: #ff8792;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .defeat-text {
+      margin-bottom: 15px;
+      color: #e0d6e5;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .respawn-button {
+      width: 100%;
+      padding: 12px 15px;
+      border: 0;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #72e58f, #36bf75);
+      color: #07150d;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .respawn-button:disabled {
+      opacity: 0.62;
+      cursor: default;
     }
 
     .fx-slash {
@@ -758,9 +864,18 @@
           <img
             class="fighter-sprite hero-sprite"
             id="heroSprite"
-            src="assets/hero.png?v=2"
+            src="assets/hero.png?v=3"
             alt="Грибной воин"
           >
+          <div class="hero-health">
+            <div class="hero-health-row">
+              <span>❤️ Здоровье</span>
+              <span><span id="heroHp">100</span>/<span id="heroMaxHp">100</span></span>
+            </div>
+            <div class="hero-hp-track">
+              <div class="hero-hp-fill" id="heroHpBar"></div>
+            </div>
+          </div>
           <div class="fighter-name" id="heroName">Герой</div>
         </div>
 
@@ -769,7 +884,7 @@
           <img
             class="fighter-sprite enemy-sprite"
             id="enemySprite"
-            src="assets/slime.png?v=2"
+            src="assets/slime.png?v=3"
             alt="Монстр"
           >
           <div class="fighter-name" id="enemyNameplate">Слизень</div>
@@ -780,19 +895,19 @@
         <img
           class="effect slash-effect"
           id="slashEffect"
-          src="assets/slash.png?v=2"
+          src="assets/slash.png?v=3"
           alt=""
         >
         <img
           class="effect hit-effect"
           id="hitEffect"
-          src="assets/hit.png?v=2"
+          src="assets/hit.png?v=3"
           alt=""
         >
         <img
           class="effect spore-effect"
           id="sporeEffect"
-          src="assets/spore_burst.png?v=2"
+          src="assets/spore_burst.png?v=3"
           alt=""
         >
         <div class="damage-number" id="damageNumber">-10</div>
@@ -822,6 +937,19 @@
           <div class="loading-text" id="loadingText">
             Подготавливаем героя и монстров…
           </div>
+        </div>
+      </div>
+
+
+      <div class="defeat-overlay hidden" id="defeatOverlay">
+        <div class="defeat-card">
+          <div class="defeat-title">Герой повержен</div>
+          <div class="defeat-text" id="defeatText">
+            Возрождение через 3 секунды…
+          </div>
+          <button class="respawn-button" id="respawnButton" type="button">
+            Возродиться сейчас
+          </button>
         </div>
       </div>
     </section>
@@ -917,6 +1045,9 @@
       enemyHp: document.getElementById("enemyHp"),
       enemyMaxHp: document.getElementById("enemyMaxHp"),
       enemyHpBar: document.getElementById("enemyHpBar"),
+      heroHp: document.getElementById("heroHp"),
+      heroMaxHp: document.getElementById("heroMaxHp"),
+      heroHpBar: document.getElementById("heroHpBar"),
       heroName: document.getElementById("heroName"),
       heroSprite: document.getElementById("heroSprite"),
       enemySprite: document.getElementById("enemySprite"),
@@ -928,16 +1059,22 @@
       message: document.getElementById("message"),
       loadingOverlay: document.getElementById("loadingOverlay"),
       loadingTitle: document.getElementById("loadingTitle"),
-      loadingText: document.getElementById("loadingText")
+      loadingText: document.getElementById("loadingText"),
+      defeatOverlay: document.getElementById("defeatOverlay"),
+      defeatText: document.getElementById("defeatText"),
+      respawnButton: document.getElementById("respawnButton")
     };
 
     let player = null;
     let currentMonster = MONSTERS[0];
     let battleRunning = false;
     let requestInProgress = false;
+    let enemyRequestInProgress = false;
     let enemyDefeating = false;
+    let heroDefeated = false;
     let heroAttackTimer = null;
     let monsterAttackTimer = null;
+    let respawnTimer = null;
     let attackCounter = 0;
 
     const wait = (milliseconds) =>
@@ -1054,7 +1191,18 @@
       elements.killsInStage.textContent = player.kills_in_stage;
       elements.enemyHp.textContent = player.enemy_hp;
       elements.enemyMaxHp.textContent = player.enemy_max_hp;
+      elements.heroHp.textContent = player.hero_hp;
+      elements.heroMaxHp.textContent = player.hero_max_hp;
       elements.heroName.textContent = player.first_name || "Герой";
+
+      const heroHpPercent = Math.max(
+        0,
+        Math.min(
+          100,
+          (Number(player.hero_hp) / Number(player.hero_max_hp)) * 100
+        )
+      );
+      elements.heroHpBar.style.width = `${heroHpPercent}%`;
 
       const hpPercent = Math.max(
         0,
@@ -1147,69 +1295,160 @@
       );
     }
 
-    function scheduleMonsterAttack() {
-      if (!battleRunning) {
+    function scheduleMonsterAttack(delaySeconds) {
+      if (!battleRunning || heroDefeated) {
         return;
       }
 
       clearTimeout(monsterAttackTimer);
 
-      const delay = 2700 + Math.random() * 1400;
+      const safeDelay = Math.max(
+        0.15,
+        Number(delaySeconds || player?.enemy_attack_interval || 2)
+      );
 
       monsterAttackTimer = setTimeout(
         performMonsterAttack,
-        delay
+        safeDelay * 1000
       );
     }
 
     async function performMonsterAttack() {
       if (
         !battleRunning ||
+        heroDefeated ||
+        enemyRequestInProgress ||
         enemyDefeating ||
         document.hidden
       ) {
-        scheduleMonsterAttack();
+        scheduleMonsterAttack(0.35);
         return;
       }
 
-      elements.enemySprite.src = currentMonster.attack;
-      elements.enemySprite.className =
-        "fighter-sprite anim-enemy-attack";
+      enemyRequestInProgress = true;
 
-      await wait(180);
+      try {
+        const result = await apiRequest("/enemy-attack", "POST");
 
+        if (!result.enemy_attacked) {
+          player = result;
+          updateScreen();
+
+          if (result.hero_defeated) {
+            await handleHeroDefeat();
+            return;
+          }
+
+          scheduleMonsterAttack(
+            result.retry_after || result.enemy_attack_interval
+          );
+          return;
+        }
+
+        elements.enemySprite.src = currentMonster.attack;
+        elements.enemySprite.className =
+          "fighter-sprite anim-enemy-attack";
+
+        await wait(180);
+
+        player = result;
+        updateScreen();
+
+        elements.heroSprite.src = HERO_ASSETS.hit;
+        elements.heroSprite.className =
+          "fighter-sprite anim-hero-hit";
+        restartAnimation(elements.heroHitFlash, "fx-hero-hit");
+
+        elements.message.classList.remove("error");
+        elements.message.textContent = result.message;
+
+        try {
+          if (telegram.HapticFeedback) {
+            telegram.HapticFeedback.impactOccurred("medium");
+          }
+        } catch (error) {
+          // В некоторых клиентах вибрация недоступна.
+        }
+
+        restoreEnemyIdle(510);
+
+        if (result.hero_defeated) {
+          await handleHeroDefeat();
+          return;
+        }
+
+        restoreHeroIdle(390);
+        scheduleMonsterAttack(result.enemy_attack_interval);
+      } catch (error) {
+        elements.message.classList.add("error");
+        elements.message.textContent = `❌ ${error.message}`;
+        scheduleMonsterAttack(3);
+      } finally {
+        enemyRequestInProgress = false;
+      }
+    }
+
+    async function handleHeroDefeat() {
+      heroDefeated = true;
+      stopBattle();
       elements.heroSprite.src = HERO_ASSETS.hit;
       elements.heroSprite.className =
-        "fighter-sprite anim-hero-hit";
-      restartAnimation(elements.heroHitFlash, "fx-hero-hit");
-
-      const previousMessage = elements.message.textContent;
-      elements.message.textContent =
-        `${currentMonster.name} контратакует!`;
+        "fighter-sprite hero-defeated";
+      elements.message.classList.add("error");
+      elements.message.textContent = "💀 Герой повержен";
+      elements.defeatText.textContent =
+        "Возрождение через 3 секунды…";
+      elements.respawnButton.disabled = false;
+      elements.respawnButton.textContent = "Возродиться сейчас";
+      elements.defeatOverlay.classList.remove("hidden");
 
       try {
         if (telegram.HapticFeedback) {
-          telegram.HapticFeedback.impactOccurred("medium");
+          telegram.HapticFeedback.notificationOccurred("error");
         }
       } catch (error) {
         // В некоторых клиентах вибрация недоступна.
       }
 
-      restoreHeroIdle(390);
-      restoreEnemyIdle(510);
+      clearTimeout(respawnTimer);
+      respawnTimer = setTimeout(respawnHero, 3000);
+    }
 
-      setTimeout(() => {
-        if (!enemyDefeating) {
-          elements.message.textContent = previousMessage;
-        }
-      }, 650);
+    async function respawnHero() {
+      if (!heroDefeated) {
+        return;
+      }
 
-      scheduleMonsterAttack();
+      clearTimeout(respawnTimer);
+      elements.respawnButton.disabled = true;
+      elements.respawnButton.textContent = "Возрождаем…";
+
+      try {
+        const result = await apiRequest("/respawn", "POST");
+        player = result;
+        heroDefeated = false;
+        updateScreen();
+        elements.defeatOverlay.classList.add("hidden");
+        elements.heroSprite.className =
+          "fighter-sprite hero-sprite";
+        elements.heroSprite.src = HERO_ASSETS.idle;
+        elements.message.classList.remove("error");
+        elements.message.textContent = result.message;
+
+        battleRunning = true;
+        scheduleHeroAttack(result.attack_interval);
+        scheduleMonsterAttack(result.enemy_attack_interval);
+      } catch (error) {
+        elements.defeatText.textContent = error.message;
+        elements.respawnButton.disabled = false;
+        elements.respawnButton.textContent = "Повторить возрождение";
+      }
     }
 
     async function performAttack() {
       if (
         !battleRunning ||
+        heroDefeated ||
         requestInProgress ||
         enemyDefeating ||
         document.hidden
@@ -1292,7 +1531,7 @@
     }
 
     function resumeBattle() {
-      if (!player || battleRunning) {
+      if (!player || battleRunning || heroDefeated) {
         return;
       }
 
@@ -1300,7 +1539,7 @@
       elements.message.classList.remove("error");
       elements.message.textContent = "⚔️ Автобой продолжен";
       scheduleHeroAttack(0.25);
-      scheduleMonsterAttack();
+      scheduleMonsterAttack(player.enemy_attack_interval);
     }
 
     async function startGame() {
@@ -1326,9 +1565,13 @@
         elements.message.classList.remove("error");
         elements.message.textContent = "⚔️ Герой вступил в автобой";
 
-        battleRunning = true;
-        scheduleHeroAttack(0.35);
-        scheduleMonsterAttack();
+        if (player.hero_alive === false || Number(player.hero_hp) <= 0) {
+          await handleHeroDefeat();
+        } else {
+          battleRunning = true;
+          scheduleHeroAttack(0.35);
+          scheduleMonsterAttack(player.enemy_attack_interval);
+        }
       } catch (error) {
         elements.loadingTitle.textContent = "Ошибка";
         elements.loadingText.textContent = error.message;
@@ -1336,6 +1579,8 @@
         elements.message.textContent = `❌ ${error.message}`;
       }
     }
+
+    elements.respawnButton.addEventListener("click", respawnHero);
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
