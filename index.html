@@ -63,7 +63,7 @@
           rgba(4, 12, 12, 0.08) 62%,
           rgba(3, 8, 10, 0.62) 100%
         ),
-        url("assets/forest_bg.png?v=6") center / cover no-repeat;
+        url("assets/forest_bg.png?v=7") center / cover no-repeat;
       isolation: isolate;
     }
 
@@ -1098,7 +1098,7 @@
       overflow: hidden;
       background:
         linear-gradient(180deg, rgba(11, 32, 26, 0.76), rgba(3, 12, 13, 0.96)),
-        url("assets/forest_bg.png?v=6") center / cover no-repeat;
+        url("assets/forest_bg.png?v=7") center / cover no-repeat;
       opacity: 1;
       transform: translateY(0);
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -1522,6 +1522,135 @@
       }
     }
 
+  
+    /* ===== Исправление экрана Героя для телефона и широкого окна ===== */
+
+    .game-screen {
+      z-index: 70;
+      background:
+        linear-gradient(180deg, rgba(8, 27, 22, 0.97), rgba(3, 12, 13, 0.99)),
+        url("assets/forest_bg.png?v=7") center / cover no-repeat;
+    }
+
+    .game-nav {
+      z-index: 80;
+    }
+
+    /* Когда открыт игровой раздел, боевой HUD полностью скрывается,
+       поэтому уровень, БМ и золото больше не дублируются. */
+    body.section-open .top-hud,
+    body.section-open .enemy-hud,
+    body.section-open .fighters-layer,
+    body.section-open .effects-layer,
+    body.section-open .battle-bottom,
+    body.section-open .loot-button {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* На широком экране интерфейс экипировки не растягивается. */
+    #heroScreen > .screen-header,
+    #heroScreen > .hero-summary,
+    #heroScreen > .equipment-board,
+    #comingScreen > .screen-header,
+    #comingScreen > .coming-content {
+      width: min(100%, 560px);
+      margin-right: auto;
+      margin-left: auto;
+    }
+
+    #heroScreen > .equipment-board {
+      min-height: 420px;
+    }
+
+    /* БМ уже показана в верхней панели экрана Героя. */
+    .equipment-bm {
+      display: none;
+    }
+
+    .screen-header {
+      flex: 0 0 auto;
+      margin-bottom: 7px;
+    }
+
+    .screen-title {
+      color: #fff7cf;
+      font-size: 19px;
+    }
+
+    .hero-summary {
+      flex: 0 0 auto;
+      margin-bottom: 8px;
+      background: rgba(4, 18, 16, 0.93);
+    }
+
+    .equipment-board {
+      background:
+        radial-gradient(circle at 50% 48%, rgba(219, 255, 139, 0.11), transparent 31%),
+        linear-gradient(180deg, rgba(9, 30, 25, 0.94), rgba(3, 12, 13, 0.98));
+    }
+
+    @media (min-width: 700px) {
+      .equipment-column {
+        width: 34%;
+      }
+
+      .equipment-column.left {
+        left: 2%;
+      }
+
+      .equipment-column.right {
+        right: 2%;
+      }
+
+      .equipment-hero {
+        width: min(43%, 220px);
+      }
+    }
+
+    @media (max-width: 430px) {
+      .game-screen {
+        padding:
+          calc(7px + env(safe-area-inset-top))
+          7px
+          calc(74px + env(safe-area-inset-bottom));
+      }
+
+      #heroScreen > .equipment-board {
+        min-height: 0;
+      }
+
+      .hero-summary {
+        padding: 7px;
+      }
+
+      .equipment-column {
+        top: 8%;
+        bottom: 3%;
+        width: 34%;
+      }
+
+      .equipment-column.left {
+        left: 1.5%;
+      }
+
+      .equipment-column.right {
+        right: 1.5%;
+      }
+
+      .equipment-hero {
+        bottom: 5%;
+        width: 44%;
+        height: 72%;
+      }
+
+      .equipment-slot {
+        min-height: 40px;
+        border-radius: 11px;
+      }
+    }
+
   </style>
 </head>
 
@@ -1587,7 +1716,7 @@
           <img
             class="fighter-sprite hero-sprite"
             id="heroSprite"
-            src="assets/hero.png?v=6"
+            src="assets/hero.png?v=7"
             alt="Грибной воин"
           >
           <div class="hero-health">
@@ -1607,7 +1736,7 @@
           <img
             class="fighter-sprite enemy-sprite"
             id="enemySprite"
-            src="assets/slime.png?v=6"
+            src="assets/slime.png?v=7"
             alt="Монстр"
           >
           <div class="fighter-name" id="enemyNameplate">Слизень</div>
@@ -1615,9 +1744,9 @@
       </div>
 
       <div class="effects-layer">
-        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=6" alt="">
-        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=6" alt="">
-        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=6" alt="">
+        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=7" alt="">
+        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=7" alt="">
+        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=7" alt="">
         <div class="damage-number" id="damageNumber">-10</div>
         <div class="hero-hit-flash" id="heroHitFlash"></div>
       </div>
@@ -1701,7 +1830,7 @@
 
           <img
             class="equipment-hero"
-            src="assets/hero.png?v=6"
+            src="assets/hero.png?v=7"
             alt="Грибной герой"
           >
 
@@ -1850,7 +1979,7 @@
   <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
-    const ASSET_VERSION = "v6";
+    const ASSET_VERSION = "v7";
 
     const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
 
@@ -2557,12 +2686,14 @@
     function openBattleScreen() {
       heroScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
+      document.body.classList.remove("section-open");
       setActiveNav("battle");
     }
 
     function openHeroScreen() {
       comingScreen.classList.add("hidden");
       heroScreen.classList.remove("hidden");
+      document.body.classList.add("section-open");
       setActiveNav("hero");
     }
 
@@ -2573,6 +2704,7 @@
       }
 
       heroScreen.classList.add("hidden");
+      document.body.classList.add("section-open");
       comingHeader.textContent = copy.title;
       comingIcon.textContent = copy.icon;
       comingTitle.textContent = copy.heading;
