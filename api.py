@@ -292,10 +292,30 @@ def cumulative_exp_at_stage(stage_value: float) -> int:
     return total
 
 
+TOTAL_CHESTS_TO_MAX_LEVEL = 100_000
+AVERAGE_CHEST_EXP_TARGET = 30
+TOTAL_EXP_TO_MAX_LEVEL = (
+    TOTAL_CHESTS_TO_MAX_LEVEL * AVERAGE_CHEST_EXP_TARGET
+)
+LEVEL_EXP_CURVE_POWER = 2.2
+
+
+def chest_exp_reward(chest_level: int) -> int:
+    """Опыт начисляется только за открытие сундука."""
+    chest_level = clamp_int(chest_level, 1, MAX_CHEST_LEVEL)
+    progress = (chest_level - 1) / max(1, MAX_CHEST_LEVEL - 1)
+    return max(1, round(10 + 40 * progress))
+
+
 LEVEL_TOTAL_EXP = [0] * (MAX_HERO_LEVEL + 1)
 LEVEL_TOTAL_EXP[1] = 0
+
 for _level in range(2, MAX_HERO_LEVEL + 1):
-    threshold = cumulative_exp_at_stage(target_stage_for_level(_level))
+    progress = (_level - 1) / max(1, MAX_HERO_LEVEL - 1)
+    threshold = round(
+        TOTAL_EXP_TO_MAX_LEVEL
+        * (progress ** LEVEL_EXP_CURVE_POWER)
+    )
     LEVEL_TOTAL_EXP[_level] = max(
         LEVEL_TOTAL_EXP[_level - 1] + 1,
         threshold,
@@ -569,7 +589,7 @@ def stage_progress_label(player: dict) -> str:
 
 
 def boss_reward_chests(stage: int) -> int:
-    return 5 if int(stage) % 10 == 0 else 3
+    return 10 if int(stage) % 10 == 0 else 6
 
 
 def compare_loot(player: dict, loot: dict) -> dict:
@@ -640,7 +660,7 @@ def apply_offline_accrual(
         1,
         MAX_STAGE,
     )
-    experience = chest_count * calculate_exp_reward(highest_stage)
+    experience = 0
     connection.execute(
         """
         UPDATE players
@@ -965,8 +985,11 @@ def claim_offline_reward(x_telegram_init_data: str = Header(...)) -> dict:
                 claimed=False,
                 message="Офлайн-награда пока не накопилась",
             )
-        total_exp = max(0, int(current["experience"])) + pending_exp
-        new_level = level_from_total_exp(total_exp)
+        total_exp = max(0, int(current["experience"]))
+        new_level = max(
+            int(current.get("level", 1)),
+            level_from_total_exp(total_exp),
+        )
         connection.execute(
             """
             UPDATE players
@@ -988,8 +1011,8 @@ def claim_offline_reward(x_telegram_init_data: str = Header(...)) -> dict:
         updated,
         claimed=True,
         claimed_chests=pending_chests,
-        claimed_experience=pending_exp,
-        message=f"🎁 Получено: {pending_chests} сундуков и {pending_exp} опыта",
+        claimed_experience=0,
+        message=f"🎁 Получено: {pending_chests} сундуков",
     )
 
 
@@ -1069,7 +1092,7 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
         last_enemy_attack_at = float(current["last_enemy_attack_at"])
         if enemy_defeated:
             total_kills += 1
-            experience_reward = calculate_exp_reward(stage, boss=boss_active)
+            experience_reward = 0
             if boss_active:
                 boss_defeated = True
                 total_bosses += 1
@@ -1091,8 +1114,11 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
                     last_enemy_attack_at = now
                     stage_completed = True
             else:
-                chest_reward = 1
-                chests += 1
+                next_wave = kills + 1
+                chest_reward = (
+                    3 if next_wave >= ENEMIES_PER_STAGE else 2
+                )
+                chests += chest_reward
                 kills += 1
                 if kills >= ENEMIES_PER_STAGE:
                     kills = ENEMIES_PER_STAGE
@@ -1483,17 +1509,40 @@ def open_loot_transaction(
     )
     comparison = compare_loot(current, loot)
     now = int(time.time())
+
+    chest_experience_reward = chest_exp_reward(
+        int(current["chest_level"])
+    )
+    total_exp = (
+        max(0, int(current.get("experience", 0)))
+        + chest_experience_reward
+    )
+    previous_level = max(1, int(current.get("level", 1)))
+    new_level = max(
+        previous_level,
+        level_from_total_exp(total_exp),
+    )
     if auto_mode and not comparison["is_improvement"]:
         sell_price = max(0, int(loot.get("sell_price", 0)))
         connection.execute(
             """
             UPDATE players
             SET chests = chests - 1,
-                gold = gold + ?, updated_at = ?
+                gold = gold + ?,
+                experience = ?,
+                level = ?,
+                updated_at = ?
             WHERE telegram_id = ?
             """,
-            (sell_price, now, telegram_id),
+            (
+                sell_price,
+                total_exp,
+                new_level,
+                now,
+                telegram_id,
+            ),
         )
+        sync_player_stats(connection, telegram_id)
         updated = load_player(connection, telegram_id)
         return updated, {
             "opened": True,
@@ -1502,17 +1551,29 @@ def open_loot_transaction(
             "loot": loot,
             "comparison": comparison,
             "sell_price": sell_price,
+            "experience_reward": chest_experience_reward,
+            "level_up": new_level > previous_level,
             "message": f"💰 {loot['name']} продан за {sell_price}",
         }
     connection.execute(
         """
         UPDATE players
         SET chests = chests - 1,
-            pending_loot_json = ?, updated_at = ?
+            pending_loot_json = ?,
+            experience = ?,
+            level = ?,
+            updated_at = ?
         WHERE telegram_id = ?
         """,
-        (json.dumps(loot, ensure_ascii=False), now, telegram_id),
+        (
+            json.dumps(loot, ensure_ascii=False),
+            total_exp,
+            new_level,
+            now,
+            telegram_id,
+        ),
     )
+    sync_player_stats(connection, telegram_id)
     updated = load_player(connection, telegram_id)
     return updated, {
         "opened": True,
@@ -1520,6 +1581,8 @@ def open_loot_transaction(
         "paused": auto_mode,
         "loot": loot,
         "comparison": comparison,
+        "experience_reward": chest_experience_reward,
+        "level_up": new_level > previous_level,
         "message": f"Найден предмет: {loot['name']}",
     }
 
