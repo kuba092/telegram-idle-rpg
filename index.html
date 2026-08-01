@@ -63,7 +63,7 @@
           rgba(4, 12, 12, 0.08) 62%,
           rgba(3, 8, 10, 0.62) 100%
         ),
-        url("assets/forest_bg.png?v=8") center / cover no-repeat;
+        url("assets/forest_bg.png?v=10") center / cover no-repeat;
       isolation: isolate;
     }
 
@@ -1098,7 +1098,7 @@
       overflow: hidden;
       background:
         linear-gradient(180deg, rgba(11, 32, 26, 0.76), rgba(3, 12, 13, 0.96)),
-        url("assets/forest_bg.png?v=8") center / cover no-repeat;
+        url("assets/forest_bg.png?v=10") center / cover no-repeat;
       opacity: 1;
       transform: translateY(0);
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -1529,7 +1529,7 @@
       z-index: 70;
       background:
         linear-gradient(180deg, rgba(8, 27, 22, 0.97), rgba(3, 12, 13, 0.99)),
-        url("assets/forest_bg.png?v=8") center / cover no-repeat;
+        url("assets/forest_bg.png?v=10") center / cover no-repeat;
     }
 
     .game-nav {
@@ -1937,6 +1937,250 @@
       }
     }
 
+  
+    /* ===== Реальная система сундуков и экипировки ===== */
+    .dock-chest { position: relative; }
+    .chest-count {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      z-index: 3;
+      display: grid;
+      min-width: 21px;
+      height: 21px;
+      padding: 0 5px;
+      place-items: center;
+      border: 2px solid rgba(7, 22, 21, 0.95);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #ffdd63, #e99825);
+      color: #362000;
+      font-size: 9px;
+      font-weight: 950;
+      box-shadow: 0 3px 9px rgba(0,0,0,.42);
+    }
+    .dock-chest.no-chests { filter: saturate(.55); opacity: .72; }
+    .gear-slot { position: relative; }
+    .gear-slot.equipped { background: linear-gradient(180deg, rgba(28,48,40,.96), rgba(8,21,20,.96)); }
+    .gear-rarity {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 6px;
+      height: 6px;
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: 999px;
+      background: rgba(196,208,204,.35);
+      box-shadow: 0 0 6px currentColor;
+    }
+    .gear-slot.rarity-common { border-color: rgba(203,214,210,.42); }
+    .gear-slot.rarity-common .gear-rarity { background: #cbd5d1; }
+    .gear-slot.rarity-rare { border-color: rgba(75,174,255,.75); box-shadow: inset 0 0 10px rgba(45,142,255,.16); }
+    .gear-slot.rarity-rare .gear-rarity { background: #4badff; }
+    .gear-slot.rarity-epic { border-color: rgba(192,91,255,.78); box-shadow: inset 0 0 12px rgba(174,65,255,.18); }
+    .gear-slot.rarity-epic .gear-rarity { background: #c05bff; }
+    .gear-slot.rarity-legendary { border-color: rgba(255,181,49,.85); box-shadow: inset 0 0 13px rgba(255,155,25,.2), 0 0 9px rgba(255,159,27,.18); }
+    .gear-slot.rarity-legendary .gear-rarity { background: #ffb531; }
+
+    .loot-card { position: relative; width: min(92%, 350px); }
+    .loot-card.rarity-common { border-color: rgba(210,220,216,.34); }
+    .loot-card.rarity-rare { border-color: rgba(75,174,255,.75); box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 32px rgba(50,151,255,.18); }
+    .loot-card.rarity-epic { border-color: rgba(192,91,255,.8); box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 34px rgba(174,65,255,.2); }
+    .loot-card.rarity-legendary { border-color: rgba(255,181,49,.88); box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 38px rgba(255,155,25,.24); }
+    .loot-rarity { margin-bottom: 4px; color: #bfcac7; font-size: 9px; font-weight: 950; letter-spacing: .13em; }
+    .rarity-rare .loot-rarity { color: #64b8ff; }
+    .rarity-epic .loot-rarity { color: #ce7cff; }
+    .rarity-legendary .loot-rarity { color: #ffc14f; }
+    .loot-slot-name { margin-top: -3px; margin-bottom: 13px; color: rgba(234,243,240,.62); font-size: 10px; }
+    .loot-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0 0 11px; }
+    .loot-stat { padding: 8px 4px; border: 1px solid rgba(255,255,255,.11); border-radius: 11px; background: rgba(255,255,255,.045); }
+    .loot-stat span { display: block; margin-bottom: 3px; color: rgba(232,242,239,.55); font-size: 7px; font-weight: 850; }
+    .loot-stat strong { color: #edffc5; font-size: 12px; }
+    .loot-comparison { min-height: 34px; margin-bottom: 13px; padding: 8px 9px; border-radius: 10px; background: rgba(1,10,11,.48); color: rgba(237,246,243,.76); font-size: 10px; line-height: 1.45; }
+    .loot-comparison.upgrade { color: #aef27f; }
+    .loot-comparison.downgrade { color: #ffbd84; }
+    .loot-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .loot-action { min-height: 42px; border: 0; border-radius: 12px; font: inherit; font-size: 11px; font-weight: 950; cursor: pointer; }
+    .loot-action.sell { background: linear-gradient(135deg,#4e5a5b,#293334); color:#f1f5f4; }
+    .loot-action.equip { background: linear-gradient(135deg,#bde954,#56c86c); color:#08210d; }
+    .loot-action:disabled { opacity:.55; cursor:wait; }
+    .loot-card-button.hidden, .loot-actions.hidden { display:none; }
+
+
+    /* ===== Уровни сундука и улучшение качества добычи ===== */
+    .chest-level-badge {
+      position: absolute;
+      top: -7px;
+      left: -8px;
+      z-index: 3;
+      display: grid;
+      min-width: 29px;
+      height: 20px;
+      padding: 0 5px;
+      place-items: center;
+      border: 2px solid rgba(7, 22, 21, 0.95);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #8fe45a, #3fae55);
+      color: #09230e;
+      font-size: 7px;
+      font-weight: 950;
+      letter-spacing: .02em;
+      box-shadow: 0 3px 9px rgba(0,0,0,.42);
+    }
+
+    .gear-slot.rarity-uncommon {
+      border-color: rgba(83, 214, 116, .72);
+      box-shadow: inset 0 0 11px rgba(57, 192, 93, .16);
+    }
+    .gear-slot.rarity-uncommon .gear-rarity { background: #59d47c; }
+    .gear-slot.rarity-mythic {
+      border-color: rgba(255, 72, 110, .88);
+      box-shadow: inset 0 0 14px rgba(255, 54, 96, .22), 0 0 11px rgba(255, 54, 96, .18);
+    }
+    .gear-slot.rarity-mythic .gear-rarity { background: #ff486e; }
+
+    .loot-card.rarity-uncommon {
+      border-color: rgba(83, 214, 116, .78);
+      box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 30px rgba(57,192,93,.18);
+    }
+    .loot-card.rarity-mythic {
+      border-color: rgba(255, 72, 110, .92);
+      box-shadow: 0 18px 45px rgba(0,0,0,.43), 0 0 40px rgba(255,54,96,.25);
+    }
+    .rarity-uncommon .loot-rarity { color: #6ee593; }
+    .rarity-mythic .loot-rarity { color: #ff6d8c; }
+
+    .chest-panel.hidden,
+    .loot-stats.hidden,
+    .loot-comparison.hidden {
+      display: none;
+    }
+
+    .chest-panel {
+      margin-top: 2px;
+    }
+
+    .chest-level-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 9px 10px;
+      border: 1px solid rgba(255, 225, 115, .22);
+      border-radius: 12px;
+      background: rgba(36, 28, 10, .46);
+    }
+
+    .chest-level-copy {
+      text-align: left;
+    }
+
+    .chest-level-copy span {
+      display: block;
+      margin-bottom: 2px;
+      color: rgba(243, 246, 239, .58);
+      font-size: 7px;
+      font-weight: 850;
+      letter-spacing: .08em;
+    }
+
+    .chest-level-copy strong {
+      color: #ffe67d;
+      font-size: 16px;
+    }
+
+    .chest-stock {
+      min-width: 76px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      color: rgba(240,247,244,.68);
+      font-size: 8px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .chest-stock strong {
+      display: block;
+      margin-top: 2px;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .rarity-chances {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 11px;
+    }
+
+    .rarity-chance {
+      padding: 7px 3px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 10px;
+      background: rgba(255,255,255,.035);
+      font-size: 7px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .rarity-chance strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+    }
+
+    .rarity-chance.common { color: #cbd5d1; }
+    .rarity-chance.uncommon { color: #6ee593; }
+    .rarity-chance.rare { color: #64b8ff; }
+    .rarity-chance.epic { color: #ce7cff; }
+    .rarity-chance.legendary { color: #ffc14f; }
+    .rarity-chance.mythic { color: #ff6d8c; }
+
+    .chest-quality-note {
+      margin-bottom: 11px;
+      padding: 8px 9px;
+      border-radius: 10px;
+      background: rgba(1,10,11,.48);
+      color: rgba(237,246,243,.7);
+      font-size: 9px;
+      line-height: 1.4;
+      text-align: left;
+    }
+
+    .chest-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .chest-action {
+      min-height: 43px;
+      padding: 7px 6px;
+      border: 0;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .chest-action.open {
+      background: linear-gradient(135deg, #bde954, #56c86c);
+      color: #08210d;
+    }
+
+    .chest-action.upgrade {
+      background: linear-gradient(135deg, #ffd667, #e79a29);
+      color: #352000;
+    }
+
+    .chest-action:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
   </style>
 </head>
 
@@ -2002,7 +2246,7 @@
           <img
             class="fighter-sprite hero-sprite"
             id="heroSprite"
-            src="assets/hero.png?v=8"
+            src="assets/hero.png?v=10"
             alt="Грибной воин"
           >
           <div class="hero-health">
@@ -2022,7 +2266,7 @@
           <img
             class="fighter-sprite enemy-sprite"
             id="enemySprite"
-            src="assets/slime.png?v=8"
+            src="assets/slime.png?v=10"
             alt="Монстр"
           >
           <div class="fighter-name" id="enemyNameplate">Слизень</div>
@@ -2030,9 +2274,9 @@
       </div>
 
       <div class="effects-layer">
-        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=8" alt="">
-        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=8" alt="">
-        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=8" alt="">
+        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=10" alt="">
+        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=10" alt="">
+        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=10" alt="">
         <div class="damage-number" id="damageNumber">-10</div>
         <div class="hero-hit-flash" id="heroHitFlash"></div>
       </div>
@@ -2045,51 +2289,43 @@
 
       <div class="equipment-dock" aria-label="Экипировка героя">
         <div class="equipment-dock-inner">
-          <button class="gear-slot" type="button" data-gear-name="Шлем" aria-label="Шлем">
-            <span class="gear-icon">🪖</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="helmet" data-gear-name="Шлем" aria-label="Шлем">
+            <span class="gear-icon" id="gearIcon-helmet">🪖</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Нагрудник" aria-label="Нагрудник">
-            <span class="gear-icon">🛡️</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="armor" data-gear-name="Нагрудник" aria-label="Нагрудник">
+            <span class="gear-icon" id="gearIcon-armor">🛡️</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Перчатки" aria-label="Перчатки">
-            <span class="gear-icon">🧤</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="gloves" data-gear-name="Перчатки" aria-label="Перчатки">
+            <span class="gear-icon" id="gearIcon-gloves">🧤</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Штаны" aria-label="Штаны">
-            <span class="gear-icon">👖</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="pants" data-gear-name="Штаны" aria-label="Штаны">
+            <span class="gear-icon" id="gearIcon-pants">👖</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Обувь" aria-label="Обувь">
-            <span class="gear-icon">🥾</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="boots" data-gear-name="Обувь" aria-label="Обувь">
+            <span class="gear-icon" id="gearIcon-boots">🥾</span><span class="gear-rarity"></span>
           </button>
 
           <button class="dock-chest" id="lootButton" type="button" aria-label="Открыть сундук">
+            <span class="chest-level-badge" id="chestLevelBadge">УР. 1</span>
+            <span class="chest-count" id="chestCount">0</span>
             <span class="dock-chest-icon">🧰</span>
             <span class="dock-chest-label">СУНДУК</span>
           </button>
 
-          <button class="gear-slot" type="button" data-gear-name="Оружие" aria-label="Оружие">
-            <span class="gear-icon">🗡️</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="weapon" data-gear-name="Оружие" aria-label="Оружие">
+            <span class="gear-icon" id="gearIcon-weapon">🗡️</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Ожерелье" aria-label="Ожерелье">
-            <span class="gear-icon">📿</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="necklace" data-gear-name="Ожерелье" aria-label="Ожерелье">
+            <span class="gear-icon" id="gearIcon-necklace">📿</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Кольцо" aria-label="Кольцо">
-            <span class="gear-icon">💍</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="ring" data-gear-name="Кольцо" aria-label="Кольцо">
+            <span class="gear-icon" id="gearIcon-ring">💍</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Пояс" aria-label="Пояс">
-            <span class="gear-icon">🧷</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="belt" data-gear-name="Пояс" aria-label="Пояс">
+            <span class="gear-icon" id="gearIcon-belt">🧷</span><span class="gear-rarity"></span>
           </button>
-          <button class="gear-slot" type="button" data-gear-name="Талисман" aria-label="Талисман">
-            <span class="gear-icon">🔮</span>
-            <span class="gear-empty"></span>
+          <button class="gear-slot" type="button" data-slot="talisman" data-gear-name="Талисман" aria-label="Талисман">
+            <span class="gear-icon" id="gearIcon-talisman">🔮</span><span class="gear-rarity"></span>
           </button>
         </div>
       </div>
@@ -2158,7 +2394,7 @@
           <div class="hero-profile-glow"></div>
           <img
             class="hero-profile-image"
-            src="assets/hero.png?v=8"
+            src="assets/hero.png?v=10"
             alt="Грибной герой"
           >
           <div class="hero-profile-power">
@@ -2190,17 +2426,59 @@
       </section>
 
       <div class="loot-overlay hidden" id="lootOverlay">
-        <div class="loot-card">
-          <div class="loot-card-icon">🧰</div>
-          <div class="loot-card-title">Сундук экипировки</div>
-          <div class="loot-card-text">
-            Здесь будут выпадать предметы с выбором:
-            надеть новый предмет или продать его за золото.
-            Механику подключим следующим этапом.
+        <div class="loot-card rarity-common" id="lootCard">
+          <div class="loot-card-icon" id="lootItemIcon">🧰</div>
+          <div class="loot-rarity" id="lootItemRarity">ОБЫЧНЫЙ</div>
+          <div class="loot-card-title" id="lootItemName">Предмет</div>
+          <div class="loot-slot-name" id="lootItemSlot">Экипировка</div>
+
+
+          <div class="chest-panel hidden" id="chestPanel">
+            <div class="chest-level-line">
+              <div class="chest-level-copy">
+                <span>УРОВЕНЬ СУНДУКА</span>
+                <strong id="chestLevelValue">1 / 20</strong>
+              </div>
+              <div class="chest-stock">
+                ДОСТУПНО
+                <strong id="chestAvailable">0</strong>
+              </div>
+            </div>
+
+            <div class="rarity-chances" id="rarityChances"></div>
+
+            <div class="chest-quality-note" id="chestQualityNote">
+              Улучшайте сундук за золото: предметы станут сильнее, а шанс высокой редкости вырастет.
+            </div>
+
+            <div class="chest-actions">
+              <button class="chest-action open" id="chestOpenButton" type="button">
+                Открыть сундук
+              </button>
+              <button class="chest-action upgrade" id="chestUpgradeButton" type="button">
+                Улучшить · <span id="chestUpgradeCost">0</span> 🪙
+              </button>
+            </div>
           </div>
-          <button class="loot-card-button" id="lootCloseButton" type="button">
-            Понятно
-          </button>
+
+          <div class="loot-stats" id="lootStats">
+            <div class="loot-stat"><span>БМ</span><strong id="lootPower">+0</strong></div>
+            <div class="loot-stat"><span>УРОН</span><strong id="lootDamage">+0</strong></div>
+            <div class="loot-stat"><span>HP</span><strong id="lootHp">+0</strong></div>
+          </div>
+
+          <div class="loot-comparison" id="lootComparison">Сравниваем с экипировкой…</div>
+
+          <div class="loot-actions" id="lootActions">
+            <button class="loot-action sell" id="lootSellButton" type="button">
+              Продать · <span id="lootSellPrice">0</span> 🪙
+            </button>
+            <button class="loot-action equip" id="lootEquipButton" type="button">
+              Надеть
+            </button>
+          </div>
+
+          <button class="loot-card-button hidden" id="lootCloseButton" type="button">Закрыть</button>
         </div>
       </div>
 
@@ -2230,7 +2508,7 @@
   <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
-    const ASSET_VERSION = "v8";
+    const ASSET_VERSION = "v10";
 
     const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
 
@@ -2319,7 +2597,31 @@
       heroScreenXp: document.getElementById("heroScreenXp"),
       heroScreenBm: document.getElementById("heroScreenBm"),
       heroScreenGold: document.getElementById("heroScreenGold"),
-      equipmentBm: document.getElementById("equipmentBm")
+      equipmentBm: document.getElementById("equipmentBm"),
+      chestCount: document.getElementById("chestCount"),
+      chestLevelBadge: document.getElementById("chestLevelBadge"),
+      chestPanel: document.getElementById("chestPanel"),
+      chestLevelValue: document.getElementById("chestLevelValue"),
+      chestAvailable: document.getElementById("chestAvailable"),
+      rarityChances: document.getElementById("rarityChances"),
+      chestQualityNote: document.getElementById("chestQualityNote"),
+      chestOpenButton: document.getElementById("chestOpenButton"),
+      chestUpgradeButton: document.getElementById("chestUpgradeButton"),
+      chestUpgradeCost: document.getElementById("chestUpgradeCost"),
+      lootStats: document.getElementById("lootStats"),
+      lootCard: document.getElementById("lootCard"),
+      lootItemIcon: document.getElementById("lootItemIcon"),
+      lootItemRarity: document.getElementById("lootItemRarity"),
+      lootItemName: document.getElementById("lootItemName"),
+      lootItemSlot: document.getElementById("lootItemSlot"),
+      lootPower: document.getElementById("lootPower"),
+      lootDamage: document.getElementById("lootDamage"),
+      lootHp: document.getElementById("lootHp"),
+      lootComparison: document.getElementById("lootComparison"),
+      lootActions: document.getElementById("lootActions"),
+      lootSellButton: document.getElementById("lootSellButton"),
+      lootEquipButton: document.getElementById("lootEquipButton"),
+      lootSellPrice: document.getElementById("lootSellPrice")
     };
 
     let player = null;
@@ -2333,6 +2635,8 @@
     let monsterAttackTimer = null;
     let respawnTimer = null;
     let attackCounter = 0;
+    let lootRequestInProgress = false;
+    let currentLoot = null;
 
     const wait = (milliseconds) =>
       new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -2473,6 +2777,46 @@
       };
     }
 
+
+    const GEAR_SLOT_LABELS = {
+      helmet: "Шлем",
+      armor: "Нагрудник",
+      gloves: "Перчатки",
+      pants: "Штаны",
+      boots: "Обувь",
+      weapon: "Оружие",
+      necklace: "Ожерелье",
+      ring: "Кольцо",
+      belt: "Пояс",
+      talisman: "Талисман"
+    };
+
+    function updateEquipmentDock() {
+      const equipment = player?.equipment || {};
+      const chestCount = Math.max(0, Number(player?.chests || 0));
+      const chestLevel = Math.max(1, Number(player?.chest_level || 1));
+      elements.chestCount.textContent = formatNumber(chestCount);
+      elements.chestLevelBadge.textContent = `УР. ${chestLevel}`;
+      document.getElementById("lootButton").classList.toggle("no-chests", chestCount <= 0);
+
+      document.querySelectorAll(".gear-slot[data-slot]").forEach((slotButton) => {
+        const slotKey = slotButton.dataset.slot;
+        const item = equipment[slotKey];
+        slotButton.classList.remove(
+          "equipped", "rarity-common", "rarity-uncommon", "rarity-rare",
+          "rarity-epic", "rarity-legendary", "rarity-mythic"
+        );
+
+        if (!item) {
+          slotButton.title = `${GEAR_SLOT_LABELS[slotKey]}: пусто`;
+          return;
+        }
+
+        slotButton.classList.add("equipped", `rarity-${item.rarity || "common"}`);
+        slotButton.title = `${item.name} · БМ +${item.power || 0}`;
+      });
+    }
+
     function updateScreen() {
       if (!player) {
         return;
@@ -2524,6 +2868,7 @@
         )
       );
       elements.enemyHpBar.style.width = `${hpPercent}%`;
+      updateEquipmentDock();
     }
 
     function showDamage(amount) {
@@ -2867,6 +3212,10 @@
         player = await apiRequest("/player");
         updateScreen();
 
+        if (player.pending_loot) {
+          showLoot(player.pending_loot);
+        }
+
         elements.loadingOverlay.classList.add("hidden");
         elements.message.classList.remove("error");
         elements.message.textContent = "⚔️ Герой вступил в автобой";
@@ -2986,27 +3335,235 @@
       button.addEventListener("click", openBattleScreen);
     });
 
-    lootButton.addEventListener("click", () => {
+
+    const RARITY_ORDER = [
+      ["common", "Обыч."],
+      ["uncommon", "Необыч."],
+      ["rare", "Редк."],
+      ["epic", "Эпич."],
+      ["legendary", "Легенд."],
+      ["mythic", "Мифич."]
+    ];
+
+    function formatChance(value) {
+      const number = Number(value || 0);
+      if (number <= 0) return "0%";
+      return number < 1 ? `${number.toFixed(2)}%` : `${number.toFixed(1)}%`;
+    }
+
+    function setChestButtonsDisabled(disabled) {
+      elements.chestOpenButton.disabled = disabled;
+      elements.chestUpgradeButton.disabled = disabled;
+    }
+
+    function showChestPanel() {
+      currentLoot = null;
+      const chestLevel = Math.max(1, Number(player?.chest_level || 1));
+      const maxLevel = Math.max(chestLevel, Number(player?.chest_max_level || 20));
+      const chestCount = Math.max(0, Number(player?.chests || 0));
+      const upgradeCost = player?.chest_upgrade_cost;
+      const chances = player?.chest_rarity_chances || {};
+
+      elements.lootCard.className = "loot-card rarity-common";
+      elements.lootItemIcon.textContent = "🧰";
+      elements.lootItemRarity.textContent = "СУНДУК ЭКИПИРОВКИ";
+      elements.lootItemName.textContent = `Уровень ${chestLevel}`;
+      elements.lootItemSlot.textContent = "Чем выше уровень, тем лучше добыча";
+
+      elements.chestLevelValue.textContent = `${chestLevel} / ${maxLevel}`;
+      elements.chestAvailable.textContent = formatNumber(chestCount);
+      elements.rarityChances.innerHTML = RARITY_ORDER.map(([key, label]) => (
+        `<div class="rarity-chance ${key}">${label}<strong>${formatChance(chances[key])}</strong></div>`
+      )).join("");
+
+      elements.chestOpenButton.textContent = chestCount > 0
+        ? `Открыть · ${formatNumber(chestCount)}`
+        : "Нет сундуков";
+      elements.chestOpenButton.disabled = chestCount <= 0;
+
+      if (upgradeCost === null || chestLevel >= maxLevel) {
+        elements.chestUpgradeButton.textContent = "Максимальный уровень";
+        elements.chestUpgradeButton.disabled = true;
+        elements.chestQualityNote.textContent =
+          "Сундук достиг максимального уровня. Шансы лучшей экипировки уже максимальны.";
+      } else {
+        elements.chestUpgradeButton.innerHTML =
+          `Улучшить · <span id="chestUpgradeCost">${formatNumber(upgradeCost)}</span> 🪙`;
+        elements.chestUpgradeCost = document.getElementById("chestUpgradeCost");
+        elements.chestUpgradeButton.disabled = Number(player?.gold || 0) < Number(upgradeCost);
+        elements.chestQualityNote.textContent = Number(player?.gold || 0) >= Number(upgradeCost)
+          ? "Улучшение повысит силу выпадающих предметов и шанс высокой редкости."
+          : `Не хватает ${formatNumber(Number(upgradeCost) - Number(player?.gold || 0))} золота для улучшения.`;
+      }
+
+      elements.chestPanel.classList.remove("hidden");
+      elements.lootStats.classList.add("hidden");
+      elements.lootComparison.classList.add("hidden");
+      elements.lootActions.classList.add("hidden");
+      lootCloseButton.textContent = "Закрыть";
+      lootCloseButton.classList.remove("hidden");
       lootOverlay.classList.remove("hidden");
-    });
+    }
 
-    lootCloseButton.addEventListener("click", () => {
-      lootOverlay.classList.add("hidden");
-    });
+    async function upgradeChest() {
+      if (lootRequestInProgress) return;
+      lootRequestInProgress = true;
+      setChestButtonsDisabled(true);
+      try {
+        const result = await apiRequest("/chest/upgrade", "POST");
+        player = result;
+        updateScreen();
+        showChestPanel();
+        elements.message.classList.toggle("error", !result.upgraded);
+        elements.message.textContent = result.message || "Сундук обновлён";
+      } catch (error) {
+        elements.message.classList.add("error");
+        elements.message.textContent = `❌ ${error.message}`;
+      } finally {
+        lootRequestInProgress = false;
+        if (!lootOverlay.classList.contains("hidden")) {
+          showChestPanel();
+        }
+      }
+    }
 
-    lootOverlay.addEventListener("click", (event) => {
-      if (event.target === lootOverlay) {
-        lootOverlay.classList.add("hidden");
+    function signed(value) {
+      const number = Number(value || 0);
+      return number > 0 ? `+${number}` : `${number}`;
+    }
+
+    function describeComparison(item) {
+      const equipped = player?.equipment?.[item.slot];
+      if (!equipped) {
+        elements.lootComparison.className = "loot-comparison upgrade";
+        return "Свободный слот — предмет сразу повысит характеристики.";
+      }
+
+      const powerDelta = Number(item.power || 0) - Number(equipped.power || 0);
+      const damageDelta = Number(item.damage || 0) - Number(equipped.damage || 0);
+      const hpDelta = Number(item.hp || 0) - Number(equipped.hp || 0);
+      const totalDelta = powerDelta + damageDelta + hpDelta;
+      elements.lootComparison.className =
+        `loot-comparison ${totalDelta >= 0 ? "upgrade" : "downgrade"}`;
+
+      return `Сейчас: ${equipped.name}. Разница: БМ ${signed(powerDelta)}, ` +
+        `урон ${signed(damageDelta)}, HP ${signed(hpDelta)}.`;
+    }
+
+    function showLoot(item) {
+      if (!item) return;
+      currentLoot = item;
+      elements.chestPanel.classList.add("hidden");
+      elements.lootStats.classList.remove("hidden");
+      elements.lootComparison.classList.remove("hidden");
+      elements.lootCard.className = `loot-card rarity-${item.rarity || "common"}`;
+      elements.lootItemIcon.textContent = item.icon || "🎁";
+      elements.lootItemRarity.textContent = String(item.rarity_name || "Обычный").toUpperCase();
+      elements.lootItemName.textContent = item.name || "Новый предмет";
+      elements.lootItemSlot.textContent = item.slot_name || GEAR_SLOT_LABELS[item.slot] || "Экипировка";
+      elements.lootPower.textContent = `+${Number(item.power || 0)}`;
+      elements.lootDamage.textContent = `+${Number(item.damage || 0)}`;
+      elements.lootHp.textContent = `+${Number(item.hp || 0)}`;
+      elements.lootSellPrice.textContent = formatNumber(item.sell_price || 0);
+      elements.lootComparison.textContent = describeComparison(item);
+      elements.lootActions.classList.remove("hidden");
+      lootCloseButton.classList.add("hidden");
+      lootOverlay.classList.remove("hidden");
+    }
+
+    function showLootNotice(title, text) {
+      currentLoot = null;
+      elements.chestPanel.classList.add("hidden");
+      elements.lootStats.classList.remove("hidden");
+      elements.lootComparison.classList.remove("hidden");
+      elements.lootCard.className = "loot-card rarity-common";
+      elements.lootItemIcon.textContent = "🧰";
+      elements.lootItemRarity.textContent = "СУНДУК";
+      elements.lootItemName.textContent = title;
+      elements.lootItemSlot.textContent = "";
+      elements.lootPower.textContent = "—";
+      elements.lootDamage.textContent = "—";
+      elements.lootHp.textContent = "—";
+      elements.lootComparison.className = "loot-comparison";
+      elements.lootComparison.textContent = text;
+      elements.lootActions.classList.add("hidden");
+      lootCloseButton.classList.remove("hidden");
+      lootOverlay.classList.remove("hidden");
+    }
+
+    function setLootButtonsDisabled(disabled) {
+      elements.lootEquipButton.disabled = disabled;
+      elements.lootSellButton.disabled = disabled;
+    }
+
+    async function openChest() {
+      if (lootRequestInProgress) return;
+      lootRequestInProgress = true;
+      try {
+        elements.message.classList.remove("error");
+        elements.message.textContent = "🧰 Открываем сундук…";
+        const result = await apiRequest("/loot/open", "POST");
+        player = result;
+        updateScreen();
+
+        const item = result.loot || result.pending_loot;
+        if (item) {
+          showLoot(item);
+          elements.message.textContent = `🎁 ${item.name}`;
+        } else {
+          showChestPanel();
+          elements.message.textContent = "🧰 Победите врага и получите новый сундук";
+        }
+      } catch (error) {
+        elements.message.classList.add("error");
+        elements.message.textContent = `❌ ${error.message}`;
+      } finally {
+        lootRequestInProgress = false;
+      }
+    }
+
+    async function resolveLoot(path) {
+      if (!currentLoot || lootRequestInProgress) return;
+      lootRequestInProgress = true;
+      setLootButtonsDisabled(true);
+      try {
+        const result = await apiRequest(path, "POST");
+        player = result;
+        currentLoot = null;
+        updateScreen();
+        showChestPanel();
+        elements.message.classList.remove("error");
+        elements.message.textContent = result.message || "Готово";
+      } catch (error) {
+        elements.message.classList.add("error");
+        elements.message.textContent = `❌ ${error.message}`;
+      } finally {
+        lootRequestInProgress = false;
+        setLootButtonsDisabled(false);
+      }
+    }
+
+    lootButton.addEventListener("click", () => {
+      if (player?.pending_loot) {
+        showLoot(player.pending_loot);
+      } else {
+        showChestPanel();
       }
     });
+    elements.chestOpenButton.addEventListener("click", openChest);
+    elements.chestUpgradeButton.addEventListener("click", upgradeChest);
+    elements.lootEquipButton.addEventListener("click", () => resolveLoot("/loot/equip"));
+    elements.lootSellButton.addEventListener("click", () => resolveLoot("/loot/sell"));
+    lootCloseButton.addEventListener("click", () => lootOverlay.classList.add("hidden"));
 
-
-
-    document.querySelectorAll(".gear-slot").forEach((slotButton) => {
+    document.querySelectorAll(".gear-slot[data-slot]").forEach((slotButton) => {
       slotButton.addEventListener("click", () => {
-        const gearName = slotButton.dataset.gearName || "Экипировка";
+        const slotKey = slotButton.dataset.slot;
+        const item = player?.equipment?.[slotKey];
         elements.message.classList.remove("error");
-        elements.message.textContent = `🎒 ${gearName}: слот пока пуст`;
+        elements.message.textContent = item
+          ? `🎒 ${item.name}: БМ +${item.power}, урон +${item.damage}, HP +${item.hp}`
+          : `🎒 ${GEAR_SLOT_LABELS[slotKey]}: слот пока пуст`;
       });
     });
 
