@@ -1996,13 +1996,12 @@
     content: "";
     position: absolute;
     left: 50%;
-    bottom: 5%;
-    width: clamp(190px, 43vw, 340px);
+    bottom: 7%;
     aspect-ratio: 1;
     border-radius: 50%;
     pointer-events: none;
     opacity: 0;
-    transform: translate(-50%, 12%) scale(0.72);
+    transform: translate(-50%, 10%) scale(0.8);
     transition:
       opacity 0.3s ease,
       transform 0.3s ease;
@@ -2010,34 +2009,48 @@
 
   .enemy-slot::before {
     z-index: 0;
+    width: clamp(155px, 32vw, 250px);
     background:
       radial-gradient(
         circle,
-        rgba(255, 226, 115, 0.46) 0 7%,
-        rgba(191, 83, 255, 0.33) 23%,
-        rgba(122, 45, 210, 0.18) 45%,
-        transparent 70%
+        rgba(255, 220, 95, 0.42) 0 8%,
+        rgba(192, 83, 255, 0.34) 28%,
+        rgba(121, 45, 210, 0.16) 51%,
+        transparent 72%
       );
     filter: blur(8px);
   }
 
   .enemy-slot::after {
     z-index: 1;
-    width: clamp(170px, 37vw, 300px);
-    border: 2px solid rgba(215, 151, 255, 0.48);
+    width: clamp(140px, 28vw, 215px);
     background:
       conic-gradient(
         from 0deg,
-        transparent 0deg 36deg,
-        rgba(255, 218, 102, 0.5) 62deg,
-        transparent 95deg 180deg,
-        rgba(187, 87, 255, 0.55) 220deg,
-        transparent 260deg 360deg
+        rgba(255, 219, 105, 0.78),
+        rgba(183, 76, 255, 0.7) 70deg,
+        rgba(255, 232, 139, 0.68) 140deg,
+        rgba(157, 65, 255, 0.72) 215deg,
+        rgba(255, 211, 91, 0.75) 290deg,
+        rgba(255, 219, 105, 0.78)
       );
-    box-shadow:
-      0 0 18px rgba(193, 87, 255, 0.45),
-      inset 0 0 22px rgba(255, 213, 100, 0.18);
-    filter: blur(0.4px);
+    -webkit-mask:
+      radial-gradient(
+        circle,
+        transparent 0 61%,
+        #000 63% 70%,
+        transparent 72%
+      );
+    mask:
+      radial-gradient(
+        circle,
+        transparent 0 61%,
+        #000 63% 70%,
+        transparent 72%
+      );
+    filter:
+      drop-shadow(0 0 5px rgba(193, 87, 255, 0.78))
+      drop-shadow(0 0 8px rgba(255, 213, 100, 0.34));
   }
 
   .enemy-slot .fighter-shadow {
@@ -2053,14 +2066,14 @@
   }
 
   body.boss-active .enemy-slot::before {
-    opacity: 0.92;
-    transform: translate(-50%, 12%) scale(1);
+    opacity: 0.88;
+    transform: translate(-50%, 10%) scale(1);
     animation: bossAuraPulse 1.8s ease-in-out infinite;
   }
 
   body.boss-active .enemy-slot::after {
-    opacity: 0.82;
-    transform: translate(-50%, 12%) scale(1);
+    opacity: 0.9;
+    transform: translate(-50%, 10%) scale(1);
     animation:
       bossAuraSpin 7s linear infinite,
       bossAuraRingPulse 2.2s ease-in-out infinite;
@@ -2068,23 +2081,23 @@
 
   @keyframes bossAuraPulse {
     0%, 100% {
-      opacity: 0.64;
-      transform: translate(-50%, 12%) scale(0.92);
+      opacity: 0.62;
+      transform: translate(-50%, 10%) scale(0.94);
       filter: blur(8px);
     }
     50% {
-      opacity: 1;
-      transform: translate(-50%, 12%) scale(1.08);
-      filter: blur(11px);
+      opacity: 0.95;
+      transform: translate(-50%, 10%) scale(1.05);
+      filter: blur(10px);
     }
   }
 
   @keyframes bossAuraRingPulse {
     0%, 100% {
-      opacity: 0.55;
+      opacity: 0.62;
     }
     50% {
-      opacity: 0.92;
+      opacity: 0.95;
     }
   }
 
