@@ -4,274 +4,847 @@
   <meta charset="UTF-8">
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
-
   <title>Idle RPG</title>
-
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
+    :root {
+      --panel: rgba(17, 24, 39, 0.78);
+      --panel-strong: rgba(8, 13, 24, 0.9);
+      --border: rgba(255, 255, 255, 0.15);
+      --text: #ffffff;
+      --muted: #c7d0df;
+      --gold: #ffd56a;
+      --green: #75f0a3;
+      --danger: #ff5d6c;
+    }
+
     * {
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #07101b;
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
     }
 
     body {
-      margin: 0;
       min-height: 100vh;
-      font-family: Arial, sans-serif;
-      color: white;
-      background:
-        radial-gradient(circle at top, #27365c 0%, #111827 45%, #070b14 100%);
+    }
+
+    button,
+    img {
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
     .app {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       min-height: 100vh;
       margin: 0 auto;
-      padding: 16px;
+      padding:
+        calc(10px + env(safe-area-inset-top))
+        10px
+        calc(16px + env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at top, #203451 0%, #0b1625 45%, #060b12 100%);
     }
 
-    .top-panel {
+    .top-stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 9px;
-      margin-bottom: 14px;
+      gap: 8px;
+      margin-bottom: 9px;
     }
 
-    .stat {
-      padding: 11px 7px;
+    .stat-card {
+      min-width: 0;
+      padding: 9px 6px;
       text-align: center;
-      background: rgba(255, 255, 255, 0.09);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 15px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
     }
 
     .stat-label {
       display: block;
-      margin-bottom: 5px;
-      font-size: 11px;
-      color: #aab3c5;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.05em;
     }
 
     .stat-value {
+      display: block;
+      overflow: hidden;
       font-size: 18px;
-      font-weight: bold;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .battle-card {
-      padding: 20px 16px;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .battlefield {
+      position: relative;
+      height: clamp(455px, 68vh, 610px);
+      overflow: hidden;
+      border: 1px solid var(--border);
       border-radius: 24px;
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(8, 17, 29, 0.05) 0%,
+          rgba(8, 17, 29, 0.03) 52%,
+          rgba(5, 10, 17, 0.62) 100%
+        ),
+        url("assets/forest_bg.png?v=2") center / cover no-repeat;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+      isolation: isolate;
     }
 
-    .stage {
-      display: inline-block;
-      margin-bottom: 14px;
-      padding: 7px 12px;
-      font-size: 13px;
-      color: #ffd783;
-      background: rgba(255, 215, 131, 0.12);
-      border-radius: 20px;
+    .battlefield::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      z-index: 0;
+      height: 36%;
+      background:
+        linear-gradient(
+          to top,
+          rgba(5, 10, 17, 0.64),
+          rgba(5, 10, 17, 0)
+        );
+      pointer-events: none;
     }
 
-    .battle-scene {
+    .battle-top {
+      position: relative;
+      z-index: 20;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
+      gap: 8px;
+      padding: 11px;
     }
 
-    .fighter {
-      flex: 1;
-      padding: 14px 8px;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 18px;
+    .stage-badge,
+    .battle-speed {
+      padding: 7px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      background: rgba(6, 12, 20, 0.72);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      font-weight: 700;
     }
 
-    .fighter-icon {
-      min-height: 82px;
-      font-size: 66px;
-      transition: transform 0.15s;
+    .stage-badge {
+      color: var(--gold);
     }
 
-    .hero-attacking {
-      transform: translateX(14px) scale(1.08);
+    .battle-speed {
+      color: var(--green);
     }
 
-    .enemy-hit {
-      transform: translateX(8px) rotate(5deg);
+    .enemy-hud {
+      position: relative;
+      z-index: 20;
+      width: calc(100% - 22px);
+      margin: 0 11px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(6, 12, 20, 0.74);
+      backdrop-filter: blur(8px);
+    }
+
+    .enemy-hud-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .enemy-hp-text {
+      color: #ffd4d8;
+      white-space: nowrap;
+    }
+
+    .hp-track {
+      height: 13px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(65, 13, 24, 0.92);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+    }
+
+    .hp-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ff344f, #ff7b48);
+      transition: width 0.18s ease-out;
+    }
+
+    .fighters-layer {
+      position: absolute;
+      inset: 105px 0 72px;
+      z-index: 5;
+    }
+
+    .fighter-slot {
+      position: absolute;
+      bottom: 0;
+      width: 47%;
+      height: 82%;
+      pointer-events: none;
+    }
+
+    .hero-slot {
+      left: 0;
+    }
+
+    .enemy-slot {
+      right: 0;
+    }
+
+    .fighter-shadow {
+      position: absolute;
+      left: 50%;
+      bottom: 4%;
+      width: 60%;
+      height: 8%;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.34);
+      filter: blur(5px);
+      transform: translateX(-50%);
+    }
+
+    .fighter-sprite {
+      position: absolute;
+      left: 50%;
+      bottom: 5%;
+      width: min(43vw, 205px);
+      max-width: 92%;
+      height: 88%;
+      object-fit: contain;
+      object-position: center bottom;
+      filter: drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38));
+      transform: translateX(-50%);
+      transform-origin: 50% 88%;
+      will-change: transform, filter, opacity;
+    }
+
+    .hero-sprite {
+      animation: heroIdle 2.1s ease-in-out infinite;
+    }
+
+    .enemy-sprite {
+      animation: enemyIdle 1.85s ease-in-out infinite;
     }
 
     .fighter-name {
-      margin-top: 7px;
-      font-weight: bold;
-    }
-
-    .versus {
-      font-weight: bold;
-      color: #8993a8;
-    }
-
-    .enemy-panel {
-      margin-bottom: 16px;
-      padding: 15px;
-      background: rgba(0, 0, 0, 0.26);
-      border-radius: 18px;
-    }
-
-    .enemy-title {
-      margin-bottom: 9px;
-      font-weight: bold;
-    }
-
-    .health-bar {
-      height: 15px;
+      position: absolute;
+      left: 50%;
+      bottom: -3px;
+      z-index: 8;
+      max-width: 90%;
+      padding: 5px 9px;
       overflow: hidden;
-      background: #3a1620;
-      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      background: rgba(5, 10, 17, 0.68);
+      font-size: 12px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transform: translateX(-50%);
+      backdrop-filter: blur(7px);
     }
 
-    .health-fill {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, #ff3f55, #ff8d4d);
-      transition: width 0.2s;
+    .effects-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 12;
+      pointer-events: none;
     }
 
-    .progress-text {
-      margin-top: 9px;
-      font-size: 13px;
-      color: #aab3c5;
+    .effect {
+      position: absolute;
+      display: block;
+      opacity: 0;
+      object-fit: contain;
+      pointer-events: none;
     }
 
-    .character-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 15px;
+    .slash-effect {
+      left: 39%;
+      top: 42%;
+      width: 47%;
+      transform: translate(-50%, -50%) rotate(-7deg) scale(0.5);
     }
 
-    .character-stat {
-      padding: 10px 5px;
-      background: rgba(255, 255, 255, 0.06);
+    .hit-effect {
+      left: 72%;
+      top: 54%;
+      width: 26%;
+      transform: translate(-50%, -50%) scale(0.35);
+    }
+
+    .spore-effect {
+      left: 64%;
+      top: 52%;
+      width: 52%;
+      transform: translate(-50%, -50%) scale(0.45);
+    }
+
+    .damage-number {
+      position: absolute;
+      left: 72%;
+      top: 39%;
+      z-index: 18;
+      opacity: 0;
+      color: #fff1aa;
+      font-size: 27px;
+      font-weight: 900;
+      text-shadow:
+        0 2px 0 #7f2600,
+        0 0 10px rgba(255, 196, 73, 0.9);
+      transform: translate(-50%, 0);
+      pointer-events: none;
+    }
+
+    .hero-hit-flash {
+      position: absolute;
+      left: 25%;
+      top: 54%;
+      z-index: 14;
+      width: 28%;
+      aspect-ratio: 1;
+      opacity: 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.95) 0%,
+          rgba(255, 74, 83, 0.58) 38%,
+          rgba(255, 74, 83, 0) 72%
+        );
+      transform: translate(-50%, -50%) scale(0.45);
+      pointer-events: none;
+    }
+
+    .battle-bottom {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      left: 10px;
+      z-index: 25;
+    }
+
+    .battle-message {
+      min-height: 41px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
       border-radius: 13px;
+      background: rgba(6, 12, 20, 0.78);
+      color: #ffe5a3;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      backdrop-filter: blur(8px);
     }
 
-    .character-stat-label {
+    .battle-message.error {
+      color: #ff9ba6;
+    }
+
+    .progress-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 7px;
+      color: #d6ddea;
+      font-size: 11px;
+    }
+
+    .details-panel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .detail {
+      min-width: 0;
+      padding: 9px 5px;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--panel);
+    }
+
+    .detail-label {
       display: block;
       margin-bottom: 4px;
-      font-size: 10px;
-      color: #aab3c5;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: 0.04em;
     }
 
-    .character-stat-value {
-      font-size: 15px;
-      font-weight: bold;
+    .detail-value {
+      display: block;
+      overflow: hidden;
+      font-size: 14px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .battle-status {
-      min-height: 46px;
-      margin-top: 15px;
-      padding: 12px;
-      color: #ffd783;
-      background: rgba(0, 0, 0, 0.18);
-      border-radius: 14px;
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(4, 9, 16, 0.78);
+      text-align: center;
+      backdrop-filter: blur(8px);
+      transition: opacity 0.25s;
     }
 
-    .auto-battle {
-      margin-top: 10px;
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-box {
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel-strong);
+    }
+
+    .loading-title {
+      margin-bottom: 6px;
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .loading-text {
+      color: var(--muted);
       font-size: 13px;
-      color: #76e6a2;
     }
 
-    .error {
-      color: #ff8e9c;
+    .fx-slash {
+      animation: slashFx 0.34s ease-out both;
+    }
+
+    .fx-hit {
+      animation: hitFx 0.28s ease-out both;
+    }
+
+    .fx-spore {
+      animation: sporeFx 0.72s ease-out both;
+    }
+
+    .fx-damage {
+      animation: damageFloat 0.72s ease-out both;
+    }
+
+    .fx-hero-hit {
+      animation: heroHitFlash 0.3s ease-out both;
+    }
+
+    .anim-hero-attack {
+      animation: heroAttack 0.42s ease-out both !important;
+    }
+
+    .anim-hero-skill {
+      animation: heroSkill 0.72s ease-out both !important;
+    }
+
+    .anim-hero-hit {
+      animation: heroHit 0.38s ease-out both !important;
+    }
+
+    .anim-enemy-hit {
+      animation: enemyHit 0.32s ease-out both !important;
+    }
+
+    .anim-enemy-attack {
+      animation: enemyAttack 0.5s ease-out both !important;
+    }
+
+    .anim-enemy-death {
+      animation: enemyDeath 0.45s ease-in both !important;
+    }
+
+    .anim-enemy-spawn {
+      animation: enemySpawn 0.42s ease-out both !important;
+    }
+
+    @keyframes heroIdle {
+      0%,
+      100% {
+        transform: translateX(-50%) translateY(0) rotate(-1deg);
+      }
+      50% {
+        transform: translateX(-50%) translateY(-5px) rotate(1deg);
+      }
+    }
+
+    @keyframes enemyIdle {
+      0%,
+      100% {
+        transform: translateX(-50%) translateY(0) scale(1);
+      }
+      50% {
+        transform: translateX(-50%) translateY(-4px) scale(1.015);
+      }
+    }
+
+    @keyframes heroAttack {
+      0% {
+        transform: translateX(-50%) translateX(0) scale(1);
+      }
+      45% {
+        transform: translateX(-50%) translateX(42px) scale(1.07) rotate(2deg);
+      }
+      100% {
+        transform: translateX(-50%) translateX(0) scale(1);
+      }
+    }
+
+    @keyframes heroSkill {
+      0% {
+        transform: translateX(-50%) scale(0.94);
+        filter:
+          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          brightness(1);
+      }
+      45% {
+        transform: translateX(-50%) scale(1.08) translateY(-6px);
+        filter:
+          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          brightness(1.22)
+          drop-shadow(0 0 18px rgba(118, 255, 132, 0.88));
+      }
+      100% {
+        transform: translateX(-50%) scale(1);
+      }
+    }
+
+    @keyframes heroHit {
+      0% {
+        transform: translateX(-50%) translateX(0) rotate(0);
+      }
+      35% {
+        transform: translateX(-50%) translateX(-18px) rotate(-7deg);
+        filter:
+          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          brightness(1.35)
+          saturate(0.65);
+      }
+      100% {
+        transform: translateX(-50%) translateX(0) rotate(0);
+      }
+    }
+
+    @keyframes enemyHit {
+      0% {
+        transform: translateX(-50%) translateX(0) rotate(0);
+      }
+      35% {
+        transform: translateX(-50%) translateX(17px) rotate(6deg) scale(0.98);
+        filter:
+          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          brightness(1.65)
+          saturate(0.35);
+      }
+      100% {
+        transform: translateX(-50%) translateX(0) rotate(0);
+      }
+    }
+
+    @keyframes enemyAttack {
+      0% {
+        transform: translateX(-50%) translateX(0) scale(1);
+      }
+      52% {
+        transform: translateX(-50%) translateX(-42px) scale(1.08) rotate(-3deg);
+      }
+      100% {
+        transform: translateX(-50%) translateX(0) scale(1);
+      }
+    }
+
+    @keyframes enemyDeath {
+      0% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1) rotate(0);
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(16px) scale(0.28) rotate(13deg);
+        filter:
+          drop-shadow(0 9px 8px rgba(0, 0, 0, 0.38))
+          grayscale(0.45);
+      }
+    }
+
+    @keyframes enemySpawn {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateX(35px) scale(0.65);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(-50%) translateX(0) scale(1);
+      }
+    }
+
+    @keyframes slashFx {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(-8deg) scale(0.45);
+      }
+      35% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(2deg) scale(1.08);
+      }
+    }
+
+    @keyframes hitFx {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.25);
+      }
+      45% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.28);
+      }
+    }
+
+    @keyframes sporeFx {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.35) rotate(-7deg);
+      }
+      35% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.16) rotate(8deg);
+      }
+    }
+
+    @keyframes damageFloat {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 8px) scale(0.75);
+      }
+      22% {
+        opacity: 1;
+        transform: translate(-50%, -4px) scale(1.08);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -44px) scale(1);
+      }
+    }
+
+    @keyframes heroHitFlash {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3);
+      }
+      40% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.12);
+      }
+    }
+
+    @media (max-width: 360px) {
+      .battlefield {
+        height: 470px;
+      }
+
+      .details-panel {
+        gap: 5px;
+      }
+
+      .detail {
+        padding: 8px 3px;
+      }
+
+      .fighter-sprite {
+        width: 43vw;
+      }
     }
   </style>
 </head>
 
 <body>
   <main class="app">
-    <section class="top-panel">
-      <div class="stat">
-        <span class="stat-label">УРОВЕНЬ</span>
-        <span class="stat-value" id="level">1</span>
+    <section class="top-stats">
+      <div class="stat-card">
+        <span class="stat-label">ЭТАП</span>
+        <span class="stat-value" id="stageTop">1</span>
       </div>
 
-      <div class="stat">
+      <div class="stat-card">
         <span class="stat-label">ЗОЛОТО</span>
         <span class="stat-value" id="gold">0</span>
       </div>
 
-      <div class="stat">
+      <div class="stat-card">
         <span class="stat-label">СИЛА</span>
         <span class="stat-value" id="power">10</span>
       </div>
     </section>
 
-    <section class="battle-card">
-      <div class="stage">
-        Этап <span id="stage">1</span>
+    <section class="battlefield" id="battlefield">
+      <div class="battle-top">
+        <div class="stage-badge">
+          Этап <span id="stage">1</span>
+        </div>
+
+        <div class="battle-speed" id="battleSpeed">
+          ⚔️ 1.00 атака/с
+        </div>
       </div>
 
-      <div class="battle-scene">
-        <div class="fighter">
-          <div class="fighter-icon" id="heroIcon">🧙‍♂️</div>
+      <div class="enemy-hud">
+        <div class="enemy-hud-row">
+          <span id="enemyName">Слизень</span>
+          <span class="enemy-hp-text">
+            <span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span> HP
+          </span>
+        </div>
+
+        <div class="hp-track">
+          <div class="hp-fill" id="enemyHpBar"></div>
+        </div>
+      </div>
+
+      <div class="fighters-layer">
+        <div class="fighter-slot hero-slot">
+          <div class="fighter-shadow"></div>
+          <img
+            class="fighter-sprite hero-sprite"
+            id="heroSprite"
+            src="assets/hero.png?v=2"
+            alt="Грибной воин"
+          >
           <div class="fighter-name" id="heroName">Герой</div>
         </div>
 
-        <div class="versus">VS</div>
-
-        <div class="fighter">
-          <div class="fighter-icon" id="enemyIcon">🟢</div>
-          <div class="fighter-name">Слизень</div>
+        <div class="fighter-slot enemy-slot">
+          <div class="fighter-shadow"></div>
+          <img
+            class="fighter-sprite enemy-sprite"
+            id="enemySprite"
+            src="assets/slime.png?v=2"
+            alt="Монстр"
+          >
+          <div class="fighter-name" id="enemyNameplate">Слизень</div>
         </div>
       </div>
 
-      <div class="enemy-panel">
-        <div class="enemy-title">
-          HP врага:
-          <span id="enemyHp">30</span>/<span id="enemyMaxHp">30</span>
+      <div class="effects-layer">
+        <img
+          class="effect slash-effect"
+          id="slashEffect"
+          src="assets/slash.png?v=2"
+          alt=""
+        >
+        <img
+          class="effect hit-effect"
+          id="hitEffect"
+          src="assets/hit.png?v=2"
+          alt=""
+        >
+        <img
+          class="effect spore-effect"
+          id="sporeEffect"
+          src="assets/spore_burst.png?v=2"
+          alt=""
+        >
+        <div class="damage-number" id="damageNumber">-10</div>
+        <div class="hero-hit-flash" id="heroHitFlash"></div>
+      </div>
+
+      <div class="battle-bottom">
+        <div class="battle-message" id="message">
+          Подключаемся к серверу…
         </div>
 
-        <div class="health-bar">
-          <div class="health-fill" id="enemyHpBar"></div>
-        </div>
-
-        <div class="progress-text">
-          Побеждено на этапе:
-          <span id="killsInStage">0</span>/10
+        <div class="progress-line">
+          <span>
+            Враги этапа:
+            <strong><span id="killsInStage">0</span>/10</strong>
+          </span>
+          <span>
+            Всего побед:
+            <strong id="totalKillsMini">0</strong>
+          </span>
         </div>
       </div>
 
-      <div class="character-stats">
-        <div class="character-stat">
-          <span class="character-stat-label">УРОН</span>
-          <span class="character-stat-value" id="damage">10</span>
-        </div>
-
-        <div class="character-stat">
-          <span class="character-stat-label">СКОРОСТЬ</span>
-          <span class="character-stat-value" id="attackSpeed">1.00</span>
-        </div>
-
-        <div class="character-stat">
-          <span class="character-stat-label">УБИЙСТВА</span>
-          <span class="character-stat-value" id="totalKills">0</span>
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-box">
+          <div class="loading-title" id="loadingTitle">Загружаем бой</div>
+          <div class="loading-text" id="loadingText">
+            Подготавливаем героя и монстров…
+          </div>
         </div>
       </div>
+    </section>
 
-      <div class="battle-status" id="message">
-        Подключаемся к серверу…
+    <section class="details-panel">
+      <div class="detail">
+        <span class="detail-label">УРОН</span>
+        <span class="detail-value" id="damage">10</span>
       </div>
 
-      <div class="auto-battle" id="autoBattleStatus">
-        ⏳ Автобой загружается
+      <div class="detail">
+        <span class="detail-label">СКОРОСТЬ</span>
+        <span class="detail-value" id="attackSpeed">1.00</span>
+      </div>
+
+      <div class="detail">
+        <span class="detail-label">УРОВЕНЬ</span>
+        <span class="detail-value" id="level">1</span>
+      </div>
+
+      <div class="detail">
+        <span class="detail-label">УБИЙСТВА</span>
+        <span class="detail-value" id="totalKills">0</span>
       </div>
     </section>
   </main>
@@ -279,37 +852,123 @@
   <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
+    const ASSET_VERSION = "v2";
+
+    const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
+
+    const HERO_ASSETS = {
+      idle: asset("hero.png"),
+      attack: asset("hero_attack.png"),
+      skill: asset("hero_skill.png"),
+      hit: asset("hero_hit.png")
+    };
+
+    const MONSTERS = [
+      {
+        key: "slime",
+        name: "Слизень",
+        idle: asset("slime.png"),
+        attack: asset("slime_attack.png")
+      },
+      {
+        key: "goblin",
+        name: "Гоблин",
+        idle: asset("goblin.png"),
+        attack: asset("goblin_attack.png")
+      },
+      {
+        key: "bat",
+        name: "Летучая тварь",
+        idle: asset("bat.png"),
+        attack: asset("bat.png")
+      },
+      {
+        key: "skeleton",
+        name: "Скелет-воин",
+        idle: asset("skeleton.png"),
+        attack: asset("skeleton.png")
+      }
+    ];
+
+    const EFFECT_ASSETS = [
+      asset("slash.png"),
+      asset("hit.png"),
+      asset("spore_burst.png"),
+      asset("forest_bg.png")
+    ];
 
     telegram.ready();
     telegram.expand();
 
     const elements = {
-      level: document.getElementById("level"),
+      stageTop: document.getElementById("stageTop"),
+      stage: document.getElementById("stage"),
       gold: document.getElementById("gold"),
       power: document.getElementById("power"),
-      stage: document.getElementById("stage"),
-      heroName: document.getElementById("heroName"),
-      heroIcon: document.getElementById("heroIcon"),
-      enemyIcon: document.getElementById("enemyIcon"),
+      level: document.getElementById("level"),
+      damage: document.getElementById("damage"),
+      attackSpeed: document.getElementById("attackSpeed"),
+      battleSpeed: document.getElementById("battleSpeed"),
+      totalKills: document.getElementById("totalKills"),
+      totalKillsMini: document.getElementById("totalKillsMini"),
+      killsInStage: document.getElementById("killsInStage"),
+      enemyName: document.getElementById("enemyName"),
+      enemyNameplate: document.getElementById("enemyNameplate"),
       enemyHp: document.getElementById("enemyHp"),
       enemyMaxHp: document.getElementById("enemyMaxHp"),
       enemyHpBar: document.getElementById("enemyHpBar"),
-      killsInStage: document.getElementById("killsInStage"),
-      damage: document.getElementById("damage"),
-      attackSpeed: document.getElementById("attackSpeed"),
-      totalKills: document.getElementById("totalKills"),
+      heroName: document.getElementById("heroName"),
+      heroSprite: document.getElementById("heroSprite"),
+      enemySprite: document.getElementById("enemySprite"),
+      slashEffect: document.getElementById("slashEffect"),
+      hitEffect: document.getElementById("hitEffect"),
+      sporeEffect: document.getElementById("sporeEffect"),
+      damageNumber: document.getElementById("damageNumber"),
+      heroHitFlash: document.getElementById("heroHitFlash"),
       message: document.getElementById("message"),
-      autoBattleStatus: document.getElementById("autoBattleStatus")
+      loadingOverlay: document.getElementById("loadingOverlay"),
+      loadingTitle: document.getElementById("loadingTitle"),
+      loadingText: document.getElementById("loadingText")
     };
 
     let player = null;
-    let battleTimer = null;
+    let currentMonster = MONSTERS[0];
     let battleRunning = false;
     let requestInProgress = false;
+    let enemyDefeating = false;
+    let heroAttackTimer = null;
+    let monsterAttackTimer = null;
+    let attackCounter = 0;
+
+    const wait = (milliseconds) =>
+      new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+    function preloadImage(source) {
+      return new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+        image.src = source;
+      });
+    }
+
+    async function preloadAssets() {
+      const sources = [
+        ...Object.values(HERO_ASSETS),
+        ...MONSTERS.flatMap((monster) => [
+          monster.idle,
+          monster.attack
+        ]),
+        ...EFFECT_ASSETS
+      ];
+
+      await Promise.all([...new Set(sources)].map(preloadImage));
+    }
 
     async function apiRequest(path, method = "GET") {
       const response = await fetch(`${API_URL}${path}`, {
         method,
+        cache: "no-store",
         headers: {
           "X-Telegram-Init-Data": telegram.initData
         }
@@ -324,79 +983,237 @@
       return data;
     }
 
+    function monsterForStage(stage) {
+      const index = Math.max(0, Number(stage || 1) - 1) % MONSTERS.length;
+      return MONSTERS[index];
+    }
+
+    function setSprite(element, source) {
+      if (element.src.endsWith(source)) {
+        return;
+      }
+
+      element.src = source;
+    }
+
+    function restartAnimation(element, className) {
+      element.classList.remove(className);
+      void element.offsetWidth;
+      element.classList.add(className);
+    }
+
+    function restoreHeroIdle(delay = 0) {
+      setTimeout(() => {
+        elements.heroSprite.className =
+          "fighter-sprite hero-sprite";
+        elements.heroSprite.src = HERO_ASSETS.idle;
+      }, delay);
+    }
+
+    function restoreEnemyIdle(delay = 0) {
+      setTimeout(() => {
+        if (!enemyDefeating) {
+          elements.enemySprite.className =
+            "fighter-sprite enemy-sprite";
+          elements.enemySprite.src = currentMonster.idle;
+        }
+      }, delay);
+    }
+
+    function updateMonsterFromStage() {
+      const nextMonster = monsterForStage(player.stage);
+      const changed = nextMonster.key !== currentMonster.key;
+
+      currentMonster = nextMonster;
+      elements.enemyName.textContent = currentMonster.name;
+      elements.enemyNameplate.textContent = currentMonster.name;
+      elements.enemySprite.alt = currentMonster.name;
+
+      if (changed || !elements.enemySprite.src.includes(currentMonster.key)) {
+        elements.enemySprite.src = currentMonster.idle;
+      }
+    }
+
     function updateScreen() {
       if (!player) {
         return;
       }
 
-      elements.level.textContent = player.level;
+      updateMonsterFromStage();
+
+      elements.stageTop.textContent = player.stage;
+      elements.stage.textContent = player.stage;
       elements.gold.textContent = player.gold;
       elements.power.textContent = player.power;
-      elements.stage.textContent = player.stage;
-      elements.heroName.textContent = player.first_name || "Герой";
-      elements.enemyHp.textContent = player.enemy_hp;
-      elements.enemyMaxHp.textContent = player.enemy_max_hp;
-      elements.killsInStage.textContent = player.kills_in_stage;
+      elements.level.textContent = player.level;
       elements.damage.textContent = player.damage;
       elements.attackSpeed.textContent =
         Number(player.attack_speed).toFixed(2);
       elements.totalKills.textContent = player.total_kills;
+      elements.totalKillsMini.textContent = player.total_kills;
+      elements.killsInStage.textContent = player.kills_in_stage;
+      elements.enemyHp.textContent = player.enemy_hp;
+      elements.enemyMaxHp.textContent = player.enemy_max_hp;
+      elements.heroName.textContent = player.first_name || "Герой";
 
       const hpPercent = Math.max(
         0,
         Math.min(
           100,
-          (player.enemy_hp / player.enemy_max_hp) * 100
+          (Number(player.enemy_hp) / Number(player.enemy_max_hp)) * 100
         )
       );
 
       elements.enemyHpBar.style.width = `${hpPercent}%`;
 
-      const attackDelay = Number(player.attack_interval || 1);
+      const speed = Math.max(0.1, Number(player.attack_speed || 1));
 
-      elements.autoBattleStatus.textContent =
-        `⚔️ Автобой: удар каждые ${attackDelay.toFixed(2)} сек.`;
+      elements.battleSpeed.textContent =
+        `⚔️ ${speed.toFixed(2)} атака/с`;
     }
 
-    function animateAttack() {
-      elements.heroIcon.classList.add("hero-attacking");
-
-      setTimeout(() => {
-        elements.heroIcon.classList.remove("hero-attacking");
-        elements.enemyIcon.classList.add("enemy-hit");
-      }, 100);
-
-      setTimeout(() => {
-        elements.enemyIcon.classList.remove("enemy-hit");
-      }, 250);
+    function showDamage(amount) {
+      elements.damageNumber.textContent = `-${amount}`;
+      restartAnimation(elements.damageNumber, "fx-damage");
     }
 
-    function stopAutoBattle() {
-      battleRunning = false;
+    function showHitEffect() {
+      restartAnimation(elements.hitEffect, "fx-hit");
+    }
 
-      if (battleTimer) {
-        clearTimeout(battleTimer);
-        battleTimer = null;
+    function animateHeroAttack(useSkill) {
+      if (useSkill) {
+        elements.heroSprite.src = HERO_ASSETS.skill;
+        elements.heroSprite.className =
+          "fighter-sprite anim-hero-skill";
+        restartAnimation(elements.sporeEffect, "fx-spore");
+        restoreHeroIdle(720);
+        return;
       }
 
-      elements.autoBattleStatus.textContent = "⏸ Автобой остановлен";
+      elements.heroSprite.src = HERO_ASSETS.attack;
+      elements.heroSprite.className =
+        "fighter-sprite anim-hero-attack";
+      restartAnimation(elements.slashEffect, "fx-slash");
+      restoreHeroIdle(430);
     }
 
-    function scheduleNextAttack(delaySeconds) {
+    function animateEnemyHit() {
+      elements.enemySprite.className =
+        "fighter-sprite anim-enemy-hit";
+      showHitEffect();
+      restoreEnemyIdle(330);
+    }
+
+    async function animateEnemyDefeat() {
+      enemyDefeating = true;
+
+      elements.enemyHp.textContent = "0";
+      elements.enemyHpBar.style.width = "0%";
+      showHitEffect();
+
+      elements.enemySprite.className =
+        "fighter-sprite anim-enemy-death";
+
+      await wait(450);
+
+      player = pendingPlayerAfterDefeat;
+      updateScreen();
+
+      elements.enemySprite.className =
+        "fighter-sprite anim-enemy-spawn";
+      elements.enemySprite.src = currentMonster.idle;
+
+      await wait(430);
+
+      enemyDefeating = false;
+      restoreEnemyIdle();
+    }
+
+    let pendingPlayerAfterDefeat = null;
+
+    function scheduleHeroAttack(delaySeconds) {
       if (!battleRunning) {
         return;
       }
 
+      clearTimeout(heroAttackTimer);
+
       const safeDelay = Math.max(0.1, Number(delaySeconds || 1));
 
-      battleTimer = setTimeout(
+      heroAttackTimer = setTimeout(
         performAttack,
         safeDelay * 1000
       );
     }
 
+    function scheduleMonsterAttack() {
+      if (!battleRunning) {
+        return;
+      }
+
+      clearTimeout(monsterAttackTimer);
+
+      const delay = 2700 + Math.random() * 1400;
+
+      monsterAttackTimer = setTimeout(
+        performMonsterAttack,
+        delay
+      );
+    }
+
+    async function performMonsterAttack() {
+      if (
+        !battleRunning ||
+        enemyDefeating ||
+        document.hidden
+      ) {
+        scheduleMonsterAttack();
+        return;
+      }
+
+      elements.enemySprite.src = currentMonster.attack;
+      elements.enemySprite.className =
+        "fighter-sprite anim-enemy-attack";
+
+      await wait(180);
+
+      elements.heroSprite.src = HERO_ASSETS.hit;
+      elements.heroSprite.className =
+        "fighter-sprite anim-hero-hit";
+      restartAnimation(elements.heroHitFlash, "fx-hero-hit");
+
+      const previousMessage = elements.message.textContent;
+      elements.message.textContent =
+        `${currentMonster.name} контратакует!`;
+
+      try {
+        if (telegram.HapticFeedback) {
+          telegram.HapticFeedback.impactOccurred("medium");
+        }
+      } catch (error) {
+        // В некоторых клиентах вибрация недоступна.
+      }
+
+      restoreHeroIdle(390);
+      restoreEnemyIdle(510);
+
+      setTimeout(() => {
+        if (!enemyDefeating) {
+          elements.message.textContent = previousMessage;
+        }
+      }, 650);
+
+      scheduleMonsterAttack();
+    }
+
     async function performAttack() {
-      if (!battleRunning || requestInProgress) {
+      if (
+        !battleRunning ||
+        requestInProgress ||
+        enemyDefeating ||
+        document.hidden
+      ) {
         return;
       }
 
@@ -405,39 +1222,85 @@
       try {
         const result = await apiRequest("/attack", "POST");
 
-        player = result;
-        updateScreen();
-
-        if (result.attacked) {
-          animateAttack();
-          elements.message.classList.remove("error");
-          elements.message.textContent = result.message;
-
-          if (
-            result.enemy_defeated &&
-            telegram.HapticFeedback
-          ) {
-            telegram.HapticFeedback.notificationOccurred(
-              "success"
-            );
-          } else if (telegram.HapticFeedback) {
-            telegram.HapticFeedback.impactOccurred("light");
-          }
-
-          scheduleNextAttack(result.attack_interval);
-        } else {
-          scheduleNextAttack(
+        if (!result.attacked) {
+          scheduleHeroAttack(
             result.retry_after || result.attack_interval
           );
+          return;
         }
+
+        attackCounter += 1;
+        const useSkill = attackCounter % 5 === 0;
+
+        animateHeroAttack(useSkill);
+        showDamage(result.damage);
+
+        if (result.enemy_defeated) {
+          pendingPlayerAfterDefeat = result;
+
+          elements.message.classList.remove("error");
+          elements.message.textContent =
+            result.stage_completed
+              ? `🚪 Этап пройден! Открыт этап ${result.stage}`
+              : `🏆 ${currentMonster.name} побеждён! +${result.reward} золота`;
+
+          await animateEnemyDefeat();
+
+          try {
+            if (telegram.HapticFeedback) {
+              telegram.HapticFeedback.notificationOccurred("success");
+            }
+          } catch (error) {
+            // В некоторых клиентах вибрация недоступна.
+          }
+        } else {
+          player = result;
+          updateScreen();
+          animateEnemyHit();
+
+          elements.message.classList.remove("error");
+          elements.message.textContent =
+            useSkill
+              ? `🍄 Споровый удар! Нанесено ${result.damage} урона`
+              : result.message;
+
+          try {
+            if (telegram.HapticFeedback) {
+              telegram.HapticFeedback.impactOccurred("light");
+            }
+          } catch (error) {
+            // В некоторых клиентах вибрация недоступна.
+          }
+        }
+
+        scheduleHeroAttack(result.attack_interval);
       } catch (error) {
         elements.message.classList.add("error");
         elements.message.textContent = `❌ ${error.message}`;
-
-        scheduleNextAttack(3);
+        scheduleHeroAttack(3);
       } finally {
         requestInProgress = false;
       }
+    }
+
+    function stopBattle() {
+      battleRunning = false;
+      clearTimeout(heroAttackTimer);
+      clearTimeout(monsterAttackTimer);
+      heroAttackTimer = null;
+      monsterAttackTimer = null;
+    }
+
+    function resumeBattle() {
+      if (!player || battleRunning) {
+        return;
+      }
+
+      battleRunning = true;
+      elements.message.classList.remove("error");
+      elements.message.textContent = "⚔️ Автобой продолжен";
+      scheduleHeroAttack(0.25);
+      scheduleMonsterAttack();
     }
 
     async function startGame() {
@@ -448,37 +1311,42 @@
           );
         }
 
+        elements.loadingText.textContent =
+          "Загружаем игровые ассеты…";
+
+        await preloadAssets();
+
+        elements.loadingText.textContent =
+          "Загружаем прогресс героя…";
+
         player = await apiRequest("/player");
         updateScreen();
 
+        elements.loadingOverlay.classList.add("hidden");
         elements.message.classList.remove("error");
-        elements.message.textContent = "✅ Герой вступил в бой";
+        elements.message.textContent = "⚔️ Герой вступил в автобой";
 
         battleRunning = true;
-        scheduleNextAttack(0.5);
+        scheduleHeroAttack(0.35);
+        scheduleMonsterAttack();
       } catch (error) {
+        elements.loadingTitle.textContent = "Ошибка";
+        elements.loadingText.textContent = error.message;
         elements.message.classList.add("error");
         elements.message.textContent = `❌ ${error.message}`;
-        elements.autoBattleStatus.textContent =
-          "Автобой не запущен";
       }
     }
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
-        stopAutoBattle();
-        return;
-      }
-
-      if (player && !battleRunning) {
-        battleRunning = true;
-        elements.message.textContent = "⚔️ Автобой продолжен";
-        scheduleNextAttack(0.3);
+        stopBattle();
+      } else {
+        resumeBattle();
       }
     });
 
-    window.addEventListener("pagehide", stopAutoBattle);
-    window.addEventListener("beforeunload", stopAutoBattle);
+    window.addEventListener("pagehide", stopBattle);
+    window.addEventListener("beforeunload", stopBattle);
 
     startGame();
   </script>
