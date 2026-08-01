@@ -1987,6 +1987,124 @@
       box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 18px rgba(160,63,255,.15);
     }
 
+  .enemy-slot {
+    isolation: isolate;
+  }
+
+  .enemy-slot::before,
+  .enemy-slot::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 5%;
+    width: clamp(190px, 43vw, 340px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 12%) scale(0.72);
+    transition:
+      opacity 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  .enemy-slot::before {
+    z-index: 0;
+    background:
+      radial-gradient(
+        circle,
+        rgba(255, 226, 115, 0.46) 0 7%,
+        rgba(191, 83, 255, 0.33) 23%,
+        rgba(122, 45, 210, 0.18) 45%,
+        transparent 70%
+      );
+    filter: blur(8px);
+  }
+
+  .enemy-slot::after {
+    z-index: 1;
+    width: clamp(170px, 37vw, 300px);
+    border: 2px solid rgba(215, 151, 255, 0.48);
+    background:
+      conic-gradient(
+        from 0deg,
+        transparent 0deg 36deg,
+        rgba(255, 218, 102, 0.5) 62deg,
+        transparent 95deg 180deg,
+        rgba(187, 87, 255, 0.55) 220deg,
+        transparent 260deg 360deg
+      );
+    box-shadow:
+      0 0 18px rgba(193, 87, 255, 0.45),
+      inset 0 0 22px rgba(255, 213, 100, 0.18);
+    filter: blur(0.4px);
+  }
+
+  .enemy-slot .fighter-shadow {
+    z-index: 2;
+  }
+
+  .enemy-slot .enemy-sprite {
+    z-index: 3;
+  }
+
+  .enemy-slot .fighter-name {
+    z-index: 4;
+  }
+
+  body.boss-active .enemy-slot::before {
+    opacity: 0.92;
+    transform: translate(-50%, 12%) scale(1);
+    animation: bossAuraPulse 1.8s ease-in-out infinite;
+  }
+
+  body.boss-active .enemy-slot::after {
+    opacity: 0.82;
+    transform: translate(-50%, 12%) scale(1);
+    animation:
+      bossAuraSpin 7s linear infinite,
+      bossAuraRingPulse 2.2s ease-in-out infinite;
+  }
+
+  @keyframes bossAuraPulse {
+    0%, 100% {
+      opacity: 0.64;
+      transform: translate(-50%, 12%) scale(0.92);
+      filter: blur(8px);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(-50%, 12%) scale(1.08);
+      filter: blur(11px);
+    }
+  }
+
+  @keyframes bossAuraRingPulse {
+    0%, 100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.92;
+    }
+  }
+
+  @keyframes bossAuraSpin {
+    from {
+      rotate: 0deg;
+    }
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.boss-active .enemy-slot::before,
+    body.boss-active .enemy-slot::after {
+      animation: none;
+    }
+  }
+
+
     .chest-count-badge,
     .chest-level-badge {
       position: absolute;
