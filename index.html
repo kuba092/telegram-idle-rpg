@@ -63,7 +63,7 @@
           rgba(4, 12, 12, 0.08) 62%,
           rgba(3, 8, 10, 0.62) 100%
         ),
-        url("assets/forest_bg.png?v=5") center / cover no-repeat;
+        url("assets/forest_bg.png?v=6") center / cover no-repeat;
       isolation: isolate;
     }
 
@@ -894,6 +894,634 @@
         height: 76%;
       }
     }
+  
+    /* ===== V3: структура в духе мобильного idle-RPG ===== */
+
+    .fighters-layer {
+      bottom: calc(132px + env(safe-area-inset-bottom));
+    }
+
+    .fighter-name {
+      display: none;
+    }
+
+    /* Полоса HP героя расположена над самим героем. */
+    .hero-health {
+      top: auto;
+      bottom: calc(6% + clamp(150px, 29vw, 285px) + 10px);
+      width: min(88%, 205px);
+      padding: 6px 9px 7px;
+      border-color: rgba(137, 255, 178, 0.28);
+      background:
+        linear-gradient(180deg, rgba(8, 29, 19, 0.92), rgba(4, 16, 12, 0.88));
+      box-shadow:
+        0 9px 24px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .hero-health::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -6px;
+      width: 10px;
+      height: 10px;
+      border-right: 1px solid rgba(137, 255, 178, 0.22);
+      border-bottom: 1px solid rgba(137, 255, 178, 0.22);
+      background: rgba(5, 20, 14, 0.93);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    /* Нижняя зона боя. */
+    .battle-bottom {
+      right: 8px;
+      bottom: calc(81px + env(safe-area-inset-bottom));
+      left: 8px;
+    }
+
+    .battle-message {
+      width: min(100%, 470px);
+      min-height: 32px;
+      padding: 7px 11px;
+      border-radius: 12px;
+      background: rgba(4, 13, 14, 0.72);
+      font-size: 10px;
+    }
+
+    .loot-button {
+      position: absolute;
+      left: 50%;
+      bottom: calc(118px + env(safe-area-inset-bottom));
+      z-index: 34;
+      display: flex;
+      width: 78px;
+      height: 64px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      border: 1px solid rgba(255, 222, 106, 0.48);
+      border-radius: 20px 20px 16px 16px;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255, 241, 153, 0.28), transparent 44%),
+        linear-gradient(180deg, rgba(67, 44, 13, 0.96), rgba(24, 18, 11, 0.96));
+      box-shadow:
+        0 9px 24px rgba(0, 0, 0, 0.36),
+        0 0 20px rgba(255, 204, 75, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.13);
+      color: #fff1b4;
+      font: inherit;
+      transform: translateX(-50%);
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .loot-button:active {
+      transform: translateX(-50%) scale(0.96);
+    }
+
+    .loot-icon {
+      font-size: 27px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
+    }
+
+    .loot-label {
+      font-size: 8px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+    }
+
+    /* Основные игровые разделы. Экипировка находится в "Герое". */
+    .game-nav {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 44;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      min-height: calc(72px + env(safe-area-inset-bottom));
+      padding:
+        6px
+        max(5px, env(safe-area-inset-right))
+        calc(6px + env(safe-area-inset-bottom))
+        max(5px, env(safe-area-inset-left));
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      background:
+        linear-gradient(180deg, rgba(10, 29, 26, 0.83), rgba(3, 11, 13, 0.98));
+      box-shadow:
+        0 -13px 34px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      pointer-events: auto;
+    }
+
+    .game-nav-button {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 4px 1px 3px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: rgba(230, 241, 237, 0.68);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .game-nav-icon {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      font-size: 17px;
+      line-height: 1;
+      transition: 0.18s ease;
+    }
+
+    .game-nav-label {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 7px;
+      font-weight: 900;
+      letter-spacing: 0.015em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .game-nav-button.active {
+      color: #f5ffd6;
+    }
+
+    .game-nav-button.active .game-nav-icon {
+      border-color: rgba(213, 255, 112, 0.34);
+      background:
+        linear-gradient(180deg, rgba(161, 218, 62, 0.34), rgba(51, 123, 54, 0.27));
+      box-shadow:
+        0 0 18px rgba(157, 229, 63, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .game-nav-button.active::before {
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      width: 29px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e4ff78, #71dc66);
+      box-shadow: 0 0 9px rgba(177, 239, 83, 0.68);
+      transform: translateX(-50%);
+    }
+
+    /* Полноэкранные разделы поверх боя. */
+    .game-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 42;
+      display: flex;
+      flex-direction: column;
+      padding:
+        calc(10px + env(safe-area-inset-top))
+        10px
+        calc(80px + env(safe-area-inset-bottom));
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(11, 32, 26, 0.76), rgba(3, 12, 13, 0.96)),
+        url("assets/forest_bg.png?v=6") center / cover no-repeat;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: auto;
+    }
+
+    .game-screen.hidden {
+      opacity: 0;
+      transform: translateY(18px);
+      pointer-events: none;
+    }
+
+    .screen-header {
+      display: grid;
+      grid-template-columns: 38px 1fr 38px;
+      align-items: center;
+      min-height: 44px;
+      margin-bottom: 8px;
+    }
+
+    .screen-title {
+      font-size: 18px;
+      font-weight: 950;
+      letter-spacing: 0.02em;
+      text-align: center;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.44);
+    }
+
+    .screen-close {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      background: rgba(5, 16, 16, 0.7);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .screen-header-spacer {
+      width: 36px;
+      height: 36px;
+    }
+
+    .hero-summary {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 9px;
+      padding: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      background: rgba(5, 18, 18, 0.76);
+      box-shadow:
+        0 9px 24px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-summary-main {
+      min-width: 0;
+    }
+
+    .hero-summary-level {
+      margin-bottom: 5px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .hero-summary-xp {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(11, 44, 58, 0.93);
+    }
+
+    .hero-summary-xp-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #44b8ee, #8ae3ff);
+      transition: width 0.22s ease;
+    }
+
+    .hero-summary-stat {
+      min-width: 62px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      text-align: center;
+    }
+
+    .hero-summary-stat span {
+      display: block;
+      margin-bottom: 2px;
+      color: rgba(239, 246, 246, 0.66);
+      font-size: 7px;
+      font-weight: 850;
+      letter-spacing: 0.06em;
+    }
+
+    .hero-summary-stat strong {
+      color: #fff2a3;
+      font-size: 12px;
+    }
+
+    .equipment-board {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 46%, rgba(229, 255, 152, 0.13), transparent 30%),
+        linear-gradient(180deg, rgba(9, 29, 25, 0.64), rgba(3, 12, 13, 0.86));
+      box-shadow:
+        0 16px 35px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .equipment-hero {
+      position: absolute;
+      left: 50%;
+      bottom: 8%;
+      width: min(48%, 230px);
+      height: 75%;
+      object-fit: contain;
+      object-position: center bottom;
+      filter: drop-shadow(0 14px 12px rgba(0, 0, 0, 0.44));
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .equipment-bm {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      z-index: 3;
+      padding: 5px 11px;
+      border: 1px solid rgba(255, 227, 119, 0.3);
+      border-radius: 999px;
+      background: rgba(27, 21, 11, 0.74);
+      color: #ffe987;
+      font-size: 10px;
+      font-weight: 950;
+      transform: translateX(-50%);
+      backdrop-filter: blur(8px);
+    }
+
+    .equipment-column {
+      position: absolute;
+      top: 12%;
+      bottom: 6%;
+      z-index: 4;
+      display: flex;
+      width: 31%;
+      flex-direction: column;
+      justify-content: space-around;
+      gap: 4px;
+    }
+
+    .equipment-column.left {
+      left: 3%;
+    }
+
+    .equipment-column.right {
+      right: 3%;
+    }
+
+    .equipment-slot {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      min-height: 49px;
+      padding: 4px 6px;
+      border: 1px solid rgba(255, 227, 121, 0.2);
+      border-radius: 13px;
+      background:
+        linear-gradient(180deg, rgba(15, 31, 27, 0.91), rgba(5, 16, 16, 0.88));
+      box-shadow:
+        0 7px 16px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      color: #fff;
+      text-align: left;
+    }
+
+    .equipment-column.right .equipment-slot {
+      grid-template-columns: minmax(0, 1fr) 40px;
+      text-align: right;
+    }
+
+    .equipment-column.right .slot-icon {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .equipment-column.right .slot-copy {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .slot-icon {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border: 1px solid rgba(255, 223, 107, 0.26);
+      border-radius: 11px;
+      background:
+        radial-gradient(circle at 50% 25%, rgba(255, 245, 169, 0.18), transparent 55%),
+        rgba(43, 38, 22, 0.72);
+      font-size: 20px;
+    }
+
+    .slot-copy {
+      min-width: 0;
+    }
+
+    .slot-name {
+      display: block;
+      overflow: hidden;
+      color: rgba(255, 244, 202, 0.9);
+      font-size: 8px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .slot-state {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: rgba(225, 237, 234, 0.5);
+      font-size: 7px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .coming-content {
+      display: grid;
+      flex: 1;
+      place-items: center;
+      text-align: center;
+    }
+
+    .coming-card,
+    .loot-card {
+      width: min(92%, 330px);
+      padding: 22px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 22px;
+      background: rgba(5, 18, 18, 0.85);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(12px);
+    }
+
+    .coming-icon {
+      margin-bottom: 10px;
+      font-size: 42px;
+    }
+
+    .coming-title {
+      margin-bottom: 7px;
+      color: #fff1a6;
+      font-size: 20px;
+      font-weight: 950;
+    }
+
+    .coming-text {
+      color: rgba(237, 246, 243, 0.72);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .loot-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 58;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(3, 9, 11, 0.72);
+      opacity: 1;
+      transition: opacity 0.2s ease;
+      backdrop-filter: blur(7px);
+      pointer-events: auto;
+    }
+
+    .loot-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loot-card {
+      text-align: center;
+    }
+
+    .loot-card-icon {
+      margin-bottom: 7px;
+      font-size: 52px;
+    }
+
+    .loot-card-title {
+      margin-bottom: 8px;
+      color: #ffe486;
+      font-size: 21px;
+      font-weight: 950;
+    }
+
+    .loot-card-text {
+      margin-bottom: 16px;
+      color: rgba(238, 247, 244, 0.72);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .loot-card-button {
+      width: 100%;
+      padding: 11px 14px;
+      border: 0;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #bce854, #5bc96b);
+      color: #09200d;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    @media (max-width: 430px) {
+      .fighters-layer {
+        bottom: calc(126px + env(safe-area-inset-bottom));
+      }
+
+      .hero-health {
+        bottom: calc(6% + 46vw + 7px);
+        width: 91%;
+      }
+
+      .game-nav {
+        min-height: calc(68px + env(safe-area-inset-bottom));
+        padding-top: 5px;
+      }
+
+      .game-nav-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 16px;
+      }
+
+      .game-nav-label {
+        font-size: 6.4px;
+      }
+
+      .battle-bottom {
+        bottom: calc(76px + env(safe-area-inset-bottom));
+      }
+
+      .loot-button {
+        bottom: calc(105px + env(safe-area-inset-bottom));
+        width: 68px;
+        height: 56px;
+      }
+
+      .loot-icon {
+        font-size: 23px;
+      }
+
+      .equipment-slot {
+        grid-template-columns: 34px minmax(0, 1fr);
+        min-height: 43px;
+        padding: 3px 4px;
+      }
+
+      .equipment-column.right .equipment-slot {
+        grid-template-columns: minmax(0, 1fr) 34px;
+      }
+
+      .slot-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 17px;
+      }
+
+      .slot-name {
+        font-size: 7px;
+      }
+
+      .slot-state {
+        font-size: 6px;
+      }
+    }
+
+    @media (max-height: 640px) {
+      .fighters-layer {
+        bottom: calc(116px + env(safe-area-inset-bottom));
+      }
+
+      .hero-health {
+        bottom: calc(5% + clamp(130px, 35vw, 185px) + 5px);
+      }
+
+      .loot-button {
+        bottom: calc(98px + env(safe-area-inset-bottom));
+      }
+
+      .equipment-column {
+        top: 9%;
+        bottom: 3%;
+      }
+
+      .equipment-slot {
+        min-height: 39px;
+      }
+    }
+
   </style>
 </head>
 
@@ -959,7 +1587,7 @@
           <img
             class="fighter-sprite hero-sprite"
             id="heroSprite"
-            src="assets/hero.png?v=5"
+            src="assets/hero.png?v=6"
             alt="Грибной воин"
           >
           <div class="hero-health">
@@ -979,7 +1607,7 @@
           <img
             class="fighter-sprite enemy-sprite"
             id="enemySprite"
-            src="assets/slime.png?v=5"
+            src="assets/slime.png?v=6"
             alt="Монстр"
           >
           <div class="fighter-name" id="enemyNameplate">Слизень</div>
@@ -987,9 +1615,9 @@
       </div>
 
       <div class="effects-layer">
-        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=5" alt="">
-        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=5" alt="">
-        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=5" alt="">
+        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=6" alt="">
+        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=6" alt="">
+        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=6" alt="">
         <div class="damage-number" id="damageNumber">-10</div>
         <div class="hero-hit-flash" id="heroHitFlash"></div>
       </div>
@@ -997,6 +1625,202 @@
       <div class="battle-bottom">
         <div class="battle-message" id="message">
           Подключаемся к серверу…
+        </div>
+      </div>
+
+
+      <button class="loot-button" id="lootButton" type="button" aria-label="Открыть сундук">
+        <span class="loot-icon">🧰</span>
+        <span class="loot-label">СУНДУК</span>
+      </button>
+
+      <nav class="game-nav" aria-label="Основные игровые разделы">
+        <button class="game-nav-button" type="button" data-screen="hero" aria-label="Герой">
+          <span class="game-nav-icon">🍄</span>
+          <span class="game-nav-label">ГЕРОЙ</span>
+        </button>
+
+        <button class="game-nav-button" type="button" data-screen="companions" aria-label="Спутники">
+          <span class="game-nav-icon">🐾</span>
+          <span class="game-nav-label">СПУТНИКИ</span>
+        </button>
+
+        <button class="game-nav-button active" type="button" data-screen="battle" aria-label="Бой">
+          <span class="game-nav-icon">⚔️</span>
+          <span class="game-nav-label">БОЙ</span>
+        </button>
+
+        <button class="game-nav-button" type="button" data-screen="trials" aria-label="Испытания">
+          <span class="game-nav-icon">🏰</span>
+          <span class="game-nav-label">ИСПЫТАНИЯ</span>
+        </button>
+
+        <button class="game-nav-button" type="button" data-screen="clan" aria-label="Клан">
+          <span class="game-nav-icon">🏳️</span>
+          <span class="game-nav-label">КЛАН</span>
+        </button>
+
+        <button class="game-nav-button" type="button" data-screen="shop" aria-label="Магазин">
+          <span class="game-nav-icon">🛒</span>
+          <span class="game-nav-label">МАГАЗИН</span>
+        </button>
+      </nav>
+
+      <section class="game-screen hidden" id="heroScreen" aria-label="Экипировка героя">
+        <header class="screen-header">
+          <button class="screen-close" type="button" data-close-screen aria-label="Вернуться в бой">‹</button>
+          <div class="screen-title">Герой</div>
+          <div class="screen-header-spacer"></div>
+        </header>
+
+        <div class="hero-summary">
+          <div class="hero-summary-main">
+            <div class="hero-summary-level">
+              Уровень <span id="heroScreenLevel">1</span>
+            </div>
+            <div class="hero-summary-xp">
+              <div class="hero-summary-xp-fill" id="heroScreenXp"></div>
+            </div>
+          </div>
+
+          <div class="hero-summary-stat">
+            <span>БМ</span>
+            <strong id="heroScreenBm">10</strong>
+          </div>
+
+          <div class="hero-summary-stat">
+            <span>ЗОЛОТО</span>
+            <strong id="heroScreenGold">0</strong>
+          </div>
+        </div>
+
+        <div class="equipment-board">
+          <div class="equipment-bm">
+            БМ <span id="equipmentBm">10</span>
+          </div>
+
+          <img
+            class="equipment-hero"
+            src="assets/hero.png?v=6"
+            alt="Грибной герой"
+          >
+
+          <div class="equipment-column left">
+            <div class="equipment-slot">
+              <span class="slot-icon">🪖</span>
+              <span class="slot-copy">
+                <span class="slot-name">ШЛЕМ</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">🛡️</span>
+              <span class="slot-copy">
+                <span class="slot-name">НАГРУДНИК</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">🧤</span>
+              <span class="slot-copy">
+                <span class="slot-name">ПЕРЧАТКИ</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">👖</span>
+              <span class="slot-copy">
+                <span class="slot-name">ШТАНЫ</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">🥾</span>
+              <span class="slot-copy">
+                <span class="slot-name">ОБУВЬ</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="equipment-column right">
+            <div class="equipment-slot">
+              <span class="slot-icon">🗡️</span>
+              <span class="slot-copy">
+                <span class="slot-name">ОРУЖИЕ</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">📿</span>
+              <span class="slot-copy">
+                <span class="slot-name">ОЖЕРЕЛЬЕ</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">💍</span>
+              <span class="slot-copy">
+                <span class="slot-name">КОЛЬЦО</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">🧷</span>
+              <span class="slot-copy">
+                <span class="slot-name">ПОЯС</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+
+            <div class="equipment-slot">
+              <span class="slot-icon">🔮</span>
+              <span class="slot-copy">
+                <span class="slot-name">ТАЛИСМАН</span>
+                <span class="slot-state">Пусто</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="game-screen hidden" id="comingScreen" aria-label="Игровой раздел">
+        <header class="screen-header">
+          <button class="screen-close" type="button" data-close-screen aria-label="Вернуться в бой">‹</button>
+          <div class="screen-title" id="comingHeader">Раздел</div>
+          <div class="screen-header-spacer"></div>
+        </header>
+
+        <div class="coming-content">
+          <div class="coming-card">
+            <div class="coming-icon" id="comingIcon">✨</div>
+            <div class="coming-title" id="comingTitle">Скоро</div>
+            <div class="coming-text" id="comingText">
+              Этот игровой раздел подключим после системы экипировки.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="loot-overlay hidden" id="lootOverlay">
+        <div class="loot-card">
+          <div class="loot-card-icon">🧰</div>
+          <div class="loot-card-title">Сундук экипировки</div>
+          <div class="loot-card-text">
+            Здесь будут выпадать предметы с выбором:
+            надеть новый предмет или продать его за золото.
+            Механику подключим следующим этапом.
+          </div>
+          <button class="loot-card-button" id="lootCloseButton" type="button">
+            Понятно
+          </button>
         </div>
       </div>
 
@@ -1026,7 +1850,7 @@
   <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
-    const ASSET_VERSION = "v5";
+    const ASSET_VERSION = "v6";
 
     const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
 
@@ -1110,7 +1934,12 @@
       loadingText: document.getElementById("loadingText"),
       defeatOverlay: document.getElementById("defeatOverlay"),
       defeatText: document.getElementById("defeatText"),
-      respawnButton: document.getElementById("respawnButton")
+      respawnButton: document.getElementById("respawnButton"),
+      heroScreenLevel: document.getElementById("heroScreenLevel"),
+      heroScreenXp: document.getElementById("heroScreenXp"),
+      heroScreenBm: document.getElementById("heroScreenBm"),
+      heroScreenGold: document.getElementById("heroScreenGold"),
+      equipmentBm: document.getElementById("equipmentBm")
     };
 
     let player = null;
@@ -1285,6 +2114,12 @@
       elements.xpText.textContent =
         `${experience.current} / ${experience.required}`;
       elements.xpBar.style.width = `${experiencePercent}%`;
+
+      elements.heroScreenLevel.textContent = experience.level;
+      elements.heroScreenXp.style.width = `${experiencePercent}%`;
+      elements.heroScreenBm.textContent = formatNumber(player.power);
+      elements.heroScreenGold.textContent = formatNumber(player.gold);
+      elements.equipmentBm.textContent = formatNumber(player.power);
 
       elements.enemyHp.textContent = player.enemy_hp;
       elements.enemyMaxHp.textContent = player.enemy_max_hp;
@@ -1670,6 +2505,118 @@
         elements.message.textContent = `❌ ${error.message}`;
       }
     }
+
+
+    const heroScreen = document.getElementById("heroScreen");
+    const comingScreen = document.getElementById("comingScreen");
+    const comingHeader = document.getElementById("comingHeader");
+    const comingIcon = document.getElementById("comingIcon");
+    const comingTitle = document.getElementById("comingTitle");
+    const comingText = document.getElementById("comingText");
+    const lootButton = document.getElementById("lootButton");
+    const lootOverlay = document.getElementById("lootOverlay");
+    const lootCloseButton = document.getElementById("lootCloseButton");
+    const navButtons = [...document.querySelectorAll(".game-nav-button")];
+
+    const SCREEN_COPY = {
+      companions: {
+        title: "Спутники",
+        icon: "🐾",
+        heading: "Спутники",
+        text: "Здесь будут питомцы и боевые помощники героя."
+      },
+      trials: {
+        title: "Испытания",
+        icon: "🏰",
+        heading: "Испытания",
+        text: "Здесь появятся боссы, подземелья и ежедневные испытания."
+      },
+      clan: {
+        title: "Клан",
+        icon: "🏳️",
+        heading: "Клан",
+        text: "Здесь будут клан, совместные задания и клановые награды."
+      },
+      shop: {
+        title: "Магазин",
+        icon: "🛒",
+        heading: "Магазин",
+        text: "Здесь будут игровые товары и специальные предложения."
+      }
+    };
+
+    function setActiveNav(screenName) {
+      navButtons.forEach((button) => {
+        button.classList.toggle(
+          "active",
+          button.dataset.screen === screenName
+        );
+      });
+    }
+
+    function openBattleScreen() {
+      heroScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      setActiveNav("battle");
+    }
+
+    function openHeroScreen() {
+      comingScreen.classList.add("hidden");
+      heroScreen.classList.remove("hidden");
+      setActiveNav("hero");
+    }
+
+    function openComingScreen(screenName) {
+      const copy = SCREEN_COPY[screenName];
+      if (!copy) {
+        return;
+      }
+
+      heroScreen.classList.add("hidden");
+      comingHeader.textContent = copy.title;
+      comingIcon.textContent = copy.icon;
+      comingTitle.textContent = copy.heading;
+      comingText.textContent = copy.text;
+      comingScreen.classList.remove("hidden");
+      setActiveNav(screenName);
+    }
+
+    navButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const screenName = button.dataset.screen;
+
+        if (screenName === "battle") {
+          openBattleScreen();
+          return;
+        }
+
+        if (screenName === "hero") {
+          openHeroScreen();
+          return;
+        }
+
+        openComingScreen(screenName);
+      });
+    });
+
+    document.querySelectorAll("[data-close-screen]").forEach((button) => {
+      button.addEventListener("click", openBattleScreen);
+    });
+
+    lootButton.addEventListener("click", () => {
+      lootOverlay.classList.remove("hidden");
+    });
+
+    lootCloseButton.addEventListener("click", () => {
+      lootOverlay.classList.add("hidden");
+    });
+
+    lootOverlay.addEventListener("click", (event) => {
+      if (event.target === lootOverlay) {
+        lootOverlay.classList.add("hidden");
+      }
+    });
+
 
     elements.respawnButton.addEventListener("click", respawnHero);
 
