@@ -35,8 +35,8 @@ ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
 STARTER_CHESTS = 3
 MAX_CHEST_LEVEL = 25
-CHEST_UPGRADE_BASE_COST = 300
-CHEST_UPGRADE_COST_GROWTH = 1.48
+CHEST_UPGRADE_BASE_COST = 500
+CHEST_UPGRADE_COST_GROWTH = 1.72
 OFFLINE_MAX_SECONDS = 4 * 60 * 60
 OFFLINE_CHEST_INTERVAL = 20 * 60
 MAX_SAFE_STAT = 9_000_000_000_000_000
@@ -479,28 +479,83 @@ def calculate_chest_upgrade_cost(chest_level: int) -> int | None:
 
 def chest_rarity_weights(chest_level: int) -> list[float]:
     chest_level = clamp_int(chest_level, 1, MAX_CHEST_LEVEL)
+
     if chest_level <= 3:
-        return [72, 25, 3, 0, 0, 0, 0, 0, 0]
+        return [79, 20, 1, 0, 0, 0, 0, 0, 0]
+
     if chest_level <= 7:
-        return [55, 32, 11, 2, 0, 0, 0, 0, 0]
+        return [63, 29, 7, 0.9, 0.1, 0, 0, 0, 0]
+
     if chest_level <= 12:
-        return [38, 34, 21, 6, 1, 0, 0, 0, 0]
+        return [48, 31, 16, 4.2, 0.7, 0.1, 0, 0, 0]
+
     if chest_level <= 16:
-        return [25, 31, 28, 12, 3.5, 0.5, 0, 0, 0]
+        return [38, 30, 22, 8, 1.7, 0.28, 0.02, 0, 0]
+
     if chest_level <= 19:
-        return [15, 25, 31, 20, 7, 2, 0, 0, 0]
+        return [30, 29, 25, 12, 3.2, 0.7, 0.1, 0, 0]
+
     if chest_level <= 22:
-        return [9, 18, 28, 25, 13, 5, 2, 0, 0]
-    if chest_level <= 24:
-        return [5, 12, 22, 25, 18, 10, 5, 3, 0]
-    return [3, 8, 18, 23, 20, 13, 8, 5, 2]
+        return [
+            23.75,
+            28,
+            28,
+            15.5,
+            3.2,
+            1.2,
+            0.3,
+            0.05,
+            0,
+        ]
+
+    if chest_level == 23:
+        return [
+            20.475,
+            27.5,
+            29.5,
+            17.75,
+            2.8,
+            1.5,
+            0.4,
+            0.07,
+            0.005,
+        ]
+
+    if chest_level == 24:
+        return [
+            18.77,
+            26.5,
+            30,
+            19.02,
+            3,
+            2,
+            0.6,
+            0.1,
+            0.01,
+        ]
+
+    return [
+        17.015,
+        25.5,
+        29.5,
+        21.315,
+        3.2,
+        2.5,
+        0.8,
+        0.15,
+        0.02,
+    ]
+
+
+
+
 
 
 def chest_rarity_chances(chest_level: int) -> dict:
     weights = chest_rarity_weights(chest_level)
     total = sum(weights) or 1
     return {
-        rarity["key"]: round(weight * 100 / total, 2)
+        rarity["key"]: round(weight * 100 / total, 3)
         for rarity, weight in zip(RARITIES, weights)
     }
 
