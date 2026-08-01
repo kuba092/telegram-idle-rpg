@@ -63,7 +63,7 @@
           rgba(4, 12, 12, 0.08) 62%,
           rgba(3, 8, 10, 0.62) 100%
         ),
-        url("assets/forest_bg.png?v=7") center / cover no-repeat;
+        url("assets/forest_bg.png?v=8") center / cover no-repeat;
       isolation: isolate;
     }
 
@@ -1098,7 +1098,7 @@
       overflow: hidden;
       background:
         linear-gradient(180deg, rgba(11, 32, 26, 0.76), rgba(3, 12, 13, 0.96)),
-        url("assets/forest_bg.png?v=7") center / cover no-repeat;
+        url("assets/forest_bg.png?v=8") center / cover no-repeat;
       opacity: 1;
       transform: translateY(0);
       transition: opacity 0.2s ease, transform 0.2s ease;
@@ -1529,7 +1529,7 @@
       z-index: 70;
       background:
         linear-gradient(180deg, rgba(8, 27, 22, 0.97), rgba(3, 12, 13, 0.99)),
-        url("assets/forest_bg.png?v=7") center / cover no-repeat;
+        url("assets/forest_bg.png?v=8") center / cover no-repeat;
     }
 
     .game-nav {
@@ -1651,6 +1651,292 @@
       }
     }
 
+  
+    /* ===== V4: экипировка горизонтально на главном экране ===== */
+
+    .loot-button {
+      display: none !important;
+    }
+
+    .fighters-layer {
+      bottom: calc(164px + env(safe-area-inset-bottom));
+    }
+
+    .hero-health {
+      bottom: calc(6% + clamp(150px, 29vw, 285px) + 10px);
+    }
+
+    .battle-bottom {
+      right: 8px;
+      bottom: calc(133px + env(safe-area-inset-bottom));
+      left: 8px;
+    }
+
+    .battle-message {
+      width: min(100%, 470px);
+      min-height: 30px;
+      padding: 6px 10px;
+      border-radius: 11px;
+      font-size: 10px;
+    }
+
+    .equipment-dock {
+      position: absolute;
+      right: 0;
+      bottom: calc(72px + env(safe-area-inset-bottom));
+      left: 0;
+      z-index: 43;
+      display: flex;
+      justify-content: center;
+      padding: 4px 5px 5px;
+      pointer-events: auto;
+    }
+
+    .equipment-dock-inner {
+      display: grid;
+      width: min(100%, 540px);
+      grid-template-columns:
+        repeat(5, minmax(0, 1fr))
+        minmax(44px, 1.35fr)
+        repeat(5, minmax(0, 1fr));
+      align-items: end;
+      gap: 3px;
+      padding: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(8, 25, 22, 0.82), rgba(3, 12, 13, 0.92));
+      box-shadow:
+        0 10px 26px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(13px);
+      -webkit-backdrop-filter: blur(13px);
+    }
+
+    .gear-slot,
+    .dock-chest {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      border: 1px solid rgba(255, 222, 112, 0.2);
+      background:
+        radial-gradient(circle at 50% 20%, rgba(255, 241, 164, 0.12), transparent 52%),
+        linear-gradient(180deg, rgba(37, 39, 28, 0.9), rgba(10, 20, 18, 0.94));
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .gear-slot {
+      width: 100%;
+      height: 37px;
+      border-radius: 10px;
+    }
+
+    .gear-slot:active {
+      transform: scale(0.94);
+    }
+
+    .gear-icon {
+      font-size: 18px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+    }
+
+    .gear-empty {
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      width: 5px;
+      height: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 50%;
+      background: rgba(119, 133, 125, 0.76);
+    }
+
+    .dock-chest {
+      height: 48px;
+      margin-top: -8px;
+      border-color: rgba(255, 217, 85, 0.48);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 50% 15%, rgba(255, 245, 170, 0.3), transparent 48%),
+        linear-gradient(180deg, rgba(94, 61, 15, 0.98), rgba(35, 24, 12, 0.98));
+      box-shadow:
+        0 0 18px rgba(255, 205, 61, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    }
+
+    .dock-chest:active {
+      transform: scale(0.95);
+    }
+
+    .dock-chest-icon {
+      margin-top: 2px;
+      font-size: 22px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+    }
+
+    .dock-chest-label {
+      margin-top: -2px;
+      color: #ffeaa0;
+      font-size: 5.8px;
+      font-weight: 950;
+      letter-spacing: 0.05em;
+    }
+
+    body.section-open .equipment-dock {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .hero-profile-card {
+      position: relative;
+      display: flex;
+      width: min(100%, 560px);
+      flex: 1;
+      min-height: 0;
+      margin: 0 auto;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      overflow: hidden;
+      padding: 18px 16px 22px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(218, 255, 138, 0.15), transparent 32%),
+        linear-gradient(180deg, rgba(9, 30, 25, 0.94), rgba(3, 12, 13, 0.98));
+      box-shadow:
+        0 16px 35px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .hero-profile-glow {
+      position: absolute;
+      top: 13%;
+      left: 50%;
+      width: 58%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(230, 255, 154, 0.22), transparent 67%);
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .hero-profile-image {
+      position: relative;
+      z-index: 1;
+      width: min(62%, 280px);
+      max-height: 68%;
+      object-fit: contain;
+      filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.42));
+    }
+
+    .hero-profile-power {
+      position: relative;
+      z-index: 2;
+      margin-top: -4px;
+      padding: 7px 13px;
+      border: 1px solid rgba(255, 226, 115, 0.3);
+      border-radius: 999px;
+      background: rgba(24, 20, 10, 0.8);
+      color: #fff0aa;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .hero-profile-power strong {
+      color: #ffe36d;
+      font-size: 14px;
+    }
+
+    .hero-profile-note {
+      position: relative;
+      z-index: 2;
+      max-width: 360px;
+      margin-top: 11px;
+      color: rgba(231, 242, 238, 0.68);
+      font-size: 10px;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    @media (max-width: 430px) {
+      .fighters-layer {
+        bottom: calc(154px + env(safe-area-inset-bottom));
+      }
+
+      .hero-health {
+        bottom: calc(6% + 46vw + 7px);
+      }
+
+      .battle-bottom {
+        bottom: calc(124px + env(safe-area-inset-bottom));
+      }
+
+      .equipment-dock {
+        bottom: calc(68px + env(safe-area-inset-bottom));
+        padding-right: 3px;
+        padding-left: 3px;
+      }
+
+      .equipment-dock-inner {
+        gap: 2px;
+        padding: 4px;
+        border-radius: 14px;
+      }
+
+      .gear-slot {
+        height: 33px;
+        border-radius: 8px;
+      }
+
+      .gear-icon {
+        font-size: 15px;
+      }
+
+      .dock-chest {
+        height: 43px;
+        min-width: 40px;
+        margin-top: -7px;
+        border-radius: 12px;
+      }
+
+      .dock-chest-icon {
+        font-size: 19px;
+      }
+
+      .dock-chest-label {
+        font-size: 5px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .gear-icon {
+        font-size: 14px;
+      }
+
+      .equipment-dock-inner {
+        gap: 1px;
+        padding: 3px;
+      }
+    }
+
+    @media (max-height: 640px) {
+      .fighters-layer {
+        bottom: calc(146px + env(safe-area-inset-bottom));
+      }
+
+      .battle-bottom {
+        bottom: calc(116px + env(safe-area-inset-bottom));
+      }
+    }
+
   </style>
 </head>
 
@@ -1716,7 +2002,7 @@
           <img
             class="fighter-sprite hero-sprite"
             id="heroSprite"
-            src="assets/hero.png?v=7"
+            src="assets/hero.png?v=8"
             alt="Грибной воин"
           >
           <div class="hero-health">
@@ -1736,7 +2022,7 @@
           <img
             class="fighter-sprite enemy-sprite"
             id="enemySprite"
-            src="assets/slime.png?v=7"
+            src="assets/slime.png?v=8"
             alt="Монстр"
           >
           <div class="fighter-name" id="enemyNameplate">Слизень</div>
@@ -1744,9 +2030,9 @@
       </div>
 
       <div class="effects-layer">
-        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=7" alt="">
-        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=7" alt="">
-        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=7" alt="">
+        <img class="effect slash-effect" id="slashEffect" src="assets/slash.png?v=8" alt="">
+        <img class="effect hit-effect" id="hitEffect" src="assets/hit.png?v=8" alt="">
+        <img class="effect spore-effect" id="sporeEffect" src="assets/spore_burst.png?v=8" alt="">
         <div class="damage-number" id="damageNumber">-10</div>
         <div class="hero-hit-flash" id="heroHitFlash"></div>
       </div>
@@ -1757,13 +2043,58 @@
         </div>
       </div>
 
+      <div class="equipment-dock" aria-label="Экипировка героя">
+        <div class="equipment-dock-inner">
+          <button class="gear-slot" type="button" data-gear-name="Шлем" aria-label="Шлем">
+            <span class="gear-icon">🪖</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Нагрудник" aria-label="Нагрудник">
+            <span class="gear-icon">🛡️</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Перчатки" aria-label="Перчатки">
+            <span class="gear-icon">🧤</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Штаны" aria-label="Штаны">
+            <span class="gear-icon">👖</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Обувь" aria-label="Обувь">
+            <span class="gear-icon">🥾</span>
+            <span class="gear-empty"></span>
+          </button>
 
-      <button class="loot-button" id="lootButton" type="button" aria-label="Открыть сундук">
-        <span class="loot-icon">🧰</span>
-        <span class="loot-label">СУНДУК</span>
-      </button>
+          <button class="dock-chest" id="lootButton" type="button" aria-label="Открыть сундук">
+            <span class="dock-chest-icon">🧰</span>
+            <span class="dock-chest-label">СУНДУК</span>
+          </button>
 
-      <nav class="game-nav" aria-label="Основные игровые разделы">
+          <button class="gear-slot" type="button" data-gear-name="Оружие" aria-label="Оружие">
+            <span class="gear-icon">🗡️</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Ожерелье" aria-label="Ожерелье">
+            <span class="gear-icon">📿</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Кольцо" aria-label="Кольцо">
+            <span class="gear-icon">💍</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Пояс" aria-label="Пояс">
+            <span class="gear-icon">🧷</span>
+            <span class="gear-empty"></span>
+          </button>
+          <button class="gear-slot" type="button" data-gear-name="Талисман" aria-label="Талисман">
+            <span class="gear-icon">🔮</span>
+            <span class="gear-empty"></span>
+          </button>
+        </div>
+      </div>
+
+<nav class="game-nav" aria-label="Основные игровые разделы">
         <button class="game-nav-button" type="button" data-screen="hero" aria-label="Герой">
           <span class="game-nav-icon">🍄</span>
           <span class="game-nav-label">ГЕРОЙ</span>
@@ -1795,7 +2126,7 @@
         </button>
       </nav>
 
-      <section class="game-screen hidden" id="heroScreen" aria-label="Экипировка героя">
+      <section class="game-screen hidden" id="heroScreen" aria-label="Герой">
         <header class="screen-header">
           <button class="screen-close" type="button" data-close-screen aria-label="Вернуться в бой">‹</button>
           <div class="screen-title">Герой</div>
@@ -1823,99 +2154,19 @@
           </div>
         </div>
 
-        <div class="equipment-board">
-          <div class="equipment-bm">
-            БМ <span id="equipmentBm">10</span>
-          </div>
-
+        <div class="hero-profile-card">
+          <div class="hero-profile-glow"></div>
           <img
-            class="equipment-hero"
-            src="assets/hero.png?v=7"
+            class="hero-profile-image"
+            src="assets/hero.png?v=8"
             alt="Грибной герой"
           >
-
-          <div class="equipment-column left">
-            <div class="equipment-slot">
-              <span class="slot-icon">🪖</span>
-              <span class="slot-copy">
-                <span class="slot-name">ШЛЕМ</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">🛡️</span>
-              <span class="slot-copy">
-                <span class="slot-name">НАГРУДНИК</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">🧤</span>
-              <span class="slot-copy">
-                <span class="slot-name">ПЕРЧАТКИ</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">👖</span>
-              <span class="slot-copy">
-                <span class="slot-name">ШТАНЫ</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">🥾</span>
-              <span class="slot-copy">
-                <span class="slot-name">ОБУВЬ</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
+          <div class="hero-profile-power">
+            Боевая мощь <strong id="equipmentBm">10</strong>
           </div>
-
-          <div class="equipment-column right">
-            <div class="equipment-slot">
-              <span class="slot-icon">🗡️</span>
-              <span class="slot-copy">
-                <span class="slot-name">ОРУЖИЕ</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">📿</span>
-              <span class="slot-copy">
-                <span class="slot-name">ОЖЕРЕЛЬЕ</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">💍</span>
-              <span class="slot-copy">
-                <span class="slot-name">КОЛЬЦО</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">🧷</span>
-              <span class="slot-copy">
-                <span class="slot-name">ПОЯС</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
-
-            <div class="equipment-slot">
-              <span class="slot-icon">🔮</span>
-              <span class="slot-copy">
-                <span class="slot-name">ТАЛИСМАН</span>
-                <span class="slot-state">Пусто</span>
-              </span>
-            </div>
+          <div class="hero-profile-note">
+            Здесь позже будут внешность, характеристики и развитие героя.
+            Экипировка теперь находится на главном экране рядом с сундуком.
           </div>
         </div>
       </section>
@@ -1979,7 +2230,7 @@
   <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
-    const ASSET_VERSION = "v7";
+    const ASSET_VERSION = "v8";
 
     const asset = (name) => `assets/${name}?${ASSET_VERSION}`;
 
@@ -2749,6 +3000,15 @@
       }
     });
 
+
+
+    document.querySelectorAll(".gear-slot").forEach((slotButton) => {
+      slotButton.addEventListener("click", () => {
+        const gearName = slotButton.dataset.gearName || "Экипировка";
+        elements.message.classList.remove("error");
+        elements.message.textContent = `🎒 ${gearName}: слот пока пуст`;
+      });
+    });
 
     elements.respawnButton.addEventListener("click", respawnHero);
 
