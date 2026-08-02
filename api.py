@@ -930,6 +930,7 @@ def create_database() -> None:
         ("offline_pending_exp", "INTEGER NOT NULL DEFAULT 0"),
         ("progress_reached_at", "INTEGER NOT NULL DEFAULT 0"),
         ("auto_open_enabled", "INTEGER NOT NULL DEFAULT 0"),
+        ("skills_auto_enabled", "INTEGER NOT NULL DEFAULT 0"),
     )
     for column_name, definition in columns:
         add_column_if_missing(connection, column_name, definition)
