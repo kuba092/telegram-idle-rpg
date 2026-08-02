@@ -1405,6 +1405,11 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             telegram_id,
             now,
         )
+        ensure_chest_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
         player = load_player(connection, telegram_id)
         if accrue_offline:
             apply_offline_accrual(connection, player, now)
@@ -1548,6 +1553,204 @@ def build_daily_quests(player: dict) -> dict:
             },
         },
     }
+
+
+
+# CHEST_CHALLENGE_BOSS_V1
+
+CHEST_BOSS_FREE_ATTEMPTS = 3
+CHEST_BOSS_AD_ATTEMPTS = 2
+CHEST_BOSS_MAX_LEVEL = 500
+
+
+def current_chest_boss_date(
+    now: int | float | None = None,
+) -> str:
+    timestamp = time.time() if now is None else float(now)
+    return time.strftime("%Y-%m-%d", time.gmtime(timestamp))
+
+
+def calculate_chest_boss_hp(level: int) -> int:
+    level = clamp_int(level, 1, CHEST_BOSS_MAX_LEVEL)
+    value = round(80 * (1.18 ** (level - 1)))
+    return clamp_int(value, 1, MAX_SAFE_STAT)
+
+
+def calculate_chest_boss_damage(level: int) -> int:
+    level = clamp_int(level, 1, CHEST_BOSS_MAX_LEVEL)
+    value = round(5 * (1.12 ** (level - 1)))
+    return clamp_int(value, 1, MAX_SAFE_STAT)
+
+
+def calculate_chest_boss_reward(level: int) -> int:
+    level = clamp_int(level, 1, CHEST_BOSS_MAX_LEVEL)
+
+    # Уровень 1 = 2 сундука.
+    # Каждый следующий уровень даёт на 1 сундук больше.
+    return level + 1
+
+
+def ensure_chest_boss_state(
+    connection: sqlite3.Connection,
+    telegram_id: int,
+    now: int | float | None = None,
+) -> None:
+    today = current_chest_boss_date(now)
+
+    row = connection.execute(
+        """
+        SELECT chest_boss_attempt_date
+        FROM players
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    ).fetchone()
+
+    if row is None:
+        return
+
+    stored_date = str(row["chest_boss_attempt_date"] or "")
+
+    if stored_date == today:
+        return
+
+    connection.execute(
+        """
+        UPDATE players
+        SET chest_boss_attempt_date = ?,
+            chest_boss_free_attempts_used = 0,
+            chest_boss_ad_attempts_used = 0,
+            chest_boss_active = 0,
+            chest_boss_hp = 0,
+            chest_boss_max_hp = 0,
+            chest_boss_hero_hp = 0
+        WHERE telegram_id = ?
+        """,
+        (today, telegram_id),
+    )
+
+
+def build_chest_boss_state(player: dict) -> dict:
+    level = clamp_int(
+        player.get("chest_boss_level", 1),
+        1,
+        CHEST_BOSS_MAX_LEVEL,
+    )
+
+    free_used = max(
+        0,
+        int(player.get("chest_boss_free_attempts_used", 0)),
+    )
+    ad_used = max(
+        0,
+        int(player.get("chest_boss_ad_attempts_used", 0)),
+    )
+    bonus_attempts = max(
+        0,
+        int(player.get("chest_boss_bonus_attempts", 0)),
+    )
+
+    free_remaining = max(
+        0,
+        CHEST_BOSS_FREE_ATTEMPTS - free_used,
+    )
+    ads_remaining = max(
+        0,
+        CHEST_BOSS_AD_ATTEMPTS - ad_used,
+    )
+
+    active = bool(int(player.get("chest_boss_active", 0)))
+
+    return {
+        "type": "chest_boss",
+        "name": "Хранитель сундуков",
+        "level": level,
+        "max_level": CHEST_BOSS_MAX_LEVEL,
+        "active": active,
+        "boss_hp": max(
+            0,
+            int(player.get("chest_boss_hp", 0)),
+        ),
+        "boss_max_hp": max(
+            0,
+            int(player.get("chest_boss_max_hp", 0)),
+        ),
+        "boss_damage": calculate_chest_boss_damage(level),
+        "hero_hp": max(
+            0,
+            int(player.get("chest_boss_hero_hp", 0)),
+        ),
+        "hero_max_hp": max(
+            1,
+            int(player.get("hero_max_hp", 1)),
+        ),
+        "reward": {
+            "chests": calculate_chest_boss_reward(level),
+        },
+        "attempts": {
+            "free_total": CHEST_BOSS_FREE_ATTEMPTS,
+            "free_used": free_used,
+            "free_remaining": free_remaining,
+            "ad_total": CHEST_BOSS_AD_ATTEMPTS,
+            "ad_used": ad_used,
+            "ad_remaining": ads_remaining,
+            "bonus": bonus_attempts,
+            "available": free_remaining + bonus_attempts,
+        },
+        "keys": max(
+            0,
+            int(player.get("chest_boss_keys", 0)),
+        ),
+        "attempt_date": str(
+            player.get("chest_boss_attempt_date")
+            or current_chest_boss_date()
+        ),
+        "reset_timezone": "UTC",
+    }
+
+
+def consume_chest_boss_attempt(
+    connection: sqlite3.Connection,
+    player: dict,
+) -> str | None:
+    telegram_id = int(player["telegram_id"])
+
+    free_used = max(
+        0,
+        int(player.get("chest_boss_free_attempts_used", 0)),
+    )
+
+    bonus_attempts = max(
+        0,
+        int(player.get("chest_boss_bonus_attempts", 0)),
+    )
+
+    if free_used < CHEST_BOSS_FREE_ATTEMPTS:
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_free_attempts_used =
+                    chest_boss_free_attempts_used + 1
+            WHERE telegram_id = ?
+            """,
+            (telegram_id,),
+        )
+        return "free"
+
+    if bonus_attempts > 0:
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_bonus_attempts =
+                    chest_boss_bonus_attempts - 1
+            WHERE telegram_id = ?
+            """,
+            (telegram_id,),
+        )
+        return "bonus"
+
+    return None
+
 
 
 def public_equipment(player: dict) -> dict:
@@ -1703,6 +1906,7 @@ def build_player_response(player: dict, **extra) -> dict:
         **public_player,
         "equipment": equipment,
         "quests": build_daily_quests(player),
+        "chest_boss": build_chest_boss_state(player),
         "pending_loot": pending_loot,
         "pending_loot_comparison": (
             compare_loot(player, pending_loot) if pending_loot else None
@@ -2005,6 +2209,46 @@ def create_database() -> None:
         ),
         (
             "daily_all_claimed",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_level",
+            "INTEGER NOT NULL DEFAULT 1",
+        ),
+        (
+            "chest_boss_attempt_date",
+            "TEXT NOT NULL DEFAULT ''",
+        ),
+        (
+            "chest_boss_free_attempts_used",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_ad_attempts_used",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_bonus_attempts",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_keys",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_active",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_hp",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_max_hp",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "chest_boss_hero_hp",
             "INTEGER NOT NULL DEFAULT 0",
         ),
     )
@@ -3112,6 +3356,487 @@ def start_boss(x_telegram_init_data: str = Header(...)) -> dict:
         boss_started=True,
         message="👑 Реванш с боссом начался",
     )
+
+
+
+@app.get("/challenge/chest-boss")
+def get_chest_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        ensure_chest_boss_state(
+            connection,
+            telegram_id,
+            time.time(),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    return {
+        "chest_boss": build_chest_boss_state(updated),
+    }
+
+
+@app.post("/challenge/chest-boss/start")
+def start_chest_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_chest_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
+
+        current = load_player(connection, telegram_id)
+
+        if bool(int(current.get("chest_boss_active", 0))):
+            connection.commit()
+            return build_player_response(
+                current,
+                chest_boss_started=False,
+                message="Бой с Хранителем уже идёт",
+            )
+
+        attempt_type = consume_chest_boss_attempt(
+            connection,
+            current,
+        )
+
+        if attempt_type is None:
+            connection.commit()
+            return build_player_response(
+                current,
+                chest_boss_started=False,
+                no_attempts=True,
+                message="Попытки закончились",
+            )
+
+        level = clamp_int(
+            current.get("chest_boss_level", 1),
+            1,
+            CHEST_BOSS_MAX_LEVEL,
+        )
+
+        boss_hp = calculate_chest_boss_hp(level)
+        hero_hp = max(1, int(current["hero_max_hp"]))
+
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_active = 1,
+                chest_boss_hp = ?,
+                chest_boss_max_hp = ?,
+                chest_boss_hero_hp = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                boss_hp,
+                boss_hp,
+                hero_hp,
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        chest_boss_started=True,
+        attempt_type=attempt_type,
+        message=(
+            f"🧰 Хранитель сундуков — уровень {level}. "
+            f"Награда: {calculate_chest_boss_reward(level)} сундуков"
+        ),
+    )
+
+
+@app.post("/challenge/chest-boss/attack")
+def attack_chest_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_chest_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
+
+        current = load_player(connection, telegram_id)
+
+        if not bool(int(current.get("chest_boss_active", 0))):
+            connection.commit()
+            return build_player_response(
+                current,
+                chest_boss_attacked=False,
+                message="Сначала начните испытание",
+            )
+
+        level = clamp_int(
+            current.get("chest_boss_level", 1),
+            1,
+            CHEST_BOSS_MAX_LEVEL,
+        )
+
+        boss_hp = max(
+            0,
+            int(current.get("chest_boss_hp", 0)),
+        )
+        hero_hp = max(
+            0,
+            int(current.get("chest_boss_hero_hp", 0)),
+        )
+
+        hero_damage = max(1, int(current.get("damage", 1)))
+        boss_damage = calculate_chest_boss_damage(level)
+
+        crit_chance = max(
+            0.0,
+            min(
+                1.0,
+                float(
+                    calculate_equipment_stats(
+                        public_equipment(current),
+                        int(current.get("level", 1)),
+                    )["total"]["crit_chance"]
+                )
+                / 100,
+            ),
+        )
+
+        crit_damage_percent = max(
+            100,
+            int(
+                calculate_equipment_stats(
+                    public_equipment(current),
+                    int(current.get("level", 1)),
+                )["total"]["crit_damage"]
+            ),
+        )
+
+        critical = random.random() < crit_chance
+
+        outgoing_damage = hero_damage
+
+        if critical:
+            outgoing_damage = max(
+                1,
+                round(
+                    hero_damage
+                    * crit_damage_percent
+                    / 100
+                ),
+            )
+
+        boss_hp = max(0, boss_hp - outgoing_damage)
+
+        if boss_hp <= 0:
+            chest_reward = calculate_chest_boss_reward(level)
+            next_level = min(
+                CHEST_BOSS_MAX_LEVEL,
+                level + 1,
+            )
+
+            connection.execute(
+                """
+                UPDATE players
+                SET chest_boss_active = 0,
+                    chest_boss_hp = 0,
+                    chest_boss_hero_hp = 0,
+                    chest_boss_level = ?,
+                    chests = chests + ?,
+                    updated_at = ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    next_level,
+                    chest_reward,
+                    int(now),
+                    telegram_id,
+                ),
+            )
+
+            connection.commit()
+            updated = load_player(connection, telegram_id)
+
+            return build_player_response(
+                updated,
+                chest_boss_attacked=True,
+                chest_boss_victory=True,
+                critical=critical,
+                outgoing_damage=outgoing_damage,
+                chest_reward=chest_reward,
+                defeated_level=level,
+                next_level=next_level,
+                message=(
+                    f"🏆 Хранитель побеждён! "
+                    f"Получено сундуков: {chest_reward}"
+                ),
+            )
+
+        hero_hp = max(0, hero_hp - boss_damage)
+
+        if hero_hp <= 0:
+            connection.execute(
+                """
+                UPDATE players
+                SET chest_boss_active = 0,
+                    chest_boss_hp = 0,
+                    chest_boss_hero_hp = 0,
+                    updated_at = ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    int(now),
+                    telegram_id,
+                ),
+            )
+
+            connection.commit()
+            updated = load_player(connection, telegram_id)
+
+            return build_player_response(
+                updated,
+                chest_boss_attacked=True,
+                chest_boss_defeat=True,
+                critical=critical,
+                outgoing_damage=outgoing_damage,
+                incoming_damage=boss_damage,
+                message=(
+                    "💀 Хранитель сундуков победил. "
+                    "Попытка потрачена"
+                ),
+            )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_hp = ?,
+                chest_boss_hero_hp = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                boss_hp,
+                hero_hp,
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        chest_boss_attacked=True,
+        critical=critical,
+        outgoing_damage=outgoing_damage,
+        incoming_damage=boss_damage,
+        message=(
+            f"⚔️ Нанесено {outgoing_damage}. "
+            f"Получено {boss_damage} урона"
+        ),
+    )
+
+
+@app.post("/challenge/chest-boss/ad-attempt")
+def grant_chest_boss_ad_attempt(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_chest_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
+
+        current = load_player(connection, telegram_id)
+
+        ad_used = max(
+            0,
+            int(current.get("chest_boss_ad_attempts_used", 0)),
+        )
+
+        if ad_used >= CHEST_BOSS_AD_ATTEMPTS:
+            connection.commit()
+            return build_player_response(
+                current,
+                ad_attempt_granted=False,
+                message="Сегодня рекламные попытки закончились",
+            )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_ad_attempts_used =
+                    chest_boss_ad_attempts_used + 1,
+                chest_boss_bonus_attempts =
+                    chest_boss_bonus_attempts + 1,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        ad_attempt_granted=True,
+        message="📺 Получена дополнительная попытка",
+    )
+
+
+@app.post("/challenge/chest-boss/use-key")
+def use_chest_boss_key(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        keys = max(
+            0,
+            int(current.get("chest_boss_keys", 0)),
+        )
+
+        if keys <= 0:
+            connection.commit()
+            return build_player_response(
+                current,
+                key_used=False,
+                message="Ключей испытания нет",
+            )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_keys = chest_boss_keys - 1,
+                chest_boss_bonus_attempts =
+                    chest_boss_bonus_attempts + 1,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        key_used=True,
+        message="🔑 Ключ использован. Получена попытка",
+    )
+
+
+@app.post("/challenge/chest-boss/leave")
+def leave_chest_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        connection.execute(
+            """
+            UPDATE players
+            SET chest_boss_active = 0,
+                chest_boss_hp = 0,
+                chest_boss_max_hp = 0,
+                chest_boss_hero_hp = 0,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(time.time()),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        chest_boss_left=True,
+        message="Испытание завершено. Попытка не возвращена",
+    )
+
 
 
 @app.post("/chest/upgrade")
