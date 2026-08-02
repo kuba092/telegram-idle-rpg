@@ -5037,6 +5037,119 @@
       }
     }
 
+
+    /* ENHANCEMENTS_SCREEN_V1 */
+    .enhancements-content {
+      padding-top: 2px;
+    }
+
+    .enhancements-tabs {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding-bottom: 2px;
+      background: linear-gradient(
+        180deg,
+        rgba(9, 31, 25, 0.98),
+        rgba(9, 31, 25, 0.86),
+        transparent
+      );
+    }
+
+    .enhancement-panel {
+      display: flex;
+      min-height: 0;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .enhancement-panel.hidden {
+      display: none !important;
+    }
+
+    .companions-preview-card {
+      padding: 18px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      background:
+        linear-gradient(
+          145deg,
+          rgba(53, 102, 69, 0.35),
+          rgba(5, 18, 18, 0.9)
+        );
+      box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      text-align: center;
+    }
+
+    .companions-preview-icon {
+      font-size: 44px;
+      line-height: 1;
+    }
+
+    .companions-preview-title {
+      margin-top: 10px;
+      color: #f1ffd3;
+      font-size: 17px;
+      font-weight: 950;
+    }
+
+    .companions-preview-text {
+      max-width: 310px;
+      margin: 7px auto 15px;
+      color: rgba(233, 244, 238, 0.68);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+
+    .companion-slot-preview {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .companion-preview-slot {
+      display: grid;
+      min-height: 86px;
+      place-items: center;
+      align-content: center;
+      gap: 7px;
+      border: 1px dashed rgba(209, 255, 123, 0.32);
+      border-radius: 15px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .companion-preview-slot span {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(169, 225, 75, 0.16);
+      color: #e7ff9d;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .companion-preview-slot strong {
+      color: rgba(235, 244, 240, 0.45);
+      font-size: 8px;
+      letter-spacing: 0.08em;
+    }
+
+    .companions-preview-note {
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.18);
+      color: rgba(232, 242, 237, 0.57);
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
 </style>
 </head>
 <body>
@@ -5240,9 +5353,9 @@
 <span class="game-nav-icon">🍄</span>
 <span class="game-nav-label">ГЕРОЙ</span>
 </button>
-<button aria-label="Спутники" class="game-nav-button" data-screen="companions" type="button">
-<span class="game-nav-icon">🐾</span>
-<span class="game-nav-label">СПУТНИКИ</span>
+<button aria-label="Усиления" class="game-nav-button" data-screen="enhancements" type="button">
+<span class="game-nav-icon">✨</span>
+<span class="game-nav-label">УСИЛЕНИЯ</span>
 </button>
 <button aria-label="Бой" class="game-nav-button active" data-screen="battle" type="button">
 <span class="game-nav-icon">⚔️</span>
@@ -5904,19 +6017,29 @@
 </div>
 </div>
 
-<section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
+<!-- ENHANCEMENTS_SCREEN_V1 -->
+<section aria-label="Усиления" class="game-screen hidden" id="enhancementsScreen">
 <header class="screen-header">
 <button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
-<div class="screen-title">Магазин</div>
+<div class="screen-title">Усиления</div>
 <div class="screen-header-spacer"></div>
 </header>
 
-<div class="skill-shop-content">
-<div class="shop-tabs">
-<button class="shop-tab active" type="button">НАВЫКИ</button>
-<button class="shop-tab" disabled type="button">ТОВАРЫ — ПОЗЖЕ</button>
+<div class="skill-shop-content enhancements-content">
+<div class="shop-tabs enhancements-tabs">
+<button
+  class="shop-tab enhancement-tab active"
+  data-enhancement-tab="skills"
+  type="button"
+>НАВЫКИ</button>
+<button
+  class="shop-tab enhancement-tab"
+  data-enhancement-tab="companions"
+  type="button"
+>СПУТНИКИ</button>
 </div>
 
+<div class="enhancement-panel" id="enhancementSkillsPanel">
 <div class="skill-shop-locked hidden" id="skillShopLocked">
 🔒 Система навыков откроется на 5 уровне героя.
 </div>
@@ -5963,6 +6086,54 @@
 Коллекция <span id="skillCollectionCount">0 / 12</span>
 </div>
 <div class="skill-collection-grid" id="skillCollectionGrid"></div>
+</div>
+</div>
+</div>
+
+<div class="enhancement-panel hidden" id="enhancementCompanionsPanel">
+<div class="companions-preview-card">
+<div class="companions-preview-icon">🐾</div>
+<div class="companions-preview-title">Боевые спутники</div>
+<div class="companions-preview-text">
+Собирайте спутников и формируйте команду из трёх помощников.
+</div>
+
+<div class="companion-slot-preview">
+<div class="companion-preview-slot">
+<span>1</span>
+<strong>ПУСТО</strong>
+</div>
+<div class="companion-preview-slot">
+<span>2</span>
+<strong>ПУСТО</strong>
+</div>
+<div class="companion-preview-slot">
+<span>3</span>
+<strong>ПУСТО</strong>
+</div>
+</div>
+
+<div class="companions-preview-note">
+Система коллекции и экипировки спутников будет подключена следующим этапом.
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
+<header class="screen-header">
+<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<div class="screen-title">Магазин</div>
+<div class="screen-header-spacer"></div>
+</header>
+
+<div class="coming-content">
+<div class="coming-card">
+<div class="coming-icon">🛒</div>
+<div class="coming-title">Магазин</div>
+<div class="coming-text">
+Здесь появятся игровые товары, свитки и специальные предложения.
 </div>
 </div>
 </div>
@@ -7964,12 +8135,12 @@
     }
 
     const heroScreen = $("heroScreen");
+    const enhancementsScreen = $("enhancementsScreen");
     const trialsScreen = $("trialsScreen");
     const shopScreen = $("shopScreen");
     const comingScreen = $("comingScreen");
     const navButtons = [...document.querySelectorAll(".game-nav-button")];
     const SCREEN_COPY = {
-      companions:{ title:"Спутники", icon:"🐾", heading:"Спутники", text:"Здесь будут питомцы и боевые помощники героя." },
       trials:{ title:"Испытания", icon:"🏰", heading:"Испытания", text:"Здесь появятся подземелья и ежедневные испытания." },
       clan:{ title:"Клан", icon:"🏳️", heading:"Клан", text:"Здесь будут клан, совместные задания и награды." },
       shop:{ title:"Магазин", icon:"🛒", heading:"Магазин", text:"Здесь будут игровые товары и специальные предложения." }
@@ -7977,6 +8148,7 @@
     function setActiveNav(name) { navButtons.forEach((b) => b.classList.toggle("active", b.dataset.screen === name)); }
     function openBattleScreen() {
       heroScreen.classList.add("hidden");
+      enhancementsScreen.classList.add("hidden");
       trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
@@ -7985,6 +8157,7 @@
     }
 
     function openHeroScreen() {
+      enhancementsScreen.classList.add("hidden");
       trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
@@ -7997,6 +8170,7 @@
     async function openTrialsScreen() {
       stopBattle();
       heroScreen.classList.add("hidden");
+      enhancementsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       trialsScreen.classList.remove("hidden");
@@ -8008,16 +8182,57 @@
 
     function openShopScreen() {
       heroScreen.classList.add("hidden");
+      enhancementsScreen.classList.add("hidden");
       trialsScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       shopScreen.classList.remove("hidden");
       document.body.classList.add("section-open");
       setActiveNav("shop");
-      renderSkillShop();
     }
+
+    function setEnhancementTab(tabName) {
+      const skillsActive = tabName !== "companions";
+
+      $("enhancementSkillsPanel").classList.toggle(
+        "hidden",
+        !skillsActive
+      );
+      $("enhancementCompanionsPanel").classList.toggle(
+        "hidden",
+        skillsActive
+      );
+
+      document
+        .querySelectorAll("[data-enhancement-tab]")
+        .forEach((button) => {
+          button.classList.toggle(
+            "active",
+            button.dataset.enhancementTab === (
+              skillsActive ? "skills" : "companions"
+            )
+          );
+        });
+
+      if (skillsActive) {
+        renderSkillShop();
+      }
+    }
+
+    function openEnhancementsScreen() {
+      heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
+      shopScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      enhancementsScreen.classList.remove("hidden");
+      document.body.classList.add("section-open");
+      setActiveNav("enhancements");
+      setEnhancementTab("skills");
+    }
+
     function openComingScreen(name) {
       const copy = SCREEN_COPY[name]; if (!copy) return;
       heroScreen.classList.add("hidden");
+      enhancementsScreen.classList.add("hidden");
       trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       document.body.classList.add("section-open");
@@ -8084,6 +8299,8 @@
         openBattleScreen();
       } else if (name === "hero") {
         openHeroScreen();
+      } else if (name === "enhancements") {
+        openEnhancementsScreen();
       } else if (name === "trials") {
         openTrialsScreen();
       } else if (name === "shop") {
@@ -8092,6 +8309,14 @@
         openComingScreen(name);
       }
     }));
+    document
+      .querySelectorAll("[data-enhancement-tab]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          setEnhancementTab(button.dataset.enhancementTab);
+        });
+      });
+
     document.querySelectorAll("[data-close-screen]").forEach((button) => button.addEventListener("click", openBattleScreen));
     document.querySelectorAll(".gear-slot[data-slot]").forEach((button) => button.addEventListener("click", () => {
       const item = player?.equipment?.[button.dataset.slot];
