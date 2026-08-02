@@ -3216,22 +3216,128 @@
       }
     }
 
+    /* TOP_HERO_CARD_WITH_HP */
+    .hero-top-card {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+      padding: 8px;
+    }
+
+    .hero-top-avatar {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 15px;
+      background:
+        radial-gradient(
+          circle at 30% 25%,
+          rgba(222, 255, 170, 0.22),
+          transparent 55%
+        ),
+        rgba(7, 24, 19, 0.9);
+    }
+
+    .hero-top-avatar-image {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+    }
+
+    .hero-top-main {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .hero-top-health {
+      margin-top: 2px;
+    }
+
+    .hero-top-health-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+      color: #ecfff0;
+      font-size: 8px;
+      font-weight: 900;
+    }
+
+    .hero-top-hp-track {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(6, 20, 17, 0.9);
+    }
+
+    .hero-top-hp-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #32de62, #73ff8a);
+      transition: width 0.2s ease;
+    }
+
+    @media (max-width: 430px) {
+      .hero-top-card {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 7px;
+        padding: 7px;
+      }
+
+      .hero-top-avatar {
+        width: 48px;
+        height: 48px;
+      }
+
+      .hero-top-avatar-image {
+        width: 43px;
+        height: 43px;
+      }
+    }
+
 </style>
 </head>
 <body>
 <main class="app">
 <section class="top-hud">
-<div class="level-card">
+<div class="level-card hero-top-card">
+<div class="hero-top-avatar">
+<img
+  alt="Герой"
+  class="hero-top-avatar-image"
+  src="assets/hero.png?v=9"
+/>
+</div>
+
+<div class="hero-top-main">
 <div class="level-row">
 <span class="level-caption">УРОВЕНЬ</span>
 <strong class="level-value" id="level">1</strong>
 </div>
+
 <div class="xp-row">
 <span>ОПЫТ</span>
 <span id="xpText">0 / 10</span>
 </div>
 <div class="xp-track">
 <div class="xp-fill" id="xpBar"></div>
+</div>
+
+<div class="hero-top-health">
+<div class="hero-top-health-row">
+<span>❤️ HP</span>
+<span><span id="heroHp">100</span>/<span id="heroMaxHp">100</span></span>
+</div>
+<div class="hero-top-hp-track">
+<div class="hero-top-hp-fill" id="heroHpBar"></div>
+</div>
+</div>
 </div>
 </div>
 <div class="resources">
@@ -3280,15 +3386,7 @@
 <div class="fighter-slot hero-slot">
 <div class="fighter-shadow"></div>
 <img alt="Грибной воин" class="fighter-sprite hero-sprite" id="heroSprite" src="assets/hero.png?v=9"/>
-<div class="hero-health">
-<div class="hero-health-row">
-<span>❤️ HP</span>
-<span><span id="heroHp">100</span>/<span id="heroMaxHp">100</span></span>
-</div>
-<div class="hero-hp-track">
-<div class="hero-hp-fill" id="heroHpBar"></div>
-</div>
-</div>
+
 <div class="fighter-name" id="heroName">Герой</div>
 </div>
 <div class="fighter-slot enemy-slot">
