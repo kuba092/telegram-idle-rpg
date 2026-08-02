@@ -4658,6 +4658,137 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.3);
     }
 
+
+    /* GEM_BOSS_FRONTEND_V1 */
+
+    .gem-trial-card {
+      border-color: rgba(83, 219, 255, 0.35) !important;
+      background:
+        radial-gradient(
+          circle at 12% 50%,
+          rgba(69, 213, 255, 0.18),
+          transparent 34%
+        ),
+        linear-gradient(
+          135deg,
+          rgba(25, 49, 55, 0.98),
+          rgba(7, 20, 27, 0.98)
+        ) !important;
+    }
+
+    .gem-boss-list-art {
+      filter:
+        hue-rotate(125deg)
+        saturate(1.35)
+        drop-shadow(0 7px 9px rgba(45, 208, 255, 0.35));
+    }
+
+    .gem-boss-panel {
+      border-color: rgba(93, 220, 255, 0.28);
+      background:
+        radial-gradient(
+          circle at 50% 0,
+          rgba(61, 207, 255, 0.17),
+          transparent 38%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(15, 43, 52, 0.99),
+          rgba(4, 16, 24, 0.99)
+        );
+    }
+
+    .gem-boss-stage {
+      background:
+        radial-gradient(
+          circle at 72% 45%,
+          rgba(55, 225, 255, 0.23),
+          transparent 31%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(35, 92, 108, 0.65),
+          rgba(9, 29, 42, 0.98)
+        );
+    }
+
+    .gem-boss-stage::after {
+      position: absolute;
+      z-index: 1;
+      right: 12%;
+      bottom: 20px;
+      width: 95px;
+      height: 95px;
+      border-radius: 50%;
+      content: "";
+      background:
+        radial-gradient(
+          circle,
+          rgba(112, 239, 255, 0.27),
+          transparent 68%
+        );
+      filter: blur(4px);
+      pointer-events: none;
+    }
+
+    .gem-boss-enemy-sprite {
+      width: 116px;
+      height: 128px;
+      filter:
+        hue-rotate(125deg)
+        saturate(1.35)
+        brightness(1.1)
+        drop-shadow(0 8px 12px rgba(40, 208, 255, 0.38));
+    }
+
+    #gemBossSlashEffect,
+    #gemBossHitEffect {
+      top: 57px;
+      right: 58px;
+      width: 76px;
+      height: 76px;
+    }
+
+    #gemBossHeroFlash {
+      top: 57px;
+      left: 53px;
+    }
+
+    #gemBossDamageNumber {
+      top: 45px;
+      right: 62px;
+      color: #9ff8ff;
+      text-shadow:
+        0 2px 0 #174d63,
+        0 0 9px rgba(64, 220, 255, 0.85);
+    }
+
+    #gemBossHeroDamageNumber {
+      top: 45px;
+      left: 58px;
+      color: #ff9e90;
+    }
+
+    .gem-boss-result-panel {
+      border-color: rgba(93, 220, 255, 0.32);
+      background:
+        radial-gradient(
+          circle at 50% 0,
+          rgba(61, 207, 255, 0.2),
+          transparent 38%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(15, 43, 52, 0.99),
+          rgba(4, 16, 24, 0.99)
+        );
+    }
+
+    .gem-boss-result-panel .chest-boss-result-title,
+    .gem-boss-result-panel .chest-boss-result-stat strong {
+      color: #a9f6ff;
+    }
+
 </style>
 </head>
 <body>
@@ -5019,23 +5150,40 @@
 </button>
 </article>
 
-<article class="trial-event-card locked">
-<div class="trial-event-art">💎</div>
+<article class="trial-event-card active gem-trial-card">
+<div class="trial-event-art">
+<img
+  alt="Страж самоцветов"
+  class="trial-event-art-image gem-boss-list-art"
+  src="assets/root_golem.png?v=9"
+/>
+</div>
 
 <div class="trial-event-content">
 <div class="trial-event-name">Страж самоцветов</div>
 <div class="trial-event-description">
-Особое испытание с наградой в премиальной валюте.
+Побеждайте Стража и получайте премиальные самоцветы.
 </div>
 
 <div class="trial-event-meta">
-<div class="trial-event-pill">💎 Донатная валюта</div>
-<div class="trial-event-pill">Скоро</div>
+<div class="trial-event-pill">
+УР. <span id="gemBossListLevel">1</span>
+</div>
+<div class="trial-event-pill">
+💎 <span id="gemBossListReward">6</span>
+</div>
+<div class="trial-event-pill">
+⚔️ <span id="gemBossListAttempts">2</span>
+</div>
 </div>
 </div>
 
-<button class="trial-event-enter" disabled type="button">
-СКОРО
+<button
+  class="trial-event-enter"
+  id="gemBossOpenButton"
+  type="button"
+>
+ВОЙТИ
 </button>
 </article>
 
@@ -5062,6 +5210,203 @@
 </div>
 </section>
 
+
+
+<div class="game-modal hidden" id="gemBossResultModal">
+<div class="chest-boss-result-panel gem-boss-result-panel">
+
+<div
+  class="chest-boss-result-icon"
+  id="gemBossResultIcon"
+>🏆</div>
+
+<div
+  class="chest-boss-result-title"
+  id="gemBossResultTitle"
+>
+ПОБЕДА
+</div>
+
+<div
+  class="chest-boss-result-text"
+  id="gemBossResultText"
+>
+Страж самоцветов побеждён.
+</div>
+
+<div
+  class="chest-boss-result-reward"
+  id="gemBossResultRewards"
+>
+<div class="chest-boss-result-stat">
+<span>ПОЛУЧЕНО</span>
+<strong>
+💎 <span id="gemBossResultGems">0</span>
+</strong>
+</div>
+
+<div class="chest-boss-result-stat">
+<span>НОВЫЙ УРОВЕНЬ</span>
+<strong>
+УР. <span id="gemBossResultLevel">1</span>
+</strong>
+</div>
+</div>
+
+<button
+  class="chest-boss-result-button"
+  id="gemBossResultClose"
+  type="button"
+>
+ПРОДОЛЖИТЬ
+</button>
+
+</div>
+</div>
+
+
+<div class="game-modal hidden" id="gemBossModal">
+<div class="trial-boss-modal-panel gem-boss-panel">
+
+<div class="trial-boss-modal-header">
+<div></div>
+<div class="trial-boss-modal-title">Страж самоцветов</div>
+<button
+  aria-label="Закрыть"
+  class="trial-boss-modal-close"
+  id="gemBossModalClose"
+  type="button"
+>×</button>
+</div>
+
+<div
+  class="chest-boss-battle-stage gem-boss-stage"
+  id="gemBossBattleStage"
+>
+<div class="chest-boss-stage-level">
+УР. <span id="gemBossLevel">1</span>
+</div>
+
+<div class="chest-boss-fighter chest-boss-hero-fighter">
+<div class="chest-boss-shadow"></div>
+<img
+  alt="Герой"
+  class="chest-fighter-sprite chest-hero-sprite"
+  id="gemBossHeroSprite"
+  src="assets/hero.png?v=9"
+/>
+<div class="chest-boss-fighter-name">Герой</div>
+</div>
+
+<div class="chest-boss-fighter chest-boss-enemy-fighter">
+<div class="chest-boss-shadow"></div>
+<img
+  alt="Страж самоцветов"
+  class="chest-fighter-sprite gem-boss-enemy-sprite"
+  id="gemBossEnemySprite"
+  src="assets/root_golem.png?v=9"
+/>
+<div class="chest-boss-fighter-name">Страж</div>
+</div>
+
+<div class="chest-boss-effects">
+<img
+  alt=""
+  class="chest-boss-fx"
+  id="gemBossSlashEffect"
+  src="assets/slash.png?v=9"
+/>
+<img
+  alt=""
+  class="chest-boss-fx"
+  id="gemBossHitEffect"
+  src="assets/hit.png?v=9"
+/>
+<div
+  class="chest-boss-hero-flash"
+  id="gemBossHeroFlash"
+></div>
+<div
+  class="chest-boss-damage"
+  id="gemBossDamageNumber"
+>-0</div>
+<div
+  class="chest-boss-damage"
+  id="gemBossHeroDamageNumber"
+>-0</div>
+</div>
+</div>
+
+<div class="challenge-hp-block">
+<div class="challenge-hp-row">
+<span>СТРАЖ</span>
+<span>
+<span id="gemBossHp">0</span> /
+<span id="gemBossMaxHp">0</span>
+</span>
+</div>
+<div class="challenge-hp-track">
+<div class="challenge-hp-fill" id="gemBossHpBar"></div>
+</div>
+</div>
+
+<div class="challenge-hp-block">
+<div class="challenge-hp-row">
+<span>ГЕРОЙ</span>
+<span>
+<span id="gemBossHeroHp">0</span> /
+<span id="gemBossHeroMaxHp">0</span>
+</span>
+</div>
+<div class="challenge-hp-track challenge-hero-hp-track">
+<div
+  class="challenge-hp-fill challenge-hero-hp-fill"
+  id="gemBossHeroHpBar"
+></div>
+</div>
+</div>
+
+<div class="chest-boss-info-grid">
+<div class="chest-boss-info">
+<span>НАГРАДА</span>
+<strong>💎 <span id="gemBossReward">6</span></strong>
+</div>
+
+<div class="chest-boss-info">
+<span>ПОПЫТКИ</span>
+<strong id="gemBossAttempts">2 / 2</strong>
+</div>
+
+<div class="chest-boss-info">
+<span>БАЛАНС</span>
+<strong>💎 <span id="gemBossBalance">0</span></strong>
+</div>
+</div>
+
+<div class="chest-boss-actions">
+<button
+  class="challenge-main-button"
+  id="gemBossMainButton"
+  type="button"
+>
+НАЧАТЬ БОЙ
+</button>
+
+<button
+  class="challenge-secondary-button hidden"
+  id="gemBossLeaveButton"
+  type="button"
+>
+ПОКИНУТЬ БОЙ
+</button>
+</div>
+
+<div class="challenge-message" id="gemBossMessage">
+Выберите действие
+</div>
+
+</div>
+</div>
 
 <div class="game-modal hidden" id="chestBossResultModal">
 <div class="chest-boss-result-panel">
@@ -7647,6 +7992,588 @@
     }, 1000);
 
     startGame();
+
+
+    // GEM_BOSS_FRONTEND_V1
+
+    let gemBossFightTimer = null;
+    let gemBossFightRunning = false;
+    let gemBossRequestInProgress = false;
+
+    const GEM_BOSS_ASSETS = {
+      heroIdle: "assets/hero.png?v=9",
+      heroAttack: "assets/hero_attack.png?v=9",
+      bossIdle: "assets/root_golem.png?v=9",
+    };
+
+    function gemBossState() {
+      return player?.gem_boss || {};
+    }
+
+    function gemBossPercent(value, maximum) {
+      const max = Math.max(1, Number(maximum || 1));
+      return Math.max(
+        0,
+        Math.min(100, Number(value || 0) * 100 / max)
+      );
+    }
+
+    function renderGemBoss() {
+      const state = gemBossState();
+      const attempts = state.attempts || {};
+      const reward = state.reward || {};
+
+      setText("gemBossListLevel", state.level || 1);
+      setText("gemBossListReward", reward.gems || 0);
+      setText(
+        "gemBossListAttempts",
+        attempts.available ?? attempts.free_remaining ?? 0
+      );
+
+      setText("gemBossLevel", state.level || 1);
+      setText("gemBossReward", reward.gems || 0);
+      setText("gemBossBalance", player?.gems || 0);
+
+      setText("gemBossHp", formatNumber(state.boss_hp || 0));
+      setText(
+        "gemBossMaxHp",
+        formatNumber(state.boss_max_hp || 0)
+      );
+
+      setText(
+        "gemBossHeroHp",
+        formatNumber(state.hero_hp || 0)
+      );
+      setText(
+        "gemBossHeroMaxHp",
+        formatNumber(state.hero_max_hp || 1)
+      );
+
+      const remaining =
+        attempts.available
+        ?? attempts.free_remaining
+        ?? 0;
+
+      const total = attempts.free_total || 2;
+
+      setText(
+        "gemBossAttempts",
+        `${remaining} / ${total}`
+      );
+
+      $("gemBossHpBar").style.width =
+        `${gemBossPercent(
+          state.boss_hp,
+          state.boss_max_hp
+        )}%`;
+
+      $("gemBossHeroHpBar").style.width =
+        `${gemBossPercent(
+          state.hero_hp,
+          state.hero_max_hp
+        )}%`;
+
+      const active = Boolean(state.active);
+
+      $("gemBossMainButton").classList.toggle(
+        "hidden",
+        active
+      );
+
+      $("gemBossLeaveButton").classList.toggle(
+        "hidden",
+        !active
+      );
+
+      $("gemBossMainButton").disabled =
+        gemBossRequestInProgress || remaining <= 0;
+
+      $("gemBossMainButton").textContent =
+        remaining > 0 ? "НАЧАТЬ БОЙ" : "ПОПЫТКИ ЗАКОНЧИЛИСЬ";
+
+      if (active && !gemBossFightRunning) {
+        startGemBossAutoBattle();
+      }
+
+      if (!active && gemBossFightRunning) {
+        stopGemBossAutoBattle();
+      }
+    }
+
+    function resetGemBossSprites() {
+      const hero = $("gemBossHeroSprite");
+      const boss = $("gemBossEnemySprite");
+
+      hero.src = GEM_BOSS_ASSETS.heroIdle;
+      hero.className =
+        "chest-fighter-sprite chest-hero-sprite";
+
+      boss.src = GEM_BOSS_ASSETS.bossIdle;
+      boss.className =
+        "chest-fighter-sprite gem-boss-enemy-sprite";
+    }
+
+    function restartGemBossAnimation(element, className) {
+      element.classList.remove(className);
+      void element.offsetWidth;
+      element.classList.add(className);
+    }
+
+    function animateGemBossHeroAttack(damage, critical) {
+      const hero = $("gemBossHeroSprite");
+      const boss = $("gemBossEnemySprite");
+      const number = $("gemBossDamageNumber");
+
+      hero.src = GEM_BOSS_ASSETS.heroAttack;
+
+      restartGemBossAnimation(
+        hero,
+        "chest-anim-hero-attack"
+      );
+
+      setTimeout(() => {
+        restartGemBossAnimation(
+          $("gemBossSlashEffect"),
+          "chest-boss-fx-slash"
+        );
+
+        restartGemBossAnimation(
+          $("gemBossHitEffect"),
+          "chest-boss-fx-hit"
+        );
+
+        restartGemBossAnimation(
+          boss,
+          "chest-anim-boss-hit"
+        );
+
+        number.textContent =
+          critical
+          ? `КРИТ -${formatNumber(damage)}`
+          : `-${formatNumber(damage)}`;
+
+        restartGemBossAnimation(
+          number,
+          "chest-boss-fx-damage"
+        );
+      }, 230);
+
+      setTimeout(() => {
+        hero.src = GEM_BOSS_ASSETS.heroIdle;
+        hero.className =
+          "chest-fighter-sprite chest-hero-sprite";
+      }, 470);
+    }
+
+    function animateGemBossCounterAttack(damage) {
+      const hero = $("gemBossHeroSprite");
+      const boss = $("gemBossEnemySprite");
+      const number = $("gemBossHeroDamageNumber");
+
+      restartGemBossAnimation(
+        boss,
+        "chest-anim-boss-attack"
+      );
+
+      setTimeout(() => {
+        restartGemBossAnimation(
+          hero,
+          "chest-anim-hero-hit"
+        );
+
+        restartGemBossAnimation(
+          $("gemBossHeroFlash"),
+          "chest-boss-fx-hero-hit"
+        );
+
+        number.textContent = `-${formatNumber(damage)}`;
+
+        restartGemBossAnimation(
+          number,
+          "chest-boss-fx-damage"
+        );
+      }, 280);
+    }
+
+    function stopGemBossAutoBattle() {
+      gemBossFightRunning = false;
+
+      clearTimeout(gemBossFightTimer);
+      gemBossFightTimer = null;
+    }
+
+    function scheduleGemBossAttack(delay = 850) {
+      clearTimeout(gemBossFightTimer);
+
+      if (!gemBossFightRunning) {
+        return;
+      }
+
+      gemBossFightTimer = setTimeout(
+        performGemBossAttack,
+        delay
+      );
+    }
+
+    function startGemBossAutoBattle() {
+      if (
+        gemBossFightRunning
+        || !gemBossState().active
+      ) {
+        return;
+      }
+
+      gemBossFightRunning = true;
+      scheduleGemBossAttack(450);
+    }
+
+    async function performGemBossAttack() {
+      if (
+        !gemBossFightRunning
+        || gemBossRequestInProgress
+        || !gemBossState().active
+      ) {
+        return;
+      }
+
+      gemBossRequestInProgress = true;
+
+      const before = gemBossState();
+      const oldBossHp = Number(before.boss_hp || 0);
+      const oldHeroHp = Number(before.hero_hp || 0);
+
+      try {
+        const result = await apiRequest(
+          "/challenge/gem-boss/attack",
+          "POST"
+        );
+
+        const after = result.gem_boss || {};
+        const outgoing = Math.max(
+          0,
+          Number(result.outgoing_damage)
+          || oldBossHp - Number(after.boss_hp || 0)
+        );
+
+        const incoming = Math.max(
+          0,
+          Number(result.incoming_damage)
+          || oldHeroHp - Number(after.hero_hp || 0)
+        );
+
+        animateGemBossHeroAttack(
+          outgoing,
+          Boolean(result.critical)
+        );
+
+        await wait(470);
+
+        player = result;
+        renderPlayer();
+        renderGemBoss();
+
+        if (result.gem_boss_victory) {
+          stopGemBossAutoBattle();
+
+          restartGemBossAnimation(
+            $("gemBossEnemySprite"),
+            "chest-anim-boss-death"
+          );
+
+          try {
+            telegram.HapticFeedback
+              ?.notificationOccurred("success");
+          } catch (_) {}
+
+          await wait(650);
+          showGemBossResult(result, true);
+          return;
+        }
+
+        if (incoming > 0) {
+          animateGemBossCounterAttack(incoming);
+          await wait(480);
+        }
+
+        if (result.gem_boss_defeat) {
+          stopGemBossAutoBattle();
+
+          restartGemBossAnimation(
+            $("gemBossHeroSprite"),
+            "chest-anim-hero-defeat"
+          );
+
+          try {
+            telegram.HapticFeedback
+              ?.notificationOccurred("error");
+          } catch (_) {}
+
+          await wait(650);
+          showGemBossResult(result, false);
+          return;
+        }
+
+        scheduleGemBossAttack(500);
+
+      } catch (error) {
+        stopGemBossAutoBattle();
+
+        setText(
+          "gemBossMessage",
+          `❌ ${error.message}`
+        );
+
+      } finally {
+        gemBossRequestInProgress = false;
+        renderGemBoss();
+      }
+    }
+
+    async function openGemBossModal() {
+      modalShow("gemBossModal");
+      resetGemBossSprites();
+
+      setText(
+        "gemBossMessage",
+        "Загрузка испытания..."
+      );
+
+      try {
+        const result = await apiRequest(
+          "/challenge/gem-boss",
+          "GET"
+        );
+
+        if (result.gem_boss) {
+          player = {
+            ...player,
+            gems: result.gems ?? player?.gems ?? 0,
+            gem_boss: result.gem_boss,
+          };
+        }
+
+        setText(
+          "gemBossMessage",
+          result.gem_boss?.active
+          ? "Бой продолжается"
+          : "Выберите действие"
+        );
+
+        renderGemBoss();
+
+      } catch (error) {
+        setText(
+          "gemBossMessage",
+          `❌ ${error.message}`
+        );
+      }
+    }
+
+    function closeGemBossModal() {
+      stopGemBossAutoBattle();
+      modalHide("gemBossModal");
+      resetGemBossSprites();
+    }
+
+    async function startGemBossFight() {
+      if (gemBossRequestInProgress) {
+        return;
+      }
+
+      gemBossRequestInProgress = true;
+      $("gemBossMainButton").disabled = true;
+
+      try {
+        const result = await apiRequest(
+          "/challenge/gem-boss/start",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderGemBoss();
+
+        setText(
+          "gemBossMessage",
+          result.message || "Бой начался"
+        );
+
+        if (result.gem_boss_started) {
+          resetGemBossSprites();
+          startGemBossAutoBattle();
+        }
+
+      } catch (error) {
+        setText(
+          "gemBossMessage",
+          `❌ ${error.message}`
+        );
+
+      } finally {
+        gemBossRequestInProgress = false;
+        renderGemBoss();
+      }
+    }
+
+    async function leaveGemBossFight() {
+      if (gemBossRequestInProgress) {
+        return;
+      }
+
+      gemBossRequestInProgress = true;
+      stopGemBossAutoBattle();
+
+      try {
+        const result = await apiRequest(
+          "/challenge/gem-boss/leave",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderGemBoss();
+        resetGemBossSprites();
+
+        setText(
+          "gemBossMessage",
+          result.message || "Испытание завершено"
+        );
+
+      } catch (error) {
+        setText(
+          "gemBossMessage",
+          `❌ ${error.message}`
+        );
+
+      } finally {
+        gemBossRequestInProgress = false;
+        renderGemBoss();
+      }
+    }
+
+    function showGemBossResult(result, victory) {
+      const state = result?.gem_boss || {};
+
+      setText(
+        "gemBossResultIcon",
+        victory ? "🏆" : "💀"
+      );
+
+      setText(
+        "gemBossResultTitle",
+        victory ? "ПОБЕДА" : "ПОРАЖЕНИЕ"
+      );
+
+      $("gemBossResultTitle").classList.toggle(
+        "defeat",
+        !victory
+      );
+
+      setText(
+        "gemBossResultText",
+        result?.message
+        || (
+          victory
+          ? "Страж самоцветов побеждён."
+          : "Герой не смог одолеть Стража."
+        )
+      );
+
+      setText(
+        "gemBossResultGems",
+        formatNumber(result?.gem_reward || 0)
+      );
+
+      setText(
+        "gemBossResultLevel",
+        formatNumber(state.level || 1)
+      );
+
+      $("gemBossResultRewards").classList.toggle(
+        "hidden",
+        !victory
+      );
+
+      $("gemBossResultClose").textContent =
+        victory ? "ПРОДОЛЖИТЬ" : "ЗАКРЫТЬ";
+
+      modalShow("gemBossResultModal");
+    }
+
+    function closeGemBossResult() {
+      modalHide("gemBossResultModal");
+      resetGemBossSprites();
+      renderGemBoss();
+    }
+
+    $("gemBossOpenButton").addEventListener(
+      "click",
+      openGemBossModal
+    );
+
+    $("gemBossModalClose").addEventListener(
+      "click",
+      closeGemBossModal
+    );
+
+    $("gemBossMainButton").addEventListener(
+      "click",
+      startGemBossFight
+    );
+
+    $("gemBossLeaveButton").addEventListener(
+      "click",
+      leaveGemBossFight
+    );
+
+    $("gemBossResultClose").addEventListener(
+      "click",
+      closeGemBossResult
+    );
+
+    $("gemBossModal").addEventListener(
+      "click",
+      (event) => {
+        if (event.target === $("gemBossModal")) {
+          closeGemBossModal();
+        }
+      }
+    );
+
+    $("gemBossResultModal").addEventListener(
+      "click",
+      (event) => {
+        if (event.target === $("gemBossResultModal")) {
+          closeGemBossResult();
+        }
+      }
+    );
+
+    window.addEventListener(
+      "pagehide",
+      stopGemBossAutoBattle
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        if (document.hidden) {
+          stopGemBossAutoBattle();
+        } else if (
+          !$("gemBossModal").classList.contains("hidden")
+          && gemBossState().active
+        ) {
+          startGemBossAutoBattle();
+        }
+      }
+    );
+
+    setInterval(() => {
+      if (player?.gem_boss) {
+        renderGemBoss();
+      }
+    }, 1000);
+
 </script>
 </body>
 </html>
