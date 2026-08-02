@@ -4541,6 +4541,123 @@
       }
     }
 
+
+    /* CHEST_BOSS_RESULT_MODAL_V1 */
+
+    .trial-event-art-image {
+      display: block;
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      filter:
+        drop-shadow(0 7px 8px rgba(0, 0, 0, 0.38));
+      pointer-events: none;
+    }
+
+    .chest-boss-result-panel {
+      width: min(88vw, 340px);
+      padding: 20px 16px 17px;
+      border: 1px solid rgba(255, 224, 112, 0.3);
+      border-radius: 24px;
+      background:
+        radial-gradient(
+          circle at 50% 0,
+          rgba(255, 219, 95, 0.2),
+          transparent 38%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(24, 52, 37, 0.99),
+          rgba(5, 19, 18, 0.99)
+        );
+      box-shadow:
+        0 26px 80px rgba(0, 0, 0, 0.62),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      text-align: center;
+    }
+
+    .chest-boss-result-icon {
+      display: grid;
+      width: 92px;
+      height: 92px;
+      place-items: center;
+      margin: 0 auto 10px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          rgba(255, 220, 94, 0.18),
+          rgba(0, 0, 0, 0.16) 68%,
+          transparent 70%
+        );
+      font-size: 58px;
+    }
+
+    .chest-boss-result-title {
+      margin-bottom: 7px;
+      color: #fff1a2;
+      font-size: 21px;
+      font-weight: 1000;
+    }
+
+    .chest-boss-result-title.defeat {
+      color: #ff9b91;
+    }
+
+    .chest-boss-result-text {
+      margin-bottom: 14px;
+      color: rgba(242, 248, 244, 0.72);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.45;
+    }
+
+    .chest-boss-result-reward {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .chest-boss-result-stat {
+      padding: 10px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .chest-boss-result-stat span {
+      display: block;
+      margin-bottom: 4px;
+      color: rgba(255, 255, 255, 0.52);
+      font-size: 8px;
+      font-weight: 900;
+    }
+
+    .chest-boss-result-stat strong {
+      color: #fff2aa;
+      font-size: 14px;
+      font-weight: 1000;
+    }
+
+    .chest-boss-result-button {
+      width: 100%;
+      min-height: 47px;
+      border: 1px solid rgba(220, 255, 125, 0.38);
+      border-radius: 15px;
+      background:
+        linear-gradient(180deg, #b8ed62, #4d9c42);
+      color: #11250f;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 1000;
+      cursor: pointer;
+      box-shadow:
+        0 8px 18px rgba(70, 143, 53, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
 </style>
 </head>
 <body>
@@ -4866,7 +4983,13 @@
 <div class="trials-event-list">
 
 <article class="trial-event-card active">
-<div class="trial-event-art">🧰</div>
+<div class="trial-event-art">
+<img
+  alt="Хранитель сундуков"
+  class="trial-event-art-image"
+  src="assets/mimic.png?v=1"
+/>
+</div>
 
 <div class="trial-event-content">
 <div class="trial-event-name">Хранитель сундуков</div>
@@ -4938,6 +5061,59 @@
 
 </div>
 </section>
+
+
+<div class="game-modal hidden" id="chestBossResultModal">
+<div class="chest-boss-result-panel">
+
+<div
+  class="chest-boss-result-icon"
+  id="chestBossResultIcon"
+>🏆</div>
+
+<div
+  class="chest-boss-result-title"
+  id="chestBossResultTitle"
+>
+ПОБЕДА
+</div>
+
+<div
+  class="chest-boss-result-text"
+  id="chestBossResultText"
+>
+Хранитель сундуков побеждён.
+</div>
+
+<div
+  class="chest-boss-result-reward"
+  id="chestBossResultRewards"
+>
+<div class="chest-boss-result-stat">
+<span>ПОЛУЧЕНО</span>
+<strong>
+🧰 <span id="chestBossResultChests">0</span>
+</strong>
+</div>
+
+<div class="chest-boss-result-stat">
+<span>НОВЫЙ УРОВЕНЬ</span>
+<strong>
+УР. <span id="chestBossResultLevel">1</span>
+</strong>
+</div>
+</div>
+
+<button
+  class="chest-boss-result-button"
+  id="chestBossResultClose"
+  type="button"
+>
+ПРОДОЛЖИТЬ
+</button>
+
+</div>
+</div>
 
 <div class="game-modal hidden" id="chestBossModal">
 <div class="trial-boss-modal-panel">
@@ -6824,6 +7000,66 @@
         active || Number(state.keys || 0) <= 0;
     }
 
+    function showChestBossResult(result, victory) {
+      const state = result?.chest_boss || {};
+      const reward = result?.chest_boss_reward || state.reward || {};
+
+      setText(
+        "chestBossResultIcon",
+        victory ? "🏆" : "💀"
+      );
+
+      setText(
+        "chestBossResultTitle",
+        victory ? "ПОБЕДА" : "ПОРАЖЕНИЕ"
+      );
+
+      $("chestBossResultTitle").classList.toggle(
+        "defeat",
+        !victory
+      );
+
+      setText(
+        "chestBossResultText",
+        result?.message
+        || (
+          victory
+          ? "Хранитель сундуков побеждён."
+          : "Герой не смог одолеть Хранителя."
+        )
+      );
+
+      setText(
+        "chestBossResultChests",
+        formatNumber(
+          reward.chests
+          || result?.chests_reward
+          || 0
+        )
+      );
+
+      setText(
+        "chestBossResultLevel",
+        formatNumber(state.level || 1)
+      );
+
+      $("chestBossResultRewards").classList.toggle(
+        "hidden",
+        !victory
+      );
+
+      $("chestBossResultClose").textContent =
+        victory ? "ПРОДОЛЖИТЬ" : "ЗАКРЫТЬ";
+
+      modalShow("chestBossResultModal");
+    }
+
+    function closeChestBossResult() {
+      modalHide("chestBossResultModal");
+      resetChestBossSprites();
+      renderChestBoss();
+    }
+
     function openChestBossModal() {
       resetChestBossSprites();
       renderChestBoss();
@@ -6945,6 +7181,9 @@
             telegram.HapticFeedback?.notificationOccurred("success");
           } catch (_) {}
 
+          await wait(650);
+          showChestBossResult(result, true);
+
           return;
         }
 
@@ -6969,6 +7208,9 @@
           try {
             telegram.HapticFeedback?.notificationOccurred("error");
           } catch (_) {}
+
+          await wait(650);
+          showChestBossResult(result, false);
 
           return;
         }
@@ -7241,6 +7483,20 @@
       () => modalHide("skillSummonModal")
     );
 
+    $("chestBossResultClose").addEventListener(
+      "click",
+      closeChestBossResult
+    );
+
+    $("chestBossResultModal").addEventListener(
+      "click",
+      (event) => {
+        if (event.target === $("chestBossResultModal")) {
+          closeChestBossResult();
+        }
+      }
+    );
+
     $("chestBossOpenButton").addEventListener(
       "click",
       openChestBossModal
@@ -7333,6 +7589,7 @@
       "skillSummonModal",
       "questsModal",
       "chestBossModal",
+      "chestBossResultModal",
     ].forEach(
       (id) => $(id).addEventListener("click", (event) => {
         if (event.target === $(id)) modalHide(id);
