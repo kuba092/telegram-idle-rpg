@@ -2399,6 +2399,373 @@
       .modal-panel { padding:18px 13px 14px; }
       .hero-profile-image { width:min(34%,135px); max-height:26%; }
     }
+    .skill-shop-content {
+      display: flex;
+      min-height: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      padding: 2px 2px 14px;
+      scrollbar-width: none;
+    }
+
+    .skill-shop-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .shop-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .shop-tab {
+      min-height: 38px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 12px;
+      background: rgba(5, 18, 18, 0.72);
+      color: rgba(239, 247, 243, 0.62);
+      font: inherit;
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: 0.05em;
+    }
+
+    .shop-tab.active {
+      border-color: rgba(199, 255, 103, 0.48);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(153, 213, 65, 0.34),
+          rgba(40, 105, 49, 0.28)
+        );
+      color: #f4ffd2;
+      box-shadow: 0 0 16px rgba(164, 228, 68, 0.15);
+    }
+
+    .shop-tab:disabled {
+      opacity: 0.42;
+    }
+
+    .summon-card,
+    .skill-chances-card,
+    .skill-collection-card {
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 17px;
+      background: rgba(5, 18, 18, 0.82);
+      box-shadow:
+        0 10px 26px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+    }
+
+    .summon-card {
+      padding: 12px;
+    }
+
+    .summon-top-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summon-level-label {
+      color: rgba(230, 243, 237, 0.68);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .summon-level-value {
+      margin-top: 2px;
+      color: #f2ffd0;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .skill-scroll-count {
+      min-width: 78px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 222, 123, 0.25);
+      border-radius: 13px;
+      background: rgba(87, 66, 20, 0.32);
+      color: #ffe69a;
+      font-size: 12px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .summon-progress-copy {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 10px 1px 5px;
+      color: rgba(227, 240, 235, 0.68);
+      font-size: 9px;
+      font-weight: 850;
+    }
+
+    .summon-progress-track {
+      height: 9px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.34);
+    }
+
+    .summon-progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background:
+        linear-gradient(90deg, #67d85d, #d8ff6b);
+      box-shadow: 0 0 12px rgba(185, 244, 79, 0.38);
+      transition: width 0.25s ease;
+    }
+
+    .summon-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .summon-button {
+      min-height: 48px;
+      padding: 7px;
+      border: 1px solid rgba(229, 255, 144, 0.35);
+      border-radius: 14px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(159, 214, 65, 0.48),
+          rgba(47, 117, 51, 0.62)
+        );
+      color: #f8ffe2;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 950;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.42);
+      box-shadow:
+        0 7px 17px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .summon-button span {
+      display: block;
+      margin-top: 2px;
+      color: #ffe99d;
+      font-size: 9px;
+      font-weight: 850;
+    }
+
+    .summon-button:disabled {
+      opacity: 0.43;
+      filter: grayscale(0.45);
+    }
+
+    .skill-card-title {
+      padding: 11px 12px 5px;
+      color: #f2ffe5;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .skill-chances-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      padding: 7px 11px 12px;
+    }
+
+    .skill-chance-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.035);
+      font-size: 9px;
+      font-weight: 900;
+    }
+
+    .skill-collection-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 8px 10px 12px;
+    }
+
+    .collection-skill {
+      position: relative;
+      min-height: 120px;
+      overflow: hidden;
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 15px;
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.075),
+          rgba(255, 255, 255, 0.018)
+        );
+    }
+
+    .collection-skill.not-owned {
+      filter: grayscale(1);
+      opacity: 0.48;
+    }
+
+    .collection-skill.common {
+      border-color: rgba(199, 207, 204, 0.3);
+    }
+
+    .collection-skill.rare {
+      border-color: rgba(104, 169, 255, 0.46);
+      box-shadow: inset 0 0 18px rgba(74, 133, 211, 0.08);
+    }
+
+    .collection-skill.epic {
+      border-color: rgba(196, 124, 255, 0.5);
+      box-shadow: inset 0 0 18px rgba(157, 78, 221, 0.1);
+    }
+
+    .collection-skill.legendary {
+      border-color: rgba(255, 184, 78, 0.58);
+      box-shadow:
+        inset 0 0 21px rgba(255, 157, 45, 0.12),
+        0 0 14px rgba(255, 173, 54, 0.08);
+    }
+
+    .collection-skill-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .collection-skill-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.24);
+      font-size: 22px;
+    }
+
+    .collection-skill-name {
+      min-width: 0;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 950;
+      line-height: 1.15;
+    }
+
+    .collection-skill-rarity {
+      margin-top: 3px;
+      font-size: 8px;
+      font-weight: 900;
+    }
+
+    .collection-skill-description {
+      min-height: 29px;
+      margin-top: 8px;
+      color: rgba(230, 240, 236, 0.58);
+      font-size: 8px;
+      line-height: 1.3;
+    }
+
+    .collection-skill-progress {
+      margin-top: 7px;
+      color: rgba(240, 248, 245, 0.76);
+      font-size: 8px;
+      font-weight: 900;
+    }
+
+    .collection-skill-badge {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      padding: 3px 5px;
+      border-radius: 7px;
+      background: rgba(0, 0, 0, 0.42);
+      color: #eaffad;
+      font-size: 7px;
+      font-weight: 950;
+    }
+
+    .skill-result-panel {
+      max-height: min(76vh, 610px);
+      overflow-y: auto;
+    }
+
+    .summon-result-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .summon-result-row {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .summon-result-icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.28);
+      font-size: 24px;
+    }
+
+    .summon-result-name {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .summon-result-detail {
+      margin-top: 2px;
+      font-size: 8px;
+      font-weight: 850;
+    }
+
+    .summon-result-new {
+      padding: 4px 6px;
+      border-radius: 8px;
+      background: rgba(178, 232, 77, 0.2);
+      color: #eaff9e;
+      font-size: 8px;
+      font-weight: 950;
+    }
+
+    .skill-shop-locked {
+      padding: 22px 15px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 17px;
+      background: rgba(5, 18, 18, 0.82);
+      color: rgba(235, 244, 240, 0.72);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.5;
+      text-align: center;
+    }
+
 </style>
 </head>
 <body>
@@ -2634,6 +3001,70 @@
 </div>
 </div>
 </section>
+<section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
+<header class="screen-header">
+<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<div class="screen-title">Магазин</div>
+<div class="screen-header-spacer"></div>
+</header>
+
+<div class="skill-shop-content">
+<div class="shop-tabs">
+<button class="shop-tab active" type="button">НАВЫКИ</button>
+<button class="shop-tab" disabled type="button">ТОВАРЫ — ПОЗЖЕ</button>
+</div>
+
+<div class="skill-shop-locked hidden" id="skillShopLocked">
+🔒 Система навыков откроется на 5 уровне героя.
+</div>
+
+<div id="skillShopBody">
+<div class="summon-card">
+<div class="summon-top-row">
+<div>
+<div class="summon-level-label">Уровень призыва</div>
+<div class="summon-level-value" id="summonLevel">1 / 10</div>
+</div>
+<div class="skill-scroll-count">
+📜 <span id="skillScrollCount">0</span>
+</div>
+</div>
+
+<div class="summon-progress-copy">
+<span id="summonProgressText">0 / 20</span>
+<span id="summonProgressPercent">0%</span>
+</div>
+<div class="summon-progress-track">
+<div class="summon-progress-fill" id="summonProgressFill"></div>
+</div>
+
+<div class="summon-actions">
+<button class="summon-button" id="summonOneButton" type="button">
+ОТКРЫТЬ ×1
+<span>📜 1 свиток</span>
+</button>
+<button class="summon-button" id="summonTenButton" type="button">
+ОТКРЫТЬ ×10
+<span>📜 10 свитков</span>
+</button>
+</div>
+</div>
+
+<div class="skill-chances-card">
+<div class="skill-card-title">Шансы редкости</div>
+<div class="skill-chances-grid" id="skillSummonChances"></div>
+</div>
+
+<div class="skill-collection-card">
+<div class="skill-card-title">
+Коллекция <span id="skillCollectionCount">0 / 12</span>
+</div>
+<div class="skill-collection-grid" id="skillCollectionGrid"></div>
+</div>
+</div>
+</div>
+</section>
+
 <section aria-label="Игровой раздел" class="game-screen hidden" id="comingScreen">
 <header class="screen-header">
 <button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
@@ -2669,6 +3100,14 @@
 </div>
 </div>
 </div>
+<div class="game-modal hidden" id="skillSummonModal">
+<div class="modal-panel skill-result-panel">
+<button class="modal-close" id="skillSummonClose" type="button">×</button>
+<div class="modal-title" id="skillSummonResultTitle">✨ Результат призыва</div>
+<div class="summon-result-list" id="skillSummonResultList"></div>
+</div>
+</div>
+
 <div class="game-modal hidden" id="leaderboardModal">
 <div class="modal-panel leaderboard-panel">
 <button class="modal-close" id="leaderboardClose" type="button">×</button>
@@ -2814,7 +3253,21 @@
         '.skill-button[data-skill="poison_cloud"]'
       ),
       heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
-      heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm")
+      heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm"),
+      skillShopLocked: $("skillShopLocked"),
+      skillShopBody: $("skillShopBody"),
+      summonLevel: $("summonLevel"),
+      skillScrollCount: $("skillScrollCount"),
+      summonProgressText: $("summonProgressText"),
+      summonProgressPercent: $("summonProgressPercent"),
+      summonProgressFill: $("summonProgressFill"),
+      summonOneButton: $("summonOneButton"),
+      summonTenButton: $("summonTenButton"),
+      skillSummonChances: $("skillSummonChances"),
+      skillCollectionCount: $("skillCollectionCount"),
+      skillCollectionGrid: $("skillCollectionGrid"),
+      skillSummonResultTitle: $("skillSummonResultTitle"),
+      skillSummonResultList: $("skillSummonResultList")
     };
 
     let player = null;
@@ -3492,7 +3945,230 @@
       } catch (error) { $("leaderboardList").innerHTML = `<div class="loading-text">${error.message}</div>`; }
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderSkillShop() {
+      const system = player?.skill_system;
+      if (!system) return;
+
+      const unlocked = Boolean(system.unlocked);
+      elements.skillShopLocked.classList.toggle("hidden", unlocked);
+      elements.skillShopBody.classList.toggle("hidden", !unlocked);
+
+      if (!unlocked) {
+        elements.skillShopLocked.textContent =
+          `🔒 Система навыков откроется на ${system.unlock_level || 5} уровне героя.`;
+        return;
+      }
+
+      const summon = system.summon || {};
+      const progress = summon.progress || {};
+      const scrolls = Number(system.scrolls || 0);
+      const summonLevel = Number(summon.level || 1);
+      const maxLevel = Number(summon.max_level || 10);
+      const progressValue = Math.max(
+        0,
+        Math.min(1, Number(progress.progress || 0))
+      );
+
+      elements.summonLevel.textContent =
+        `${summonLevel} / ${maxLevel}`;
+      elements.skillScrollCount.textContent =
+        formatNumber(scrolls);
+
+      if (progress.max_level) {
+        elements.summonProgressText.textContent = "МАКСИМАЛЬНЫЙ УРОВЕНЬ";
+        elements.summonProgressPercent.textContent = "100%";
+      } else {
+        elements.summonProgressText.textContent =
+          `${formatNumber(progress.current || 0)} / ${formatNumber(progress.required || 0)}`;
+        elements.summonProgressPercent.textContent =
+          `${Math.round(progressValue * 100)}%`;
+      }
+
+      elements.summonProgressFill.style.width =
+        `${progressValue * 100}%`;
+
+      const singleCost = Number(summon.single_cost || 1);
+      const tenCost = Number(summon.ten_cost || 10);
+
+      elements.summonOneButton.disabled = scrolls < singleCost;
+      elements.summonTenButton.disabled = scrolls < tenCost;
+
+      const chanceOrder = [
+        "common",
+        "rare",
+        "epic",
+        "legendary",
+      ];
+      const chances = summon.rarity_chances || {};
+
+      elements.skillSummonChances.innerHTML = chanceOrder
+        .map((rarity) => {
+          const chance = chances[rarity] || {};
+          const name = chance.name || RARITY_NAMES[rarity] || rarity;
+          const value = Number(chance.chance || 0);
+          const color = RARITY_COLORS[rarity] || "#ffffff";
+
+          return `
+            <div class="skill-chance-row">
+              <span style="color:${color}">${escapeHtml(name)}</span>
+              <strong>${value.toLocaleString("ru-RU", {
+                maximumFractionDigits: 2
+              })}%</strong>
+            </div>
+          `;
+        })
+        .join("");
+
+      const collection = system.collection || {};
+      const catalog = Array.isArray(system.catalog)
+        ? system.catalog
+        : [];
+      const ownedCount = catalog.filter(
+        (skill) => Boolean(collection[skill.id]?.owned)
+      ).length;
+
+      elements.skillCollectionCount.textContent =
+        `${ownedCount} / ${catalog.length}`;
+
+      elements.skillCollectionGrid.innerHTML = catalog
+        .map((skill) => {
+          const entry = collection[skill.id] || {};
+          const owned = Boolean(entry.owned);
+          const skillLevel = Number(entry.level || 1);
+          const fragments = Number(entry.fragments || 0);
+          const required = Number(entry.fragments_required || 0);
+          const rarity = skill.rarity || "common";
+          const color = RARITY_COLORS[rarity] || "#ffffff";
+
+          let progressText = "Не получен";
+          if (owned && entry.max_level) {
+            progressText = `Уровень ${skillLevel} · МАКС.`;
+          } else if (owned) {
+            progressText =
+              `Уровень ${skillLevel} · ${fragments}/${required} фрагм.`;
+          }
+
+          return `
+            <div class="collection-skill ${escapeHtml(rarity)} ${owned ? "" : "not-owned"}">
+              <div class="collection-skill-badge">
+                ${owned ? `УР. ${skillLevel}` : "?"}
+              </div>
+              <div class="collection-skill-head">
+                <div class="collection-skill-icon">
+                  ${owned ? escapeHtml(skill.icon) : "❔"}
+                </div>
+                <div>
+                  <div class="collection-skill-name">
+                    ${owned ? escapeHtml(skill.name) : "Неизвестный навык"}
+                  </div>
+                  <div class="collection-skill-rarity" style="color:${color}">
+                    ${escapeHtml(skill.rarity_name)}
+                  </div>
+                </div>
+              </div>
+              <div class="collection-skill-description">
+                ${owned
+                  ? escapeHtml(skill.description)
+                  : "Откройте свитки, чтобы получить этот навык."}
+              </div>
+              <div class="collection-skill-progress">
+                ${escapeHtml(progressText)}
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function showSkillSummonResults(result) {
+      const results = Array.isArray(result.summon_results)
+        ? result.summon_results
+        : [];
+
+      elements.skillSummonResultTitle.textContent =
+        `✨ Открыто свитков: ${result.summon_count || results.length}`;
+
+      elements.skillSummonResultList.innerHTML = results
+        .map((item) => {
+          const rarity = item.rarity || "common";
+          const color = RARITY_COLORS[rarity] || "#ffffff";
+
+          let detail = `+${item.fragments_gained || 0} фрагм.`;
+          if (item.new) {
+            detail = "Новый навык";
+          } else if (Number(item.levels_gained || 0) > 0) {
+            detail =
+              `Уровень повышен до ${item.level}`;
+          }
+
+          return `
+            <div class="summon-result-row">
+              <div class="summon-result-icon">
+                ${escapeHtml(item.icon)}
+              </div>
+              <div>
+                <div class="summon-result-name">
+                  ${escapeHtml(item.name)}
+                </div>
+                <div class="summon-result-detail" style="color:${color}">
+                  ${escapeHtml(item.rarity_name)} · ${escapeHtml(detail)}
+                </div>
+              </div>
+              ${item.new
+                ? '<div class="summon-result-new">НОВЫЙ</div>'
+                : `<div class="summon-result-new">УР. ${Number(item.level || 1)}</div>`}
+            </div>
+          `;
+        })
+        .join("");
+
+      modalShow("skillSummonModal");
+    }
+
+    async function summonSkills(count) {
+      const button = count === 10
+        ? elements.summonTenButton
+        : elements.summonOneButton;
+
+      elements.summonOneButton.disabled = true;
+      elements.summonTenButton.disabled = true;
+
+      try {
+        const result = await apiRequest(
+          `/skills/summon?count=${count}`,
+          "POST"
+        );
+        player = result;
+        renderPlayer();
+        renderSkillShop();
+
+        if (result.summoned) {
+          showSkillSummonResults(result);
+          try {
+            telegram.HapticFeedback?.notificationOccurred("success");
+          } catch (_) {}
+        } else {
+          setMessage(result.message || "Призыв не выполнен", true);
+        }
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      } finally {
+        renderSkillShop();
+      }
+    }
+
+
     const heroScreen = $("heroScreen");
+    const shopScreen = $("shopScreen");
     const comingScreen = $("comingScreen");
     const navButtons = [...document.querySelectorAll(".game-nav-button")];
     const SCREEN_COPY = {
@@ -3502,11 +4178,36 @@
       shop:{ title:"Магазин", icon:"🛒", heading:"Магазин", text:"Здесь будут игровые товары и специальные предложения." }
     };
     function setActiveNav(name) { navButtons.forEach((b) => b.classList.toggle("active", b.dataset.screen === name)); }
-    function openBattleScreen() { heroScreen.classList.add("hidden"); comingScreen.classList.add("hidden"); document.body.classList.remove("section-open"); setActiveNav("battle"); }
-    function openHeroScreen() { comingScreen.classList.add("hidden"); heroScreen.classList.remove("hidden"); document.body.classList.add("section-open"); setActiveNav("hero"); renderHeroStats(); }
+    function openBattleScreen() {
+      heroScreen.classList.add("hidden");
+      shopScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      document.body.classList.remove("section-open");
+      setActiveNav("battle");
+    }
+
+    function openHeroScreen() {
+      shopScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      heroScreen.classList.remove("hidden");
+      document.body.classList.add("section-open");
+      setActiveNav("hero");
+      renderHeroStats();
+    }
+
+    function openShopScreen() {
+      heroScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      shopScreen.classList.remove("hidden");
+      document.body.classList.add("section-open");
+      setActiveNav("shop");
+      renderSkillShop();
+    }
     function openComingScreen(name) {
       const copy = SCREEN_COPY[name]; if (!copy) return;
-      heroScreen.classList.add("hidden"); document.body.classList.add("section-open");
+      heroScreen.classList.add("hidden");
+      shopScreen.classList.add("hidden");
+      document.body.classList.add("section-open");
       setText("comingHeader", copy.title); setText("comingIcon", copy.icon); setText("comingTitle", copy.heading); setText("comingText", copy.text);
       comingScreen.classList.remove("hidden"); setActiveNav(name);
     }
@@ -3526,13 +4227,35 @@
     }
 
     navButtons.forEach((button) => button.addEventListener("click", () => {
-      const name = button.dataset.screen; if (name === "battle") openBattleScreen(); else if (name === "hero") openHeroScreen(); else openComingScreen(name);
+      const name = button.dataset.screen;
+      if (name === "battle") {
+        openBattleScreen();
+      } else if (name === "hero") {
+        openHeroScreen();
+      } else if (name === "shop") {
+        openShopScreen();
+      } else {
+        openComingScreen(name);
+      }
     }));
     document.querySelectorAll("[data-close-screen]").forEach((button) => button.addEventListener("click", openBattleScreen));
     document.querySelectorAll(".gear-slot[data-slot]").forEach((button) => button.addEventListener("click", () => {
       const item = player?.equipment?.[button.dataset.slot];
       setMessage(item ? `🎒 ${item.name}: БМ +${formatNumber(item.power)}, урон +${formatNumber(item.damage)}, HP +${formatNumber(item.hp)}` : `🎒 ${SLOT_NAMES[button.dataset.slot]}: слот пуст`);
     }));
+    elements.summonOneButton.addEventListener(
+      "click",
+      () => summonSkills(1)
+    );
+    elements.summonTenButton.addEventListener(
+      "click",
+      () => summonSkills(10)
+    );
+    $("skillSummonClose").addEventListener(
+      "click",
+      () => modalHide("skillSummonModal")
+    );
+
     $("lootButton").addEventListener("click", () => { renderChestModal(); modalShow("chestModal"); });
     $("chestModalClose").addEventListener("click", () => modalHide("chestModal"));
     $("openChestButton").addEventListener("click", openChest);
@@ -3566,7 +4289,11 @@
     $("leaderboardButton").addEventListener("click", openLeaderboard);
     $("leaderboardClose").addEventListener("click", () => modalHide("leaderboardModal"));
     elements.respawnButton.addEventListener("click", respawnHero);
-    ["chestModal", "leaderboardModal"].forEach((id) => $(id).addEventListener("click", (event) => { if (event.target === $(id)) modalHide(id); }));
+    ["chestModal", "leaderboardModal", "skillSummonModal"].forEach(
+      (id) => $(id).addEventListener("click", (event) => {
+        if (event.target === $(id)) modalHide(id);
+      })
+    );
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) { stopBattle(); clearTimeout(autoOpenTimer); }
       else { syncBattleState(); scheduleAutoOpen(300); }
