@@ -3449,6 +3449,95 @@
       }
     }
 
+    /* ENEMY_TOOLBAR_STRUCTURE_V2 */
+
+    .enemy-hud {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0;
+      transform: none;
+    }
+
+    .enemy-hud .enemy-panel {
+      margin: 0;
+    }
+
+    .enemy-toolbar {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .enemy-toolbar .leaderboard-button,
+    .enemy-toolbar .quests-battle-button {
+      position: relative !important;
+      inset: auto !important;
+      top: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      left: auto !important;
+      width: 42px;
+      height: 42px;
+      margin: 0;
+      transform: none !important;
+    }
+
+    .enemy-toolbar .leaderboard-button {
+      justify-self: start;
+    }
+
+    .enemy-toolbar .quests-battle-button {
+      justify-self: end;
+    }
+
+    .enemy-toolbar .stage-title {
+      position: relative !important;
+      inset: auto !important;
+      top: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      left: auto !important;
+      display: flex;
+      min-width: 0;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: 0;
+      padding: 0 10px;
+      transform: none !important;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .enemy-toolbar .stage-title > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 430px) {
+      .enemy-toolbar {
+        grid-template-columns: 38px minmax(0, 1fr) 38px;
+        gap: 7px;
+      }
+
+      .enemy-toolbar .leaderboard-button,
+      .enemy-toolbar .quests-battle-button {
+        width: 38px;
+        height: 38px;
+      }
+
+      .enemy-toolbar .stage-title {
+        min-height: 38px;
+        padding: 0 7px;
+        font-size: 10px;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -3506,9 +3595,8 @@
 </div>
 </div>
 </section>
-<button aria-label="Открыть лидерборд" class="leaderboard-button" id="leaderboardButton" type="button">🏆</button><section class="battlefield" id="battlefield">
+<section class="battlefield" id="battlefield">
 <div class="enemy-hud">
-<div class="stage-title"><span id="stageProgress">Этап 1 • 1/10</span><button class="boss-button hidden" id="bossButton" type="button">БОСС</button></div>
 <div class="enemy-panel">
 <div class="enemy-hud-row">
 <span id="enemyName">Слизень</span>
@@ -3521,6 +3609,19 @@
 </div>
 </div>
 
+<div class="enemy-toolbar">
+<button
+  aria-label="Открыть лидерборд"
+  class="leaderboard-button"
+  id="leaderboardButton"
+  type="button"
+>🏆</button>
+
+<div class="stage-title">
+<span id="stageProgress">Этап 1 • 1/10</span>
+<button class="boss-button hidden" id="bossButton" type="button">БОСС</button>
+</div>
+
 <button
   aria-label="Открыть ежедневные задания"
   class="quests-battle-button"
@@ -3530,6 +3631,7 @@
   📋
   <span class="quests-ready-dot"></span>
 </button>
+</div>
 </div>
 <div class="fighters-layer">
 <div class="fighter-slot hero-slot">
