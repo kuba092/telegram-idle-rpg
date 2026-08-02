@@ -2807,6 +2807,9 @@
       sporeStrikeButton: document.querySelector(
         '.skill-button[data-skill="spore_strike"]'
       ),
+      mushroomShieldButton: document.querySelector(
+        '.skill-button[data-skill="mushroom_shield"]'
+      ),
       heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
       heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm")
     };
@@ -2991,38 +2994,67 @@
     }
 
     function renderSkills() {
-      const button = elements.sporeStrikeButton;
-      const skill = player?.skills?.spore_strike;
-      if (!button || !skill) return;
+      const renderCooldownSkill = (button, skill, options = {}) => {
+        if (!button || !skill) return;
 
-      const unlocked = Boolean(skill.unlocked);
-      const lastUsedAt = Number(player?.spore_strike_last_used_at || 0);
-      const cooldownSeconds = Number(skill.cooldown_seconds || 8);
-      const elapsed = lastUsedAt > 0
-        ? Date.now() / 1000 - lastUsedAt
-        : cooldownSeconds;
-      const remaining = Math.max(0, cooldownSeconds - elapsed);
-      const ready = unlocked && remaining <= 0;
+        const unlocked = Boolean(skill.unlocked);
+        const lastUsedAt = Number(options.lastUsedAt || 0);
+        const cooldownSeconds = Number(skill.cooldown_seconds || 1);
+        const elapsed = lastUsedAt > 0
+          ? Date.now() / 1000 - lastUsedAt
+          : cooldownSeconds;
+        const remaining = Math.max(0, cooldownSeconds - elapsed);
+        const activeAmount = Number(options.activeAmount || 0);
+        const ready = unlocked && remaining <= 0;
 
-      button.classList.toggle("locked", !unlocked);
-      button.classList.toggle("active", ready);
-      button.disabled = !unlocked;
-      button.setAttribute("aria-disabled", String(!unlocked));
+        button.classList.toggle("locked", !unlocked);
+        button.classList.toggle("active", ready || activeAmount > 0);
+        button.disabled = !unlocked;
+        button.setAttribute("aria-disabled", String(!unlocked));
 
-      const levelLabel = button.querySelector(".skill-level");
-      if (levelLabel) {
-        if (!unlocked) levelLabel.textContent = `УР. ${skill.unlock_level}`;
-        else if (remaining > 0) levelLabel.textContent = `${remaining.toFixed(1)}с`;
-        else levelLabel.textContent = "ГОТОВ";
-      }
+        const levelLabel = button.querySelector(".skill-level");
 
-      button.setAttribute(
-        "aria-label",
-        !unlocked
-          ? `Spore Strike откроется на уровне ${skill.unlock_level}`
-          : remaining > 0
-            ? `Spore Strike, перезарядка ${remaining.toFixed(1)} секунды`
-            : "Spore Strike готов"
+        if (levelLabel) {
+          if (!unlocked) {
+            levelLabel.textContent = `УР. ${skill.unlock_level}`;
+          } else if (activeAmount > 0) {
+            levelLabel.textContent = `🛡 ${formatNumber(activeAmount)}`;
+          } else if (remaining > 0) {
+            levelLabel.textContent = `${remaining.toFixed(1)}с`;
+          } else {
+            levelLabel.textContent = "ГОТОВ";
+          }
+        }
+
+        button.setAttribute(
+          "aria-label",
+          !unlocked
+            ? `${options.name} откроется на уровне ${skill.unlock_level}`
+            : activeAmount > 0
+              ? `${options.name}, осталось ${activeAmount} защиты`
+              : remaining > 0
+                ? `${options.name}, перезарядка ${remaining.toFixed(1)} секунды`
+                : `${options.name} готов`
+        );
+      };
+
+      renderCooldownSkill(
+        elements.sporeStrikeButton,
+        player?.skills?.spore_strike,
+        {
+          name: "Spore Strike",
+          lastUsedAt: player?.spore_strike_last_used_at,
+        }
+      );
+
+      renderCooldownSkill(
+        elements.mushroomShieldButton,
+        player?.skills?.mushroom_shield,
+        {
+          name: "Mushroom Shield",
+          lastUsedAt: player?.mushroom_shield_last_used_at,
+          activeAmount: player?.skills?.mushroom_shield?.amount,
+        }
       );
     }
 
@@ -3294,6 +3326,40 @@
       finally { elements.autoToggle.disabled = false; }
     }
 
+    async function useMushroomShield() {
+      const skill = player?.skills?.mushroom_shield;
+
+      if (!skill?.unlocked) {
+        setMessage(
+          `🔒 Mushroom Shield откроется на ${skill?.unlock_level || 20} уровне`,
+          true
+        );
+        return;
+      }
+
+      elements.mushroomShieldButton.disabled = true;
+
+      try {
+        player = await apiRequest(
+          "/skills/mushroom-shield/use",
+          "POST"
+        );
+        renderPlayer();
+        setMessage(player.message);
+
+        if (player.shield_used) {
+          try {
+            telegram.HapticFeedback?.notificationOccurred("success");
+          } catch (_) {}
+        }
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      } finally {
+        renderSkills();
+      }
+    }
+
+
     async function toggleSkillsAuto() {
       elements.skillsAutoButton.disabled = true;
       try {
@@ -3401,6 +3467,10 @@
       }
       performAttack("spore_strike");
     });
+    elements.mushroomShieldButton.addEventListener(
+      "click",
+      useMushroomShield
+    );
     elements.bossButton.addEventListener("click", startBoss);
     $("claimOfflineButton").addEventListener("click", claimOffline);
     $("leaderboardButton").addEventListener("click", openLeaderboard);
