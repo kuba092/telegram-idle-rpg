@@ -6212,31 +6212,26 @@
 </div>
 </div>
 
+<!-- COMPANION_COLLECTION_FRONTEND_V1 -->
 <div class="enhancement-panel hidden" id="enhancementCompanionsPanel">
-<div class="companions-preview-card">
-<div class="companions-preview-icon">🐾</div>
-<div class="companions-preview-title">Боевые спутники</div>
-<div class="companions-preview-text">
-Собирайте спутников и формируйте команду из трёх помощников.
+<div class="skill-shop-locked hidden" id="companionLoadoutLocked">
+🔒 Система спутников откроется на 10 уровне героя.
 </div>
 
-<div class="companion-slot-preview">
-<div class="companion-preview-slot">
-<span>1</span>
-<strong>ПУСТО</strong>
+<div id="companionLoadoutBody">
+<div class="skill-loadout-card">
+<div class="skill-card-title">Активные спутники</div>
+<div class="skill-loadout-note">
+Соберите команду из трёх боевых помощников.
 </div>
-<div class="companion-preview-slot">
-<span>2</span>
-<strong>ПУСТО</strong>
-</div>
-<div class="companion-preview-slot">
-<span>3</span>
-<strong>ПУСТО</strong>
-</div>
+<div class="skill-loadout-slots" id="activeCompanionSlots"></div>
 </div>
 
-<div class="companions-preview-note">
-Система коллекции и экипировки спутников будет подключена следующим этапом.
+<div class="skill-collection-card">
+<div class="skill-card-title">
+Коллекция <span id="companionCollectionCount">0 / 6</span>
+</div>
+<div class="skill-collection-grid" id="companionCollectionGrid"></div>
 </div>
 </div>
 </div>
@@ -7631,6 +7626,189 @@
         .join("");
     }
 
+    function renderCompanionLoadout() {
+      const system = player?.companion_system;
+      if (!system) return;
+
+      const locked = $("companionLoadoutLocked");
+      const body = $("companionLoadoutBody");
+      const slotsBox = $("activeCompanionSlots");
+      const collectionBox = $("companionCollectionGrid");
+      const countBox = $("companionCollectionCount");
+
+      if (!locked || !body || !slotsBox || !collectionBox) {
+        return;
+      }
+
+      const unlocked = Boolean(system.unlocked);
+
+      locked.classList.toggle("hidden", unlocked);
+      body.classList.toggle("hidden", !unlocked);
+
+      if (!unlocked) {
+        locked.textContent =
+          `🔒 Система спутников откроется на ${system.unlock_level || 10} уровне героя.`;
+        return;
+      }
+
+      const catalog = Array.isArray(system.catalog)
+        ? system.catalog
+        : [];
+      const collection = system.collection || {};
+      const slots = Array.isArray(system.slots)
+        ? system.slots
+        : [];
+
+      const catalogById = Object.fromEntries(
+        catalog.map((companion) => [
+          companion.id,
+          companion,
+        ])
+      );
+
+      slotsBox.innerHTML = [0, 1, 2]
+        .map((index) => {
+          const slot = slots[index] || {
+            index: index + 1,
+            unlocked: false,
+            unlock_level: 10,
+            companion_id: null,
+          };
+
+          const companion = slot.companion_id
+            ? catalogById[slot.companion_id]
+            : null;
+
+          const entry = companion
+            ? collection[companion.id] || {}
+            : {};
+
+          if (!slot.unlocked) {
+            return `
+              <div class="skill-loadout-slot locked">
+                <div class="skill-loadout-slot-number">
+                  ${index + 1}
+                </div>
+                <div class="skill-loadout-slot-icon">🔒</div>
+                <div class="skill-loadout-slot-name">
+                  Откроется на уровне ${slot.unlock_level}
+                </div>
+              </div>
+            `;
+          }
+
+          if (!companion) {
+            return `
+              <div class="skill-loadout-slot">
+                <div class="skill-loadout-slot-number">
+                  ${index + 1}
+                </div>
+                <div class="skill-loadout-slot-icon">＋</div>
+                <div class="skill-loadout-slot-name">
+                  Пустой слот
+                </div>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="skill-loadout-slot filled">
+              <div class="skill-loadout-slot-number">
+                ${index + 1}
+              </div>
+              <div class="skill-loadout-slot-icon">
+                ${escapeHtml(companion.icon || "🐾")}
+              </div>
+              <div class="skill-loadout-slot-name">
+                ${escapeHtml(companion.name)}
+              </div>
+              <div class="skill-loadout-slot-level">
+                УР. ${Number(entry.level || 1)}
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      const ownedCount = catalog.filter(
+        (companion) =>
+          Boolean(collection[companion.id]?.owned)
+      ).length;
+
+      if (countBox) {
+        countBox.textContent =
+          `${ownedCount} / ${catalog.length}`;
+      }
+
+      collectionBox.innerHTML = catalog
+        .map((companion) => {
+          const entry = collection[companion.id] || {};
+          const owned = Boolean(entry.owned);
+          const level = Number(entry.level || 1);
+          const fragments = Number(entry.fragments || 0);
+          const rarity = companion.rarity || "common";
+          const color =
+            RARITY_COLORS[rarity] || "#ffffff";
+
+          return `
+            <div class="collection-skill ${escapeHtml(rarity)} ${owned ? "" : "not-owned"}">
+              <div class="collection-skill-badge">
+                ${owned ? `УР. ${level}` : "?"}
+              </div>
+
+              <div class="collection-skill-head">
+                <div class="collection-skill-icon">
+                  ${owned
+                    ? escapeHtml(companion.icon || "🐾")
+                    : "❔"}
+                </div>
+
+                <div>
+                  <div class="collection-skill-name">
+                    ${owned
+                      ? escapeHtml(companion.name)
+                      : "Неизвестный спутник"}
+                  </div>
+
+                  <div
+                    class="collection-skill-rarity"
+                    style="color:${color}"
+                  >
+                    ${escapeHtml(
+                      companion.rarity_name || rarity
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div class="collection-skill-description">
+                ${owned
+                  ? escapeHtml(companion.description)
+                  : "Получите этого спутника через призыв."}
+              </div>
+
+              <div class="collection-skill-progress">
+                ${owned
+                  ? `Уровень ${level} · ${fragments} фрагм.`
+                  : "Не получен"}
+              </div>
+
+              <div class="collection-skill-actions">
+                <button
+                  class="collection-skill-equip"
+                  type="button"
+                  disabled
+                >
+                  ${owned ? "ЭКИПИРОВКА ПОЗЖЕ" : "НЕ ПОЛУЧЕН"}
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+
     function renderSkillLoadout() {
       const system = player?.skill_system;
       if (!system) return;
@@ -8676,6 +8854,8 @@
 
       if (skillsActive) {
         renderSkillLoadout();
+      } else {
+        renderCompanionLoadout();
       }
     }
 

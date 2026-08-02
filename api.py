@@ -44,6 +44,65 @@ POISON_CLOUD_DURATION_SECONDS = 5.0
 POISON_CLOUD_TICK_SECONDS = 1.0
 POISON_CLOUD_COOLDOWN_SECONDS = 20.0
 
+# COMPANION_SYSTEM_CONSTANTS_V1
+COMPANION_SYSTEM_UNLOCK_LEVEL = 10
+COMPANION_SLOT_UNLOCK_LEVELS = (10, 25, 50)
+COMPANION_MAX_LEVEL = 20
+COMPANION_SUMMON_MAX_LEVEL = 10
+COMPANION_SUMMON_COST = 1
+
+COMPANION_RARITY_NAMES = {
+    "common": "Обычный",
+    "rare": "Редкий",
+    "epic": "Эпический",
+    "legendary": "Легендарный",
+}
+
+COMPANION_CATALOG = {
+    "forest_sprite": {
+        "name": "Лесной дух",
+        "icon": "🌿",
+        "rarity": "common",
+        "implemented": False,
+        "description": "Небольшой дух леса, усиливающий героя.",
+    },
+    "baby_slime": {
+        "name": "Маленький слизень",
+        "icon": "🟢",
+        "rarity": "common",
+        "implemented": False,
+        "description": "Любопытный слизень, следующий за героем.",
+    },
+    "spore_beetle": {
+        "name": "Споровый жук",
+        "icon": "🪲",
+        "rarity": "rare",
+        "implemented": False,
+        "description": "Жук, покрытый светящимися спорами.",
+    },
+    "mushroom_owl": {
+        "name": "Грибная сова",
+        "icon": "🦉",
+        "rarity": "rare",
+        "implemented": False,
+        "description": "Мудрая сова из глубины грибного леса.",
+    },
+    "thorn_wolf": {
+        "name": "Шипастый волк",
+        "icon": "🐺",
+        "rarity": "epic",
+        "implemented": False,
+        "description": "Лесной хищник с бронёй из колючих лоз.",
+    },
+    "ancient_entling": {
+        "name": "Древний энтёнок",
+        "icon": "🌳",
+        "rarity": "legendary",
+        "implemented": False,
+        "description": "Юный хранитель древнего леса.",
+    },
+}
+
 SKILL_SYSTEM_UNLOCK_LEVEL = 5
 SKILL_SLOT_UNLOCK_LEVELS = (5, 15, 30)
 STARTER_SKILL_IDS = (
@@ -978,6 +1037,76 @@ def apply_offline_accrual(
     )
 
 
+# COMPANION_PLAYER_DATA_V1
+def default_companion_collection() -> dict:
+    return {}
+
+
+def default_companion_slots() -> list[str | None]:
+    return [None, None, None]
+
+
+def normalize_companion_collection(value) -> dict:
+    collection = parse_json_object(value)
+    normalized = {}
+
+    for companion_id, raw_entry in collection.items():
+        if companion_id not in COMPANION_CATALOG:
+            continue
+
+        entry = raw_entry if isinstance(raw_entry, dict) else {}
+
+        normalized[companion_id] = {
+            "owned": bool(entry.get("owned", True)),
+            "level": clamp_int(
+                entry.get("level", 1),
+                1,
+                COMPANION_MAX_LEVEL,
+            ),
+            "fragments": max(
+                0,
+                int(entry.get("fragments", 0)),
+            ),
+        }
+
+    return normalized
+
+
+def normalize_companion_slots(
+    value,
+    collection: dict,
+) -> list[str | None]:
+    try:
+        parsed = json.loads(value or "[]")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        parsed = []
+
+    if not isinstance(parsed, list):
+        parsed = []
+
+    slots = []
+    used = set()
+
+    for raw_companion_id in parsed[:3]:
+        companion_id = str(raw_companion_id or "").strip()
+
+        if (
+            companion_id in COMPANION_CATALOG
+            and companion_id in collection
+            and bool(collection[companion_id].get("owned"))
+            and companion_id not in used
+        ):
+            slots.append(companion_id)
+            used.add(companion_id)
+        else:
+            slots.append(None)
+
+    while len(slots) < 3:
+        slots.append(None)
+
+    return slots[:3]
+
+
 def default_skill_collection() -> dict:
     return {}
 
@@ -1112,6 +1241,44 @@ def skill_fragments_required(skill_level: int) -> int:
         return 0
 
     return 5 * skill_level
+
+
+# COMPANION_PUBLIC_API_V1
+def public_companion_catalog() -> list[dict]:
+    rarity_order = {
+        "common": 0,
+        "rare": 1,
+        "epic": 2,
+        "legendary": 3,
+    }
+
+    result = []
+
+    for companion_id, definition in COMPANION_CATALOG.items():
+        rarity = str(definition["rarity"])
+
+        result.append(
+            {
+                "id": companion_id,
+                "name": definition["name"],
+                "icon": definition["icon"],
+                "rarity": rarity,
+                "rarity_name": COMPANION_RARITY_NAMES[rarity],
+                "implemented": bool(
+                    definition.get("implemented", False)
+                ),
+                "description": definition["description"],
+            }
+        )
+
+    result.sort(
+        key=lambda item: (
+            rarity_order[item["rarity"]],
+            item["name"],
+        )
+    )
+
+    return result
 
 
 def public_skill_catalog() -> list[dict]:
@@ -1321,6 +1488,64 @@ def unavailable_skill_message(
     return f"🔒 Навык {skill_name} недоступен"
 
 
+def ensure_player_companion_data(
+    connection: sqlite3.Connection,
+    telegram_id: int,
+) -> None:
+    row = connection.execute(
+        """
+        SELECT level,
+               companions_collection_json,
+               companion_slots_json
+        FROM players
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    ).fetchone()
+
+    if row is None:
+        return
+
+    collection = normalize_companion_collection(
+        row["companions_collection_json"]
+    )
+    slots = normalize_companion_slots(
+        row["companion_slots_json"],
+        collection,
+    )
+
+    level = max(1, int(row["level"] or 1))
+    unlocked_count = sum(
+        level >= unlock_level
+        for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
+    )
+
+    for index in range(unlocked_count, 3):
+        slots[index] = None
+
+    connection.execute(
+        """
+        UPDATE players
+        SET companions_collection_json = ?,
+            companion_slots_json = ?
+        WHERE telegram_id = ?
+        """,
+        (
+            json.dumps(
+                collection,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            json.dumps(
+                slots,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            telegram_id,
+        ),
+    )
+
+
 def ensure_player_skill_data(
     connection: sqlite3.Connection,
     telegram_id: int,
@@ -1395,6 +1620,7 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             (telegram_id, username, first_name, now, now, now),
         )
         ensure_player_skill_data(connection, telegram_id)
+        ensure_player_companion_data(connection, telegram_id)
         ensure_daily_quest_state(
             connection,
             telegram_id,
@@ -2091,11 +2317,25 @@ def build_player_response(player: dict, **extra) -> dict:
         and poison_next_tick_at > 0
     )
 
+    companion_collection = normalize_companion_collection(
+        player.get("companions_collection_json")
+    )
+    companion_slots = normalize_companion_slots(
+        player.get("companion_slots_json"),
+        companion_collection,
+    )
+    unlocked_companion_slot_count = sum(
+        level >= unlock_level
+        for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
+    )
+
     hidden_fields = {
         "equipment_json",
         "pending_loot_json",
         "skills_collection_json",
         "skill_slots_json",
+        "companions_collection_json",
+        "companion_slots_json",
         "daily_quests_claimed_json",
     }
     public_player = {
@@ -2159,6 +2399,39 @@ def build_player_response(player: dict, **extra) -> dict:
                 }
                 for skill_id, entry in skill_collection.items()
             },
+        },
+        "companion_system": {
+            "unlocked": (
+                level >= COMPANION_SYSTEM_UNLOCK_LEVEL
+            ),
+            "unlock_level": COMPANION_SYSTEM_UNLOCK_LEVEL,
+            "scrolls": max(
+                0,
+                int(player.get("companion_scrolls", 0)),
+            ),
+            "slot_unlock_levels": list(
+                COMPANION_SLOT_UNLOCK_LEVELS
+            ),
+            "unlocked_slot_count": (
+                unlocked_companion_slot_count
+            ),
+            "catalog": public_companion_catalog(),
+            "slots": [
+                {
+                    "index": index + 1,
+                    "unlocked": (
+                        index
+                        < unlocked_companion_slot_count
+                    ),
+                    "unlock_level": (
+                        COMPANION_SLOT_UNLOCK_LEVELS[index]
+                    ),
+                    "companion_id": companion_id,
+                }
+                for index, companion_id
+                in enumerate(companion_slots)
+            ],
+            "collection": companion_collection,
         },
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
@@ -2387,6 +2660,22 @@ def create_database() -> None:
         ),
         (
             "skill_summon_exp",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "companion_scrolls",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "companions_collection_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        ),
+        (
+            "companion_slots_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        ),
+        (
+            "companion_summon_exp",
             "INTEGER NOT NULL DEFAULT 0",
         ),
         (
