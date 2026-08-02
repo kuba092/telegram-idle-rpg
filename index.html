@@ -2925,10 +2925,23 @@
       clearTimeout(heroAttackTimer); heroAttackTimer = setTimeout(performAttack, Math.max(.1, Number(seconds || 1)) * 1000);
     }
     function scheduleMonsterAttack(seconds) {
-      if (!battleRunning || !player?.can_attack || heroDefeated) return;
-      clearTimeout(monsterAttackTimer); monsterAttackTimer = setTimeout(performMonsterAttack, Math.max(.15, Number(seconds || 2)) * 1000);
-    }
-    function syncBattleState() {
+    if (!battleRunning || !player?.can_attack || heroDefeated) return;
+
+    // Уже запущенная атака врага не переносится ударами героя.
+    if (monsterAttackTimer) return;
+
+    const delay = Math.max(
+      0.15,
+      Number(seconds || 2)
+    ) * 1000;
+
+    monsterAttackTimer = setTimeout(() => {
+      monsterAttackTimer = null;
+      performMonsterAttack();
+    }, delay);
+  }
+
+  function syncBattleState() {
       if (!player || document.hidden) { stopBattle(); return; }
       if (!player.hero_alive || Number(player.hero_hp) <= 0) { if (!heroDefeated) handleHeroDefeat(); return; }
       if (!player.can_attack) { stopBattle(); return; }
