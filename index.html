@@ -4911,6 +4911,132 @@
       }
     }
 
+
+    /* MAIN_GEMS_BALANCE_HUD_LAYOUT_FIX_V1 */
+
+    .top-hud {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 184px !important;
+      align-items: stretch !important;
+      gap: 6px !important;
+    }
+
+    .hero-top-card {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+    }
+
+    .resources {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      align-items: stretch !important;
+      width: 184px !important;
+      height: 82px !important;
+      gap: 5px !important;
+    }
+
+    .resources .resource-pill,
+    .resources .gold-pill,
+    .resources .gems-pill {
+      display: flex !important;
+      width: auto !important;
+      min-width: 0 !important;
+      height: 82px !important;
+      min-height: 82px !important;
+      gap: 4px !important;
+      padding: 6px !important;
+      overflow: hidden !important;
+    }
+
+    .resources .resource-icon {
+      width: 22px !important;
+      height: 22px !important;
+      flex: 0 0 22px !important;
+      font-size: 14px !important;
+    }
+
+    .resources .resource-copy {
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .resources .resource-label {
+      max-width: 100% !important;
+      overflow: hidden !important;
+      font-size: 6px !important;
+      letter-spacing: 0 !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+
+    .resources .resource-value {
+      max-width: 48px !important;
+      overflow: hidden !important;
+      font-size: 13px !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+
+    @media (max-width: 430px) {
+      .top-hud {
+        right: 7px !important;
+        left: 7px !important;
+        grid-template-columns: minmax(0, 1fr) 166px !important;
+        gap: 5px !important;
+      }
+
+      .hero-top-card {
+        height: 78px !important;
+        min-height: 78px !important;
+        grid-template-columns: 37px minmax(0, 1fr) !important;
+        gap: 5px !important;
+        padding: 5px !important;
+      }
+
+      .hero-top-avatar {
+        width: 37px !important;
+        height: 37px !important;
+      }
+
+      .hero-top-avatar-image {
+        width: 34px !important;
+        height: 34px !important;
+      }
+
+      .resources {
+        width: 166px !important;
+        height: 78px !important;
+        gap: 4px !important;
+      }
+
+      .resources .resource-pill,
+      .resources .gold-pill,
+      .resources .gems-pill {
+        height: 78px !important;
+        min-height: 78px !important;
+        gap: 3px !important;
+        padding: 5px 4px !important;
+        border-radius: 13px !important;
+      }
+
+      .resources .resource-icon {
+        width: 20px !important;
+        height: 20px !important;
+        flex-basis: 20px !important;
+        font-size: 13px !important;
+      }
+
+      .resources .resource-label {
+        font-size: 5.5px !important;
+      }
+
+      .resources .resource-value {
+        max-width: 42px !important;
+        font-size: 12px !important;
+      }
+    }
+
 </style>
 </head>
 <body>
