@@ -2766,6 +2766,221 @@
       text-align: center;
     }
 
+    .quests-content {
+      display: flex;
+      min-height: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      padding: 2px 2px 16px;
+      scrollbar-width: none;
+    }
+
+    .quests-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .quests-summary {
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 17px;
+      background:
+        linear-gradient(
+          145deg,
+          rgba(43, 93, 63, 0.82),
+          rgba(6, 22, 20, 0.92)
+        );
+      box-shadow:
+        0 10px 26px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    }
+
+    .quests-summary-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .quests-summary-title {
+      color: #f2ffe1;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .quests-summary-count {
+      padding: 5px 8px;
+      border: 1px solid rgba(220, 255, 139, 0.26);
+      border-radius: 9px;
+      background: rgba(143, 203, 61, 0.13);
+      color: #e7ff9d;
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .quests-reset {
+      margin-top: 7px;
+      color: rgba(229, 241, 235, 0.65);
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    .quest-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .quest-card {
+      padding: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 16px;
+      background: rgba(5, 18, 18, 0.84);
+      box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    }
+
+    .quest-card.completed {
+      border-color: rgba(181, 231, 82, 0.36);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(75, 124, 44, 0.23),
+          rgba(5, 18, 18, 0.87)
+        );
+    }
+
+    .quest-card.claimed {
+      opacity: 0.65;
+    }
+
+    .quest-head {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .quest-icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 13px;
+      background: rgba(0, 0, 0, 0.24);
+      font-size: 23px;
+    }
+
+    .quest-name {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .quest-description {
+      margin-top: 3px;
+      color: rgba(229, 239, 235, 0.61);
+      font-size: 8px;
+      font-weight: 750;
+      line-height: 1.3;
+    }
+
+    .quest-reward {
+      min-width: 58px;
+      padding: 6px 7px;
+      border: 1px solid rgba(255, 220, 122, 0.22);
+      border-radius: 10px;
+      background: rgba(86, 64, 18, 0.3);
+      color: #ffe79e;
+      font-size: 9px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .quest-progress-copy {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 9px 1px 5px;
+      color: rgba(232, 242, 237, 0.72);
+      font-size: 8px;
+      font-weight: 900;
+    }
+
+    .quest-progress-track {
+      height: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.32);
+    }
+
+    .quest-progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #5bcf58, #d6ff6a);
+      box-shadow: 0 0 10px rgba(174, 236, 73, 0.28);
+      transition: width 0.24s ease;
+    }
+
+    .quest-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 9px;
+    }
+
+    .quest-claim-button {
+      min-width: 105px;
+      min-height: 34px;
+      padding: 7px 11px;
+      border: 1px solid rgba(223, 255, 130, 0.36);
+      border-radius: 11px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(150, 211, 59, 0.5),
+          rgba(45, 112, 48, 0.66)
+        );
+      color: #f6ffdd;
+      font: inherit;
+      font-size: 9px;
+      font-weight: 950;
+      box-shadow:
+        0 6px 14px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    }
+
+    .quest-claim-button:disabled {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(235, 242, 239, 0.43);
+      box-shadow: none;
+    }
+
+    .quest-bonus-card {
+      border-color: rgba(255, 191, 80, 0.38);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(118, 77, 18, 0.42),
+          rgba(16, 25, 19, 0.92)
+        );
+    }
+
+    .quest-status-message {
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 15px;
+      background: rgba(5, 18, 18, 0.82);
+      color: rgba(235, 244, 240, 0.7);
+      font-size: 10px;
+      font-weight: 850;
+      text-align: center;
+    }
+
 </style>
 </head>
 <body>
@@ -3001,6 +3216,34 @@
 </div>
 </div>
 </section>
+<section aria-label="Испытания" class="game-screen hidden" id="trialsScreen">
+<header class="screen-header">
+<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<div class="screen-title">Испытания</div>
+<div class="screen-header-spacer"></div>
+</header>
+
+<div class="quests-content">
+<div class="quests-summary">
+<div class="quests-summary-top">
+<div class="quests-summary-title">Ежедневные задания</div>
+<div class="quests-summary-count" id="questSummaryCount">0 / 3</div>
+</div>
+<div class="quests-reset">
+Сброс через <span id="questResetTimer">--:--:--</span> · UTC
+</div>
+</div>
+
+<div class="quest-list" id="dailyQuestList">
+<div class="quest-status-message">
+Загрузка заданий…
+</div>
+</div>
+
+<div class="quest-list" id="dailyQuestBonus"></div>
+</div>
+</section>
+
 <section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
 <header class="screen-header">
 <button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
@@ -3267,7 +3510,11 @@
       skillCollectionCount: $("skillCollectionCount"),
       skillCollectionGrid: $("skillCollectionGrid"),
       skillSummonResultTitle: $("skillSummonResultTitle"),
-      skillSummonResultList: $("skillSummonResultList")
+      skillSummonResultList: $("skillSummonResultList"),
+      questSummaryCount: $("questSummaryCount"),
+      questResetTimer: $("questResetTimer"),
+      dailyQuestList: $("dailyQuestList"),
+      dailyQuestBonus: $("dailyQuestBonus")
     };
 
     let player = null;
@@ -3945,6 +4192,207 @@
       } catch (error) { $("leaderboardList").innerHTML = `<div class="loading-text">${error.message}</div>`; }
     }
 
+    function questCardHtml(quest, bonus = false) {
+      const progress = Math.max(0, Number(quest.progress || 0));
+      const target = Math.max(1, Number(quest.target || 1));
+      const ratio = bonus
+        ? (quest.completed ? 1 : 0)
+        : Math.max(0, Math.min(1, progress / target));
+
+      const rewardScrolls = Number(
+        quest.reward?.skill_scrolls || 0
+      );
+
+      let buttonText = "В ПРОЦЕССЕ";
+      let disabled = true;
+
+      if (quest.claimed) {
+        buttonText = "ПОЛУЧЕНО";
+      } else if (quest.claimable) {
+        buttonText = "ЗАБРАТЬ";
+        disabled = false;
+      } else if (quest.completed) {
+        buttonText = "ГОТОВО";
+      }
+
+      const statusClass = [
+        quest.completed ? "completed" : "",
+        quest.claimed ? "claimed" : "",
+        bonus ? "quest-bonus-card" : "",
+      ].filter(Boolean).join(" ");
+
+      const progressText = bonus
+        ? (
+            quest.claimed
+              ? "Общая награда получена"
+              : quest.completed
+                ? "Все награды заданий собраны"
+                : "Заберите награды всех заданий"
+          )
+        : `${Math.min(progress, target)} / ${target}`;
+
+      return `
+        <div class="quest-card ${statusClass}">
+          <div class="quest-head">
+            <div class="quest-icon">
+              ${escapeHtml(quest.icon || "📋")}
+            </div>
+            <div>
+              <div class="quest-name">
+                ${escapeHtml(quest.name || "Задание")}
+              </div>
+              <div class="quest-description">
+                ${escapeHtml(quest.description || "")}
+              </div>
+            </div>
+            <div class="quest-reward">
+              📜 +${rewardScrolls}
+            </div>
+          </div>
+
+          <div class="quest-progress-copy">
+            <span>${escapeHtml(progressText)}</span>
+            <span>${Math.round(ratio * 100)}%</span>
+          </div>
+
+          <div class="quest-progress-track">
+            <div
+              class="quest-progress-fill"
+              style="width:${ratio * 100}%"
+            ></div>
+          </div>
+
+          <div class="quest-actions">
+            <button
+              class="quest-claim-button"
+              data-quest-claim="${escapeHtml(quest.id)}"
+              type="button"
+              ${disabled ? "disabled" : ""}
+            >
+              ${buttonText}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+
+    function updateQuestResetTimer() {
+      if (!elements.questResetTimer) return;
+
+      const now = new Date();
+      const nextReset = new Date(now);
+      nextReset.setUTCHours(24, 0, 0, 0);
+
+      const remaining = Math.max(
+        0,
+        nextReset.getTime() - now.getTime()
+      );
+
+      const totalSeconds = Math.floor(remaining / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor(
+        (totalSeconds % 3600) / 60
+      );
+      const seconds = totalSeconds % 60;
+
+      elements.questResetTimer.textContent = [
+        hours,
+        minutes,
+        seconds,
+      ]
+        .map((value) => String(value).padStart(2, "0"))
+        .join(":");
+    }
+
+
+    function bindQuestClaimButtons() {
+      document
+        .querySelectorAll("[data-quest-claim]")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            claimDailyQuest(button.dataset.questClaim);
+          });
+        });
+    }
+
+
+    function renderDailyQuests() {
+      const questData = player?.quests;
+
+      if (!questData) {
+        elements.dailyQuestList.innerHTML = `
+          <div class="quest-status-message">
+            Данные заданий пока недоступны.
+          </div>
+        `;
+        elements.dailyQuestBonus.innerHTML = "";
+        elements.questSummaryCount.textContent = "0 / 3";
+        return;
+      }
+
+      const quests = Array.isArray(questData.quests)
+        ? questData.quests
+        : [];
+
+      elements.questSummaryCount.textContent =
+        `${Number(questData.completed_count || 0)} / ${Number(
+          questData.total_count || quests.length
+        )}`;
+
+      elements.dailyQuestList.innerHTML = quests.length
+        ? quests.map((quest) => questCardHtml(quest)).join("")
+        : `
+          <div class="quest-status-message">
+            Ежедневных заданий пока нет.
+          </div>
+        `;
+
+      elements.dailyQuestBonus.innerHTML = questData.bonus
+        ? questCardHtml(questData.bonus, true)
+        : "";
+
+      bindQuestClaimButtons();
+      updateQuestResetTimer();
+    }
+
+
+    async function claimDailyQuest(questId) {
+      if (!questId) return;
+
+      const buttons = [
+        ...document.querySelectorAll("[data-quest-claim]")
+      ];
+      buttons.forEach((button) => {
+        button.disabled = true;
+      });
+
+      try {
+        player = await apiRequest(
+          `/quests/claim?quest_id=${encodeURIComponent(questId)}`,
+          "POST"
+        );
+
+        renderPlayer();
+        renderDailyQuests();
+        renderSkillShop();
+
+        setMessage(
+          player.message || "✅ Награда получена"
+        );
+
+        try {
+          telegram.HapticFeedback?.notificationOccurred(
+            player.quest_claimed ? "success" : "warning"
+          );
+        } catch (_) {}
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+        renderDailyQuests();
+      }
+    }
+
+
     function escapeHtml(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -4168,6 +4616,7 @@
 
 
     const heroScreen = $("heroScreen");
+    const trialsScreen = $("trialsScreen");
     const shopScreen = $("shopScreen");
     const comingScreen = $("comingScreen");
     const navButtons = [...document.querySelectorAll(".game-nav-button")];
@@ -4180,6 +4629,7 @@
     function setActiveNav(name) { navButtons.forEach((b) => b.classList.toggle("active", b.dataset.screen === name)); }
     function openBattleScreen() {
       heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       document.body.classList.remove("section-open");
@@ -4187,6 +4637,7 @@
     }
 
     function openHeroScreen() {
+      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       heroScreen.classList.remove("hidden");
@@ -4197,15 +4648,27 @@
 
     function openShopScreen() {
       heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       shopScreen.classList.remove("hidden");
       document.body.classList.add("section-open");
       setActiveNav("shop");
       renderSkillShop();
     }
+    function openTrialsScreen() {
+      heroScreen.classList.add("hidden");
+      shopScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      trialsScreen.classList.remove("hidden");
+      document.body.classList.add("section-open");
+      setActiveNav("trials");
+      renderDailyQuests();
+    }
+
     function openComingScreen(name) {
       const copy = SCREEN_COPY[name]; if (!copy) return;
       heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       document.body.classList.add("section-open");
       setText("comingHeader", copy.title); setText("comingIcon", copy.icon); setText("comingTitle", copy.heading); setText("comingText", copy.text);
@@ -4232,6 +4695,8 @@
         openBattleScreen();
       } else if (name === "hero") {
         openHeroScreen();
+      } else if (name === "trials") {
+        openTrialsScreen();
       } else if (name === "shop") {
         openShopScreen();
       } else {
@@ -4304,6 +4769,16 @@
     setInterval(() => {
       if (player && !document.hidden) renderSkills();
     }, 100);
+
+    setInterval(() => {
+      if (
+        player
+        && !document.hidden
+        && !trialsScreen.classList.contains("hidden")
+      ) {
+        updateQuestResetTimer();
+      }
+    }, 1000);
 
     startGame();
 </script>
