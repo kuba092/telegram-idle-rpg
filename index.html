@@ -3512,6 +3512,86 @@
       }
     }
 
+    /* ENEMY_LAYOUT_V2 */
+
+    .enemy-hud {
+      padding-top: 0;
+      padding-bottom: 52px;
+    }
+
+    .enemy-hud .enemy-panel {
+      position: relative;
+      margin-top: 0;
+    }
+
+    .enemy-hud .leaderboard-button {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 6;
+      width: 42px;
+      height: 42px;
+      margin: 0;
+    }
+
+    .enemy-hud > .quests-battle-button {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      left: auto;
+      z-index: 6;
+      width: 42px;
+      height: 42px;
+      margin: 0;
+    }
+
+    .enemy-hud .stage-title {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 52px;
+      left: 52px;
+      display: flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      text-align: center;
+    }
+
+    .enemy-hud .stage-title > span {
+      display: inline-flex;
+      min-height: 36px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      border-radius: 999px;
+    }
+
+    @media (max-width: 430px) {
+      .enemy-hud {
+        padding-bottom: 48px;
+      }
+
+      .enemy-hud .leaderboard-button,
+      .enemy-hud > .quests-battle-button {
+        top: calc(100% + 6px);
+        width: 38px;
+        height: 38px;
+      }
+
+      .enemy-hud .stage-title {
+        top: calc(100% + 6px);
+        right: 46px;
+        left: 46px;
+        min-height: 38px;
+      }
+
+      .enemy-hud .stage-title > span {
+        min-height: 34px;
+        padding: 0 12px;
+      }
+    }
+
 </style>
 </head>
 <body>
