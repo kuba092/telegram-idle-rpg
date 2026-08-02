@@ -3562,6 +3562,160 @@
       }
     }
 
+    /* COMPACT_TOP_UI_V2 */
+
+    .top-hud {
+      gap: 6px;
+    }
+
+    .hero-top-card {
+      height: 82px !important;
+      min-height: 82px;
+      grid-template-columns: 42px minmax(0, 1fr) !important;
+      gap: 6px !important;
+      padding: 6px !important;
+    }
+
+    .hero-top-avatar {
+      width: 42px !important;
+      height: 42px !important;
+      border-radius: 12px !important;
+    }
+
+    .hero-top-avatar-image {
+      width: 38px !important;
+      height: 38px !important;
+    }
+
+    .hero-top-main {
+      gap: 1px !important;
+    }
+
+    .hero-top-card .level-caption,
+    .hero-top-card .xp-row,
+    .hero-top-health-row {
+      font-size: 6.5px !important;
+    }
+
+    .hero-top-card .level-value {
+      font-size: 16px !important;
+    }
+
+    .hero-top-bm {
+      padding: 2px 4px !important;
+      gap: 3px !important;
+    }
+
+    .hero-top-bm span {
+      font-size: 5.5px !important;
+    }
+
+    .hero-top-bm strong {
+      font-size: 9px !important;
+    }
+
+    .hero-top-card .xp-track,
+    .hero-top-hp-track {
+      height: 5px !important;
+    }
+
+    .resources {
+      height: 82px !important;
+    }
+
+    .resources .gold-pill {
+      height: 82px !important;
+      min-height: 82px;
+      padding: 6px !important;
+      border-radius: 15px;
+    }
+
+    .resources .gold-pill .resource-icon {
+      font-size: 20px !important;
+    }
+
+    .resources .gold-pill .resource-label {
+      font-size: 6px !important;
+    }
+
+    .resources .gold-pill .resource-value {
+      font-size: 15px !important;
+    }
+
+    .enemy-hud {
+      top: calc(104px + env(safe-area-inset-top)) !important;
+      gap: 5px !important;
+    }
+
+    .enemy-panel {
+      padding: 8px 10px 9px !important;
+      border-radius: 14px !important;
+    }
+
+    .enemy-hud-row {
+      margin-bottom: 5px !important;
+      font-size: 11px !important;
+    }
+
+    .enemy-hp-text {
+      font-size: 9px !important;
+    }
+
+    .enemy-panel .hp-track {
+      height: 10px !important;
+    }
+
+    .enemy-toolbar {
+      grid-template-columns: 36px minmax(0, 1fr) 36px !important;
+      gap: 6px !important;
+    }
+
+    .enemy-toolbar .leaderboard-button,
+    .enemy-toolbar .quests-battle-button {
+      width: 36px !important;
+      height: 36px !important;
+      border-radius: 11px !important;
+      font-size: 17px !important;
+    }
+
+    .enemy-toolbar .stage-title {
+      min-height: 36px !important;
+      padding: 0 8px !important;
+      font-size: 9px !important;
+    }
+
+    @media (max-width: 430px) {
+      .hero-top-card {
+        height: 78px !important;
+        min-height: 78px;
+        grid-template-columns: 39px minmax(0, 1fr) !important;
+        padding: 5px !important;
+      }
+
+      .hero-top-avatar {
+        width: 39px !important;
+        height: 39px !important;
+      }
+
+      .hero-top-avatar-image {
+        width: 35px !important;
+        height: 35px !important;
+      }
+
+      .resources {
+        height: 78px !important;
+      }
+
+      .resources .gold-pill {
+        height: 78px !important;
+        min-height: 78px;
+      }
+
+      .enemy-hud {
+        top: calc(100px + env(safe-area-inset-top)) !important;
+      }
+    }
+
 </style>
 </head>
 <body>
