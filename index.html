@@ -1936,6 +1936,99 @@
 
   
 
+    /* ===== Навыки: вертикальная панель слева ===== */
+    .skill-dock {
+      position: absolute;
+      left: 8px;
+      bottom: calc(173px + env(safe-area-inset-bottom));
+      z-index: 46;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      pointer-events: auto;
+    }
+
+    .skill-button {
+      position: relative;
+      display: grid;
+      width: 48px;
+      height: 48px;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid rgba(155, 255, 177, 0.34);
+      border-radius: 15px;
+      background:
+        radial-gradient(circle at 50% 22%, rgba(177, 255, 152, 0.18), transparent 48%),
+        linear-gradient(180deg, rgba(24, 70, 48, 0.96), rgba(8, 28, 24, 0.97));
+      color: #efffe8;
+      font: inherit;
+      cursor: pointer;
+      box-shadow:
+        0 8px 20px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .skill-button:active {
+      transform: scale(0.95);
+    }
+
+    .skill-icon {
+      font-size: 23px;
+      line-height: 1;
+    }
+
+    .skill-auto {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      padding: 2px 3px;
+      border-radius: 5px;
+      background: rgba(4, 13, 13, 0.9);
+      color: rgba(232, 245, 238, 0.72);
+      font-size: 5px;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+    }
+
+    .skill-button.locked {
+      border-color: rgba(255, 255, 255, 0.14);
+      background: linear-gradient(180deg, rgba(44, 49, 47, 0.94), rgba(16, 23, 23, 0.96));
+      filter: grayscale(0.75);
+      opacity: 0.72;
+    }
+
+    .skill-level {
+      position: absolute;
+      top: 2px;
+      left: 3px;
+      color: #ffe98d;
+      font-size: 6px;
+      font-weight: 950;
+    }
+
+    body.section-open .skill-dock {
+      display: none;
+    }
+
+    @media (max-width: 430px) {
+      .skill-dock {
+        left: 5px;
+        bottom: calc(158px + env(safe-area-inset-bottom));
+        gap: 5px;
+      }
+
+      .skill-button {
+        width: 42px;
+        height: 42px;
+        border-radius: 13px;
+      }
+
+      .skill-icon {
+        font-size: 20px;
+      }
+    }
+
+
     /* ===== V5: прогресс, боссы, сундуки, характеристики и рейтинг ===== */
     .leaderboard-button {
       position: absolute;
@@ -2372,6 +2465,24 @@
           Подключаемся к серверу…
         </div>
 </div>
+<div aria-label="Навыки героя" class="skill-dock">
+<button aria-label="Spore Strike, открывается на уровне 5" class="skill-button locked" data-skill="spore_strike" type="button">
+<span class="skill-level">УР. 5</span>
+<span class="skill-icon">🍄</span>
+<span class="skill-auto">AUTO</span>
+</button>
+<button aria-label="Mushroom Shield, открывается на уровне 20" class="skill-button locked" data-skill="mushroom_shield" type="button">
+<span class="skill-level">УР. 20</span>
+<span class="skill-icon">🛡️</span>
+<span class="skill-auto">AUTO</span>
+</button>
+<button aria-label="Poison Cloud, открывается на уровне 40" class="skill-button locked" data-skill="poison_cloud" type="button">
+<span class="skill-level">УР. 40</span>
+<span class="skill-icon">☁️</span>
+<span class="skill-auto">AUTO</span>
+</button>
+</div>
+
 <div aria-label="Экипировка героя" class="equipment-dock">
 <div class="equipment-dock-inner">
 <button aria-label="Шлем" class="gear-slot gear-helmet" data-gear-name="Шлем" data-slot="helmet" type="button">
