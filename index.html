@@ -4658,26 +4658,104 @@
       return Math.abs(number) < 10000 ? fullNumber.format(number) : compactNumber.format(number);
     }
 
-    async function preloadAssets() {
-      const sources = [
-        ...Object.values(HERO_ASSETS),
-        ...FOREST_ENEMIES.flatMap((monster) => [monster.idle, monster.attack]),
-      ...Object.values(FOREST_BOSSES).flatMap((monster) => [monster.idle, monster.attack]),
-        asset("slash.png"), asset("hit.png"), asset("spore_burst.png"), asset("forest_bg.png")
-      ];
-      await Promise.all([...new Set(sources)].map((source) => new Promise((resolve) => {
-        const image = new Image(); image.onload = resolve; image.onerror = resolve; image.src = source;
-      })));
+    function preloadImage(source, timeout = 5000) {
+      return new Promise((resolve) => {
+        const image = new Image();
+        let finished = false;
+
+        const done = () => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeoutId);
+          resolve();
+        };
+
+        const timeoutId = setTimeout(done, timeout);
+
+        image.onload = done;
+        image.onerror = done;
+        image.src = source;
+      });
     }
 
+    async function preloadCriticalAssets() {
+      const criticalSources = [
+        HERO_ASSETS.idle,
+        HERO_ASSETS.attack,
+        asset("forest_bg.png"),
+        asset("slash.png"),
+        asset("hit.png"),
+        FOREST_ENEMIES[0]?.idle,
+        FOREST_ENEMIES[0]?.attack
+      ].filter(Boolean);
+
+      await Promise.all(
+        [...new Set(criticalSources)].map(
+          (source) => preloadImage(source, 5000)
+        )
+      );
+    }
+
+    function preloadOtherAssetsInBackground() {
+      const backgroundSources = [
+        ...Object.values(HERO_ASSETS),
+        ...FOREST_ENEMIES.flatMap(
+          (monster) => [monster.idle, monster.attack]
+        ),
+        ...Object.values(FOREST_BOSSES).flatMap(
+          (monster) => [monster.idle, monster.attack]
+        ),
+        asset("spore_burst.png")
+      ].filter(Boolean);
+
+      const uniqueSources = [...new Set(backgroundSources)];
+
+      setTimeout(() => {
+        uniqueSources.forEach((source, index) => {
+          setTimeout(() => {
+            preloadImage(source, 7000);
+          }, index * 120);
+        });
+      }, 300);
+    }
+
+    // FAST_START_LOADER_V1
     async function apiRequest(path, method = "GET") {
-      const response = await fetch(`${API_URL}${path}`, {
-        method, cache:"no-store", headers:{ "X-Telegram-Init-Data": telegram.initData }
-      });
-      let data;
-      try { data = await response.json(); } catch (_) { throw new Error("Сервер вернул некорректный ответ"); }
-      if (!response.ok) throw new Error(data.detail || "Ошибка сервера");
-      return data;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const response = await fetch(`${API_URL}${path}`, {
+          method,
+          cache: "no-store",
+          signal: controller.signal,
+          headers: {
+            "X-Telegram-Init-Data": telegram.initData
+          }
+        });
+
+        let data;
+
+        try {
+          data = await response.json();
+        } catch (_) {
+          throw new Error("Сервер вернул некорректный ответ");
+        }
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Ошибка сервера");
+        }
+
+        return data;
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          throw new Error("Сервер слишком долго отвечает");
+        }
+
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
     }
 
     function restartAnimation(element, className) {
@@ -6018,15 +6096,54 @@
 
     async function startGame() {
       try {
-        if (!telegram.initData) throw new Error("Открой игру через кнопку Mini App внутри Telegram");
-        elements.loadingText.textContent = "Загружаем игровые ассеты…"; await preloadAssets();
-        elements.loadingText.textContent = "Загружаем прогресс героя…"; player = await apiRequest("/player"); renderPlayer();
-        elements.loadingOverlay.classList.add("hidden"); setMessage(player.game_completed ? "🏆 Все 1000 этапов пройдены" : "⚔️ Герой вступил в автобой");
-        if (player.pending_loot) showLootModal();
+        if (!telegram.initData) {
+          throw new Error(
+            "Открой игру через кнопку Mini App внутри Telegram"
+          );
+        }
+
+        elements.loadingText.textContent = "Загружаем игру…";
+
+        const playerPromise = apiRequest("/player");
+        const assetsPromise = preloadCriticalAssets();
+
+        const [playerData] = await Promise.all([
+          playerPromise,
+          assetsPromise
+        ]);
+
+        player = playerData;
+        renderPlayer();
+
+        elements.loadingOverlay.classList.add("hidden");
+
+        setMessage(
+          player.game_completed
+            ? "🏆 Все 1000 этапов пройдены"
+            : "⚔️ Герой вступил в автобой"
+        );
+
+        preloadOtherAssetsInBackground();
+
+        if (player.pending_loot) {
+          showLootModal();
+        }
+
         showOfflineIfAvailable();
-        if (!player.hero_alive || Number(player.hero_hp) <= 0) await handleHeroDefeat(); else syncBattleState();
+
+        if (!player.hero_alive || Number(player.hero_hp) <= 0) {
+          await handleHeroDefeat();
+        } else {
+          syncBattleState();
+        }
       } catch (error) {
-        elements.loadingTitle.textContent = "Ошибка"; elements.loadingText.textContent = error.message; setMessage(`❌ ${error.message}`, true);
+        elements.loadingTitle.textContent = "Ошибка загрузки";
+        elements.loadingText.textContent =
+          error?.message || "Не удалось запустить игру";
+        setMessage(
+          `❌ ${error?.message || "Ошибка загрузки"}`,
+          true
+        );
       }
     }
 
