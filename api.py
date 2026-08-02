@@ -53,6 +53,188 @@ STARTER_SKILL_IDS = (
 )
 STARTER_SKILL_SCROLLS = 0
 SKILL_POWER_PER_LEVEL = 0.05
+SKILL_MAX_LEVEL = 20
+SKILL_SUMMON_MAX_LEVEL = 10
+SKILL_SUMMON_COST = 1
+
+# Накопительное количество открытых свитков.
+SKILL_SUMMON_LEVEL_THRESHOLDS = {
+    1: 0,
+    2: 20,
+    3: 60,
+    4: 150,
+    5: 350,
+    6: 700,
+    7: 1300,
+    8: 2200,
+    9: 3500,
+    10: 5000,
+}
+
+# Вероятности указаны в сотых долях процента.
+SKILL_SUMMON_RARITY_WEIGHTS = {
+    1: {
+        "common": 8490,
+        "rare": 1350,
+        "epic": 150,
+        "legendary": 10,
+    },
+    2: {
+        "common": 8220,
+        "rare": 1550,
+        "epic": 210,
+        "legendary": 20,
+    },
+    3: {
+        "common": 7900,
+        "rare": 1800,
+        "epic": 270,
+        "legendary": 30,
+    },
+    4: {
+        "common": 7550,
+        "rare": 2080,
+        "epic": 330,
+        "legendary": 40,
+    },
+    5: {
+        "common": 7150,
+        "rare": 2400,
+        "epic": 400,
+        "legendary": 50,
+    },
+    6: {
+        "common": 6700,
+        "rare": 2700,
+        "epic": 530,
+        "legendary": 70,
+    },
+    7: {
+        "common": 6200,
+        "rare": 3000,
+        "epic": 700,
+        "legendary": 100,
+    },
+    8: {
+        "common": 5600,
+        "rare": 3300,
+        "epic": 950,
+        "legendary": 150,
+    },
+    9: {
+        "common": 4900,
+        "rare": 3600,
+        "epic": 1250,
+        "legendary": 250,
+    },
+    10: {
+        "common": 4200,
+        "rare": 3800,
+        "epic": 1650,
+        "legendary": 350,
+    },
+}
+
+SKILL_DUPLICATE_FRAGMENTS = {
+    "common": 1,
+    "rare": 2,
+    "epic": 4,
+    "legendary": 8,
+}
+
+SKILL_RARITY_NAMES = {
+    "common": "Обычный",
+    "rare": "Редкий",
+    "epic": "Эпический",
+    "legendary": "Легендарный",
+}
+
+SKILL_CATALOG = {
+    "spore_strike": {
+        "name": "Spore Strike",
+        "icon": "🍄",
+        "rarity": "common",
+        "implemented": True,
+        "description": "Наносит усиленный урон врагу.",
+    },
+    "thorn_burst": {
+        "name": "Thorn Burst",
+        "icon": "🌵",
+        "rarity": "common",
+        "implemented": False,
+        "description": "Выпускает во врага залп острых шипов.",
+    },
+    "healing_dew": {
+        "name": "Healing Dew",
+        "icon": "💧",
+        "rarity": "common",
+        "implemented": False,
+        "description": "Восстанавливает часть здоровья героя.",
+    },
+    "swift_cap": {
+        "name": "Swift Cap",
+        "icon": "💨",
+        "rarity": "common",
+        "implemented": False,
+        "description": "Временно увеличивает скорость атаки.",
+    },
+    "poison_cloud": {
+        "name": "Poison Cloud",
+        "icon": "☁️",
+        "rarity": "rare",
+        "implemented": True,
+        "description": "Наносит периодический урон ядом.",
+    },
+    "mushroom_shield": {
+        "name": "Mushroom Shield",
+        "icon": "🛡️",
+        "rarity": "rare",
+        "implemented": True,
+        "description": "Создаёт щит, поглощающий урон.",
+    },
+    "root_snare": {
+        "name": "Root Snare",
+        "icon": "🌿",
+        "rarity": "rare",
+        "implemented": False,
+        "description": "Замедляет атаки противника.",
+    },
+    "meteor_spores": {
+        "name": "Meteor Spores",
+        "icon": "☄️",
+        "rarity": "epic",
+        "implemented": False,
+        "description": "Обрушивает на врага поток огненных спор.",
+    },
+    "phantom_clone": {
+        "name": "Phantom Clone",
+        "icon": "👻",
+        "rarity": "epic",
+        "implemented": False,
+        "description": "Создаёт временную копию героя.",
+    },
+    "life_bloom": {
+        "name": "Life Bloom",
+        "icon": "🌺",
+        "rarity": "epic",
+        "implemented": False,
+        "description": "Лечит героя и усиливает восстановление.",
+    },
+    "ancient_awakening": {
+        "name": "Ancient Awakening",
+        "icon": "✨",
+        "rarity": "legendary",
+        "implemented": False,
+        "description": "Ненадолго значительно усиливает героя.",
+    },
+    "void_mycelium": {
+        "name": "Void Mycelium",
+        "icon": "🌌",
+        "rarity": "legendary",
+        "implemented": False,
+        "description": "Наносит мощный урон силой пустоты.",
+    },
+}
 
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
@@ -841,6 +1023,208 @@ def normalize_skill_slots(value, collection: dict) -> list[str | None]:
     return slots[:3]
 
 
+def skill_summon_level_from_exp(summon_exp: int) -> int:
+    summon_exp = max(0, int(summon_exp))
+    level = 1
+
+    for candidate_level in range(
+        2,
+        SKILL_SUMMON_MAX_LEVEL + 1,
+    ):
+        if summon_exp < SKILL_SUMMON_LEVEL_THRESHOLDS[
+            candidate_level
+        ]:
+            break
+        level = candidate_level
+
+    return level
+
+
+def skill_summon_progress(summon_exp: int) -> dict:
+    summon_exp = max(0, int(summon_exp))
+    level = skill_summon_level_from_exp(summon_exp)
+    level_start = SKILL_SUMMON_LEVEL_THRESHOLDS[level]
+
+    if level >= SKILL_SUMMON_MAX_LEVEL:
+        return {
+            "level": level,
+            "exp": summon_exp,
+            "current": 0,
+            "required": 0,
+            "remaining": 0,
+            "progress": 1.0,
+            "max_level": True,
+        }
+
+    next_threshold = SKILL_SUMMON_LEVEL_THRESHOLDS[level + 1]
+    required = max(1, next_threshold - level_start)
+    current = max(0, summon_exp - level_start)
+
+    return {
+        "level": level,
+        "exp": summon_exp,
+        "current": current,
+        "required": required,
+        "remaining": max(0, required - current),
+        "progress": round(min(1.0, current / required), 4),
+        "next_level_total_exp": next_threshold,
+        "max_level": False,
+    }
+
+
+def public_summon_chances(summon_level: int) -> dict:
+    summon_level = clamp_int(
+        summon_level,
+        1,
+        SKILL_SUMMON_MAX_LEVEL,
+    )
+    weights = SKILL_SUMMON_RARITY_WEIGHTS[summon_level]
+
+    return {
+        rarity: {
+            "name": SKILL_RARITY_NAMES[rarity],
+            "chance": round(weight / 100, 2),
+        }
+        for rarity, weight in weights.items()
+    }
+
+
+def skill_fragments_required(skill_level: int) -> int:
+    skill_level = clamp_int(skill_level, 1, SKILL_MAX_LEVEL)
+
+    if skill_level >= SKILL_MAX_LEVEL:
+        return 0
+
+    return 5 * skill_level
+
+
+def public_skill_catalog() -> list[dict]:
+    rarity_order = {
+        "common": 0,
+        "rare": 1,
+        "epic": 2,
+        "legendary": 3,
+    }
+    result = []
+
+    for skill_id, definition in SKILL_CATALOG.items():
+        rarity = str(definition["rarity"])
+        result.append(
+            {
+                "id": skill_id,
+                "name": definition["name"],
+                "icon": definition["icon"],
+                "rarity": rarity,
+                "rarity_name": SKILL_RARITY_NAMES[rarity],
+                "implemented": bool(definition["implemented"]),
+                "description": definition["description"],
+            }
+        )
+
+    result.sort(
+        key=lambda item: (
+            rarity_order[item["rarity"]],
+            item["name"],
+        )
+    )
+    return result
+
+
+def roll_skill_id(summon_level: int) -> str:
+    summon_level = clamp_int(
+        summon_level,
+        1,
+        SKILL_SUMMON_MAX_LEVEL,
+    )
+    rarity_weights = SKILL_SUMMON_RARITY_WEIGHTS[
+        summon_level
+    ]
+    rarities = list(rarity_weights)
+
+    rarity = random.choices(
+        rarities,
+        weights=[
+            rarity_weights[rarity_name]
+            for rarity_name in rarities
+        ],
+        k=1,
+    )[0]
+
+    candidates = [
+        skill_id
+        for skill_id, definition in SKILL_CATALOG.items()
+        if definition["rarity"] == rarity
+    ]
+    return random.choice(candidates)
+
+
+def apply_skill_summon(
+    collection: dict,
+    skill_id: str,
+) -> dict:
+    definition = SKILL_CATALOG[skill_id]
+    rarity = str(definition["rarity"])
+    entry = collection.get(skill_id)
+
+    if not isinstance(entry, dict) or not bool(entry.get("owned")):
+        collection[skill_id] = {
+            "owned": True,
+            "level": 1,
+            "fragments": 0,
+        }
+        return {
+            "skill_id": skill_id,
+            "name": definition["name"],
+            "icon": definition["icon"],
+            "rarity": rarity,
+            "rarity_name": SKILL_RARITY_NAMES[rarity],
+            "new": True,
+            "fragments_gained": 0,
+            "levels_gained": 0,
+            "level": 1,
+            "fragments": 0,
+        }
+
+    skill_level = clamp_int(
+        entry.get("level", 1),
+        1,
+        SKILL_MAX_LEVEL,
+    )
+    fragments = max(0, int(entry.get("fragments", 0)))
+    fragments_gained = SKILL_DUPLICATE_FRAGMENTS[rarity]
+    fragments += fragments_gained
+    levels_gained = 0
+
+    while skill_level < SKILL_MAX_LEVEL:
+        required = skill_fragments_required(skill_level)
+
+        if required <= 0 or fragments < required:
+            break
+
+        fragments -= required
+        skill_level += 1
+        levels_gained += 1
+
+    collection[skill_id] = {
+        "owned": True,
+        "level": skill_level,
+        "fragments": fragments,
+    }
+
+    return {
+        "skill_id": skill_id,
+        "name": definition["name"],
+        "icon": definition["icon"],
+        "rarity": rarity,
+        "rarity_name": SKILL_RARITY_NAMES[rarity],
+        "new": False,
+        "fragments_gained": fragments_gained,
+        "levels_gained": levels_gained,
+        "level": skill_level,
+        "fragments": fragments,
+    }
+
+
 def get_player_skill_state(
     player: dict,
     skill_id: str,
@@ -1044,6 +1428,13 @@ def build_player_response(player: dict, **extra) -> dict:
         if level >= unlock_level
     )
 
+    summon_exp = max(
+        0,
+        int(player.get("skill_summon_exp", 0)),
+    )
+    summon_progress = skill_summon_progress(summon_exp)
+    summon_level = int(summon_progress["level"])
+
     spore_skill_state = get_player_skill_state(
         player,
         "spore_strike",
@@ -1162,6 +1553,19 @@ def build_player_response(player: dict, **extra) -> dict:
             ),
             "slot_unlock_levels": list(SKILL_SLOT_UNLOCK_LEVELS),
             "unlocked_slot_count": unlocked_skill_slot_count,
+            "summon": {
+                "single_cost": SKILL_SUMMON_COST,
+                "ten_cost": SKILL_SUMMON_COST * 10,
+                "allowed_counts": [1, 10],
+                "level": summon_level,
+                "max_level": SKILL_SUMMON_MAX_LEVEL,
+                "exp": summon_exp,
+                "progress": summon_progress,
+                "rarity_chances": public_summon_chances(
+                    summon_level
+                ),
+            },
+            "catalog": public_skill_catalog(),
             "slots": [
                 {
                     "index": index + 1,
@@ -1171,7 +1575,21 @@ def build_player_response(player: dict, **extra) -> dict:
                 }
                 for index, skill_id in enumerate(equipped_skill_slots)
             ],
-            "collection": skill_collection,
+            "collection": {
+                skill_id: {
+                    **entry,
+                    "fragments_required": (
+                        skill_fragments_required(
+                            int(entry.get("level", 1))
+                        )
+                    ),
+                    "max_level": (
+                        int(entry.get("level", 1))
+                        >= SKILL_MAX_LEVEL
+                    ),
+                }
+                for skill_id, entry in skill_collection.items()
+            },
         },
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
@@ -1393,6 +1811,14 @@ def create_database() -> None:
         (
             "skill_slots_json",
             "TEXT NOT NULL DEFAULT '[]'",
+        ),
+        (
+            "skill_summon_level",
+            "INTEGER NOT NULL DEFAULT 1",
+        ),
+        (
+            "skill_summon_exp",
+            "INTEGER NOT NULL DEFAULT 0",
         ),
     )
     for column_name, definition in columns:
@@ -2589,6 +3015,159 @@ def disable_auto_open(x_telegram_init_data: str = Header(...)) -> dict:
     updated = load_player(connection, telegram_id)
     connection.close()
     return build_player_response(updated, auto_enabled=False, message="Авто выключено")
+
+
+@app.post("/skills/summon")
+def summon_skills(
+    count: int = 1,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    if count not in (1, 10):
+        raise HTTPException(
+            status_code=400,
+            detail="Доступен призыв только ×1 или ×10",
+        )
+
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        if int(current.get("level", 1)) < SKILL_SYSTEM_UNLOCK_LEVEL:
+            connection.commit()
+            return build_player_response(
+                current,
+                summoned=False,
+                summon_results=[],
+                message=(
+                    f"🔒 Система навыков откроется "
+                    f"на {SKILL_SYSTEM_UNLOCK_LEVEL} уровне"
+                ),
+            )
+
+        cost = SKILL_SUMMON_COST * count
+        scrolls = max(
+            0,
+            int(current.get("skill_scrolls", 0)),
+        )
+
+        if scrolls < cost:
+            connection.commit()
+            return build_player_response(
+                current,
+                summoned=False,
+                summon_results=[],
+                summon_cost=cost,
+                missing_scrolls=cost - scrolls,
+                message=(
+                    f"📜 Недостаточно свитков: "
+                    f"нужно {cost}, есть {scrolls}"
+                ),
+            )
+
+        collection = normalize_skill_collection(
+            current.get("skills_collection_json")
+        )
+        summon_exp = max(
+            0,
+            int(current.get("skill_summon_exp", 0)),
+        )
+        old_summon_level = skill_summon_level_from_exp(
+            summon_exp
+        )
+        results = []
+
+        for _ in range(count):
+            current_summon_level = skill_summon_level_from_exp(
+                summon_exp
+            )
+            skill_id = roll_skill_id(current_summon_level)
+            result = apply_skill_summon(
+                collection,
+                skill_id,
+            )
+            result["summon_level"] = current_summon_level
+            results.append(result)
+            summon_exp += 1
+
+        new_summon_level = skill_summon_level_from_exp(
+            summon_exp
+        )
+        remaining_scrolls = scrolls - cost
+        now = int(time.time())
+
+        connection.execute(
+            """
+            UPDATE players
+            SET skill_scrolls = ?,
+                skill_summon_level = ?,
+                skill_summon_exp = ?,
+                skills_collection_json = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                remaining_scrolls,
+                new_summon_level,
+                summon_exp,
+                json.dumps(
+                    collection,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                now,
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    new_count = sum(
+        1
+        for result in results
+        if result["new"]
+    )
+    levels_gained = sum(
+        int(result["levels_gained"])
+        for result in results
+    )
+    summon_levels_gained = (
+        new_summon_level - old_summon_level
+    )
+
+    message = f"✨ Открыто свитков: {count}"
+
+    if new_count > 0:
+        message += f". Новых навыков: {new_count}"
+
+    if levels_gained > 0:
+        message += f". Улучшений навыков: {levels_gained}"
+
+    if summon_levels_gained > 0:
+        message += (
+            f". Уровень призыва повышен "
+            f"до {new_summon_level}"
+        )
+
+    return build_player_response(
+        updated,
+        summoned=True,
+        summon_count=count,
+        summon_cost=cost,
+        summon_results=results,
+        new_skills_count=new_count,
+        skill_levels_gained=levels_gained,
+        summon_level_before=old_summon_level,
+        summon_level_after=new_summon_level,
+        summon_levels_gained=summon_levels_gained,
+        message=message,
+    )
 
 
 @app.post("/skills/auto/enable")
