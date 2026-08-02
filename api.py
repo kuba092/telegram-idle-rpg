@@ -807,6 +807,18 @@ def build_player_response(player: dict, **extra) -> dict:
     chest_step = max(0, int(player.get("chest_upgrade_step", 0)))
     steps_required = chest_upgrade_steps_required(chest_level)
     pending_loot = public_pending_loot(player)
+    spore_last_used_at = float(
+        player.get("spore_strike_last_used_at", 0)
+    )
+    spore_elapsed = time.time() - spore_last_used_at
+    spore_cooldown_remaining = (
+        0.0
+        if spore_last_used_at <= 0
+        else max(
+            0.0,
+            SPORE_STRIKE_COOLDOWN_SECONDS - spore_elapsed,
+        )
+    )
     hidden_fields = {"equipment_json", "pending_loot_json"}
     public_player = {
         key: value
@@ -824,6 +836,19 @@ def build_player_response(player: dict, **extra) -> dict:
         "crit_chance": stats["total"]["crit_chance"],
         "crit_damage": stats["total"]["crit_damage"],
         "attack_interval": attack_interval,
+        "skills": {
+            "spore_strike": {
+                "unlocked": level >= SPORE_STRIKE_UNLOCK_LEVEL,
+                "unlock_level": SPORE_STRIKE_UNLOCK_LEVEL,
+                "damage_multiplier": SPORE_STRIKE_DAMAGE_MULTIPLIER,
+                "cooldown_seconds": SPORE_STRIKE_COOLDOWN_SECONDS,
+                "cooldown_remaining": spore_cooldown_remaining,
+                "ready": (
+                    level >= SPORE_STRIKE_UNLOCK_LEVEL
+                    and spore_cooldown_remaining <= 0
+                ),
+            },
+        },
         "enemy_damage": calculate_enemy_damage(stage, boss=boss_active),
         "enemy_attack_speed": ENEMY_ATTACK_SPEED,
         "enemy_attack_interval": max(
@@ -1093,7 +1118,10 @@ def claim_offline_reward(x_telegram_init_data: str = Header(...)) -> dict:
 
 
 @app.post("/attack")
-def attack(x_telegram_init_data: str = Header(...)) -> dict:
+def attack(
+    x_telegram_init_data: str = Header(...),
+    skill: str | None = None,
+) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
@@ -1137,9 +1165,68 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
                 retry_after=attack_interval - elapsed,
                 message="Атака ещё не готова",
             )
+        requested_skill = str(skill or "").strip().lower()
+        if requested_skill and requested_skill != "spore_strike":
+            raise HTTPException(status_code=400, detail="Неизвестный навык")
+
+        level = int(current.get("level", 1))
+        spore_unlocked = level >= SPORE_STRIKE_UNLOCK_LEVEL
+        spore_last_used_at = float(
+            current.get("spore_strike_last_used_at", 0)
+        )
+        spore_elapsed = now - spore_last_used_at
+        spore_ready = (
+            spore_last_used_at <= 0
+            or spore_elapsed >= SPORE_STRIKE_COOLDOWN_SECONDS
+        )
+
+        manual_spore = requested_skill == "spore_strike"
+        auto_spore = (
+            not requested_skill
+            and bool(int(current.get("skills_auto_enabled", 0)))
+            and spore_unlocked
+            and spore_ready
+        )
+
+        if manual_spore and not spore_unlocked:
+            connection.commit()
+            return build_player_response(
+                current,
+                attacked=False,
+                skill_used=None,
+                message=(
+                    f"🔒 Spore Strike откроется "
+                    f"на {SPORE_STRIKE_UNLOCK_LEVEL} уровне"
+                ),
+            )
+
+        if manual_spore and not spore_ready:
+            remaining = max(
+                0.0,
+                SPORE_STRIKE_COOLDOWN_SECONDS - spore_elapsed,
+            )
+            connection.commit()
+            return build_player_response(
+                current,
+                attacked=False,
+                skill_used=None,
+                skill_retry_after=remaining,
+                message=f"🍄 Spore Strike: ещё {remaining:.1f} сек.",
+            )
+
+        use_spore_strike = manual_spore or auto_spore
+        damage_multiplier = (
+            SPORE_STRIKE_DAMAGE_MULTIPLIER
+            if use_spore_strike
+            else 1.0
+        )
+
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
-        dealt_damage, critical = calculate_hero_attack_damage(current)
+        dealt_damage, critical = calculate_hero_attack_damage(
+            current,
+            damage_multiplier=damage_multiplier,
+        )
         enemy_hp = int(current["enemy_hp"]) - dealt_damage
         enemy_max_hp = int(current["enemy_max_hp"])
         enemy_defeated = enemy_hp <= 0
@@ -1222,6 +1309,7 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
                 boss_waiting = ?, game_completed = ?,
                 progress_reached_at = ?,
                 last_attack_at = ?, last_enemy_attack_at = ?,
+                spore_strike_last_used_at = ?,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -1242,6 +1330,11 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
                 progress_reached_at,
                 now,
                 last_enemy_attack_at,
+                (
+                    now
+                    if use_spore_strike
+                    else spore_last_used_at
+                ),
                 int(now),
                 telegram_id,
             ),
@@ -1252,8 +1345,14 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
     finally:
         connection.close()
     message = f"⚔️ Нанесено {dealt_damage} урона"
+    if use_spore_strike:
+        message = f"🍄 Spore Strike: {dealt_damage} урона"
     if critical:
-        message = f"💥 Критический удар: {dealt_damage}"
+        message = (
+            f"🍄💥 Spore Strike — крит: {dealt_damage}"
+            if use_spore_strike
+            else f"💥 Критический удар: {dealt_damage}"
+        )
     if enemy_defeated and not boss_defeated:
         if bool(int(updated.get("boss_active", 0))):
             message = "⚔️ Волна пройдена! Появился БОСС"
@@ -1269,6 +1368,8 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
         attacked=True,
         damage_dealt=dealt_damage,
         critical=critical,
+        skill_used=("spore_strike" if use_spore_strike else None),
+        spore_strike_used=use_spore_strike,
         enemy_defeated=enemy_defeated,
         boss_defeated=boss_defeated,
         stage_completed=stage_completed,
