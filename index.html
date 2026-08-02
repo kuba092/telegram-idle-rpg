@@ -5150,6 +5150,153 @@
       line-height: 1.4;
     }
 
+
+    /* SKILL_LOADOUT_FRONTEND_V1 */
+    .skill-loadout-card {
+      padding: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 17px;
+      background:
+        linear-gradient(
+          145deg,
+          rgba(57, 105, 70, 0.35),
+          rgba(7, 24, 20, 0.94)
+        );
+      box-shadow:
+        0 12px 26px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .skill-loadout-note {
+      margin: 5px 0 12px;
+      color: rgba(233, 244, 238, 0.62);
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .skill-loadout-slots {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .skill-loadout-slot {
+      position: relative;
+      display: flex;
+      min-height: 118px;
+      padding: 9px 7px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 1px dashed rgba(211, 255, 130, 0.33);
+      border-radius: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+
+    .skill-loadout-slot.filled {
+      border-style: solid;
+      background:
+        linear-gradient(
+          160deg,
+          rgba(153, 207, 83, 0.18),
+          rgba(0, 0, 0, 0.24)
+        );
+    }
+
+    .skill-loadout-slot.locked {
+      opacity: 0.55;
+    }
+
+    .skill-loadout-slot-number {
+      position: absolute;
+      top: 6px;
+      left: 7px;
+      display: grid;
+      width: 20px;
+      height: 20px;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(184, 232, 94, 0.15);
+      color: #e8ffad;
+      font-size: 8px;
+      font-weight: 950;
+    }
+
+    .skill-loadout-slot-icon {
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .skill-loadout-slot-name {
+      color: #f1ffe0;
+      font-size: 9px;
+      font-weight: 950;
+      line-height: 1.15;
+    }
+
+    .skill-loadout-slot-level {
+      color: rgba(239, 248, 243, 0.55);
+      font-size: 8px;
+      font-weight: 850;
+    }
+
+    .skill-loadout-remove {
+      min-height: 25px;
+      margin-top: 2px;
+      padding: 0 8px;
+      border: 1px solid rgba(255, 134, 134, 0.28);
+      border-radius: 8px;
+      background: rgba(105, 29, 29, 0.3);
+      color: #ffc4c4;
+      font-size: 7px;
+      font-weight: 950;
+    }
+
+    .collection-skill-actions {
+      display: flex;
+      margin-top: 8px;
+      gap: 5px;
+    }
+
+    .collection-skill-equip {
+      flex: 1;
+      min-height: 29px;
+      padding: 0 7px;
+      border: 1px solid rgba(198, 242, 116, 0.32);
+      border-radius: 9px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(145, 202, 64, 0.28),
+          rgba(67, 111, 32, 0.26)
+        );
+      color: #efffc8;
+      font-size: 7px;
+      font-weight: 950;
+    }
+
+    .collection-skill-equip:disabled {
+      opacity: 0.42;
+    }
+
+    .collection-skill.active-loadout {
+      border-color: rgba(207, 255, 121, 0.6);
+      box-shadow:
+        0 0 0 1px rgba(198, 244, 110, 0.12),
+        0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .collection-skill-status {
+      margin-top: 6px;
+      color: #dfff92;
+      font-size: 7px;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+    }
+
 </style>
 </head>
 <body>
@@ -6018,6 +6165,7 @@
 </div>
 
 <!-- ENHANCEMENTS_SCREEN_V1 -->
+<!-- SKILL_LOADOUT_FRONTEND_V1 -->
 <section aria-label="Усиления" class="game-screen hidden" id="enhancementsScreen">
 <header class="screen-header">
 <button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
@@ -6032,6 +6180,7 @@
   data-enhancement-tab="skills"
   type="button"
 >НАВЫКИ</button>
+
 <button
   class="shop-tab enhancement-tab"
   data-enhancement-tab="companions"
@@ -6040,52 +6189,24 @@
 </div>
 
 <div class="enhancement-panel" id="enhancementSkillsPanel">
-<div class="skill-shop-locked hidden" id="skillShopLocked">
+<div class="skill-shop-locked hidden" id="skillLoadoutLocked">
 🔒 Система навыков откроется на 5 уровне героя.
 </div>
 
-<div id="skillShopBody">
-<div class="summon-card">
-<div class="summon-top-row">
-<div>
-<div class="summon-level-label">Уровень призыва</div>
-<div class="summon-level-value" id="summonLevel">1 / 10</div>
+<div id="skillLoadoutBody">
+<div class="skill-loadout-card">
+<div class="skill-card-title">Активные навыки</div>
+<div class="skill-loadout-note">
+Выберите до трёх навыков, которые будут доступны в бою.
 </div>
-<div class="skill-scroll-count">
-📜 <span id="skillScrollCount">0</span>
-</div>
-</div>
-
-<div class="summon-progress-copy">
-<span id="summonProgressText">0 / 20</span>
-<span id="summonProgressPercent">0%</span>
-</div>
-<div class="summon-progress-track">
-<div class="summon-progress-fill" id="summonProgressFill"></div>
-</div>
-
-<div class="summon-actions">
-<button class="summon-button" id="summonOneButton" type="button">
-ОТКРЫТЬ ×1
-<span>📜 1 свиток</span>
-</button>
-<button class="summon-button" id="summonTenButton" type="button">
-ОТКРЫТЬ ×10
-<span>📜 10 свитков</span>
-</button>
-</div>
-</div>
-
-<div class="skill-chances-card">
-<div class="skill-card-title">Шансы редкости</div>
-<div class="skill-chances-grid" id="skillSummonChances"></div>
+<div class="skill-loadout-slots" id="activeSkillSlots"></div>
 </div>
 
 <div class="skill-collection-card">
 <div class="skill-card-title">
-Коллекция <span id="skillCollectionCount">0 / 12</span>
+Коллекция <span id="skillLoadoutCollectionCount">0 / 12</span>
 </div>
-<div class="skill-collection-grid" id="skillCollectionGrid"></div>
+<div class="skill-collection-grid" id="skillLoadoutCollectionGrid"></div>
 </div>
 </div>
 </div>
@@ -6128,12 +6249,54 @@
 <div class="screen-header-spacer"></div>
 </header>
 
-<div class="coming-content">
-<div class="coming-card">
-<div class="coming-icon">🛒</div>
-<div class="coming-title">Магазин</div>
-<div class="coming-text">
-Здесь появятся игровые товары, свитки и специальные предложения.
+<div class="skill-shop-content">
+<div class="shop-tabs">
+<button class="shop-tab active" type="button">НАВЫКИ</button>
+<button class="shop-tab" disabled type="button">СПУТНИКИ — ПОЗЖЕ</button>
+</div>
+
+<div class="skill-shop-locked hidden" id="skillShopLocked">
+🔒 Система навыков откроется на 5 уровне героя.
+</div>
+
+<div id="skillShopBody">
+<div class="summon-card">
+<div class="summon-top-row">
+<div>
+<div class="summon-level-label">Уровень призыва</div>
+<div class="summon-level-value" id="summonLevel">1 / 10</div>
+</div>
+
+<div class="skill-scroll-count">
+📜 <span id="skillScrollCount">0</span>
+</div>
+</div>
+
+<div class="summon-progress-copy">
+<span id="summonProgressText">0 / 20</span>
+<span id="summonProgressPercent">0%</span>
+</div>
+
+<div class="summon-progress-track">
+<div class="summon-progress-fill" id="summonProgressFill"></div>
+</div>
+
+<div class="summon-actions">
+<button class="summon-button" id="summonOneButton" type="button">
+ОТКРЫТЬ ×1
+<span>📜 1 свиток</span>
+</button>
+
+<button class="summon-button" id="summonTenButton" type="button">
+ОТКРЫТЬ ×10
+<span>📜 10 свитков</span>
+</button>
+</div>
+</div>
+
+<div class="skill-chances-card">
+<div class="skill-card-title">Шансы редкости</div>
+<div class="skill-chances-grid" id="skillSummonChances"></div>
 </div>
 </div>
 </div>
@@ -7353,7 +7516,8 @@
         formatNumber(scrolls);
 
       if (progress.max_level) {
-        elements.summonProgressText.textContent = "МАКСИМАЛЬНЫЙ УРОВЕНЬ";
+        elements.summonProgressText.textContent =
+          "МАКСИМАЛЬНЫЙ УРОВЕНЬ";
         elements.summonProgressPercent.textContent = "100%";
       } else {
         elements.summonProgressText.textContent =
@@ -7382,43 +7546,163 @@
       elements.skillSummonChances.innerHTML = chanceOrder
         .map((rarity) => {
           const chance = chances[rarity] || {};
-          const name = chance.name || RARITY_NAMES[rarity] || rarity;
+          const name =
+            chance.name || RARITY_NAMES[rarity] || rarity;
           const value = Number(chance.chance || 0);
           const color = RARITY_COLORS[rarity] || "#ffffff";
 
           return `
             <div class="skill-chance-row">
-              <span style="color:${color}">${escapeHtml(name)}</span>
-              <strong>${value.toLocaleString("ru-RU", {
-                maximumFractionDigits: 2
-              })}%</strong>
+              <span style="color:${color}">
+                ${escapeHtml(name)}
+              </span>
+              <strong>
+                ${value.toLocaleString("ru-RU", {
+                  maximumFractionDigits: 2
+                })}%
+              </strong>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function renderSkillLoadout() {
+      const system = player?.skill_system;
+      if (!system) return;
+
+      const locked = $("skillLoadoutLocked");
+      const body = $("skillLoadoutBody");
+      const slotsBox = $("activeSkillSlots");
+      const collectionBox = $("skillLoadoutCollectionGrid");
+      const countBox = $("skillLoadoutCollectionCount");
+
+      if (!locked || !body || !slotsBox || !collectionBox) {
+        return;
+      }
+
+      const unlocked = Boolean(system.unlocked);
+      locked.classList.toggle("hidden", unlocked);
+      body.classList.toggle("hidden", !unlocked);
+
+      if (!unlocked) {
+        locked.textContent =
+          `🔒 Система навыков откроется на ${system.unlock_level || 5} уровне героя.`;
+        return;
+      }
+
+      const catalog = Array.isArray(system.catalog)
+        ? system.catalog
+        : [];
+      const collection = system.collection || {};
+      const slots = Array.isArray(system.slots)
+        ? system.slots
+        : [];
+
+      const catalogById = Object.fromEntries(
+        catalog.map((skill) => [skill.id, skill])
+      );
+
+      const activeIds = slots
+        .map((slot) => slot?.skill_id)
+        .filter(Boolean);
+
+      slotsBox.innerHTML = [0, 1, 2]
+        .map((index) => {
+          const slot = slots[index] || {
+            index: index + 1,
+            unlocked: false,
+            unlock_level: 5,
+            skill_id: null,
+          };
+
+          const skill = slot.skill_id
+            ? catalogById[slot.skill_id]
+            : null;
+          const entry = skill
+            ? collection[skill.id] || {}
+            : {};
+
+          if (!slot.unlocked) {
+            return `
+              <div class="skill-loadout-slot locked">
+                <div class="skill-loadout-slot-number">
+                  ${index + 1}
+                </div>
+                <div class="skill-loadout-slot-icon">🔒</div>
+                <div class="skill-loadout-slot-name">
+                  Откроется на уровне ${slot.unlock_level}
+                </div>
+              </div>
+            `;
+          }
+
+          if (!skill) {
+            return `
+              <div class="skill-loadout-slot">
+                <div class="skill-loadout-slot-number">
+                  ${index + 1}
+                </div>
+                <div class="skill-loadout-slot-icon">＋</div>
+                <div class="skill-loadout-slot-name">
+                  Пустой слот
+                </div>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="skill-loadout-slot filled">
+              <div class="skill-loadout-slot-number">
+                ${index + 1}
+              </div>
+              <div class="skill-loadout-slot-icon">
+                ${escapeHtml(skill.icon)}
+              </div>
+              <div class="skill-loadout-slot-name">
+                ${escapeHtml(skill.name)}
+              </div>
+              <div class="skill-loadout-slot-level">
+                УР. ${Number(entry.level || 1)}
+              </div>
+              <button
+                class="skill-loadout-remove"
+                data-unequip-skill-slot="${index + 1}"
+                type="button"
+              >
+                СНЯТЬ
+              </button>
             </div>
           `;
         })
         .join("");
 
-      const collection = system.collection || {};
-      const catalog = Array.isArray(system.catalog)
-        ? system.catalog
-        : [];
       const ownedCount = catalog.filter(
         (skill) => Boolean(collection[skill.id]?.owned)
       ).length;
 
-      elements.skillCollectionCount.textContent =
-        `${ownedCount} / ${catalog.length}`;
+      if (countBox) {
+        countBox.textContent =
+          `${ownedCount} / ${catalog.length}`;
+      }
 
-      elements.skillCollectionGrid.innerHTML = catalog
+      collectionBox.innerHTML = catalog
         .map((skill) => {
           const entry = collection[skill.id] || {};
           const owned = Boolean(entry.owned);
+          const implemented = Boolean(skill.implemented);
+          const activeSlotIndex = slots.findIndex(
+            (slot) => slot?.skill_id === skill.id
+          );
+          const active = activeSlotIndex >= 0;
+          const rarity = skill.rarity || "common";
+          const color = RARITY_COLORS[rarity] || "#ffffff";
           const skillLevel = Number(entry.level || 1);
           const fragments = Number(entry.fragments || 0);
           const required = Number(entry.fragments_required || 0);
-          const rarity = skill.rarity || "common";
-          const color = RARITY_COLORS[rarity] || "#ffffff";
 
           let progressText = "Не получен";
+
           if (owned && entry.max_level) {
             progressText = `Уровень ${skillLevel} · МАКС.`;
           } else if (owned) {
@@ -7426,36 +7710,147 @@
               `Уровень ${skillLevel} · ${fragments}/${required} фрагм.`;
           }
 
+          let actionText = "НЕ ПОЛУЧЕН";
+
+          if (owned && !implemented) {
+            actionText = "СКОРО";
+          } else if (active) {
+            actionText = `АКТИВЕН · СЛОТ ${activeSlotIndex + 1}`;
+          } else if (owned) {
+            actionText = "УСТАНОВИТЬ";
+          }
+
           return `
-            <div class="collection-skill ${escapeHtml(rarity)} ${owned ? "" : "not-owned"}">
+            <div class="collection-skill ${escapeHtml(rarity)} ${owned ? "" : "not-owned"} ${active ? "active-loadout" : ""}">
               <div class="collection-skill-badge">
                 ${owned ? `УР. ${skillLevel}` : "?"}
               </div>
+
               <div class="collection-skill-head">
                 <div class="collection-skill-icon">
                   ${owned ? escapeHtml(skill.icon) : "❔"}
                 </div>
+
                 <div>
                   <div class="collection-skill-name">
-                    ${owned ? escapeHtml(skill.name) : "Неизвестный навык"}
+                    ${owned
+                      ? escapeHtml(skill.name)
+                      : "Неизвестный навык"}
                   </div>
-                  <div class="collection-skill-rarity" style="color:${color}">
+
+                  <div
+                    class="collection-skill-rarity"
+                    style="color:${color}"
+                  >
                     ${escapeHtml(skill.rarity_name)}
                   </div>
                 </div>
               </div>
+
               <div class="collection-skill-description">
                 ${owned
                   ? escapeHtml(skill.description)
-                  : "Откройте свитки, чтобы получить этот навык."}
+                  : "Получите этот навык в магазине."}
               </div>
+
               <div class="collection-skill-progress">
                 ${escapeHtml(progressText)}
+              </div>
+
+              ${
+                active
+                  ? `<div class="collection-skill-status">
+                       АКТИВЕН В СЛОТЕ ${activeSlotIndex + 1}
+                     </div>`
+                  : ""
+              }
+
+              <div class="collection-skill-actions">
+                <button
+                  class="collection-skill-equip"
+                  data-equip-skill="${escapeHtml(skill.id)}"
+                  type="button"
+                  ${!owned || !implemented || active ? "disabled" : ""}
+                >
+                  ${actionText}
+                </button>
               </div>
             </div>
           `;
         })
         .join("");
+
+      slotsBox
+        .querySelectorAll("[data-unequip-skill-slot]")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            unequipSkill(
+              Number(button.dataset.unequipSkillSlot)
+            );
+          });
+        });
+
+      collectionBox
+        .querySelectorAll("[data-equip-skill]")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            equipSkillToAvailableSlot(
+              button.dataset.equipSkill
+            );
+          });
+        });
+    }
+
+    async function equipSkillToAvailableSlot(skillId) {
+      const slots = Array.isArray(player?.skill_system?.slots)
+        ? player.skill_system.slots
+        : [];
+
+      const availableSlot = slots.find(
+        (slot) => slot?.unlocked && !slot?.skill_id
+      );
+
+      const targetSlot = availableSlot
+        ? Number(availableSlot.index)
+        : Number(
+            slots.find((slot) => slot?.unlocked)?.index || 1
+          );
+
+      try {
+        const result = await apiRequest(
+          `/skills/equip?slot=${targetSlot}&skill_id=${encodeURIComponent(skillId)}`,
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderSkillLoadout();
+        setMessage(result.message || "Навык установлен");
+
+        try {
+          telegram.HapticFeedback?.notificationOccurred(
+            "success"
+          );
+        } catch (_) {}
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      }
+    }
+
+    async function unequipSkill(slot) {
+      try {
+        const result = await apiRequest(
+          `/skills/unequip?slot=${slot}`,
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderSkillLoadout();
+        setMessage(result.message || "Навык снят");
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      }
     }
 
     function showSkillSummonResults(result) {
@@ -7519,6 +7914,7 @@
         player = result;
         renderPlayer();
         renderSkillShop();
+        renderSkillLoadout();
 
         if (result.summoned) {
           showSkillSummonResults(result);
@@ -8188,6 +8584,7 @@
       shopScreen.classList.remove("hidden");
       document.body.classList.add("section-open");
       setActiveNav("shop");
+      renderSkillShop();
     }
 
     function setEnhancementTab(tabName) {
@@ -8214,7 +8611,7 @@
         });
 
       if (skillsActive) {
-        renderSkillShop();
+        renderSkillLoadout();
       }
     }
 

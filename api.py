@@ -4801,6 +4801,192 @@ def disable_auto_open(x_telegram_init_data: str = Header(...)) -> dict:
     return build_player_response(updated, auto_enabled=False, message="Авто выключено")
 
 
+
+# SKILL_SLOTS_API_V1
+@app.post("/skills/equip")
+def equip_skill(
+    slot: int,
+    skill_id: str,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    if slot not in (1, 2, 3):
+        raise HTTPException(
+            status_code=400,
+            detail="Номер слота должен быть от 1 до 3",
+        )
+
+    skill_id = str(skill_id or "").strip()
+    definition = SKILL_CATALOG.get(skill_id)
+
+    if definition is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Навык не найден",
+        )
+
+    if not bool(definition.get("implemented")):
+        raise HTTPException(
+            status_code=409,
+            detail="Механика этого навыка пока не реализована",
+        )
+
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        level = max(1, int(current.get("level", 1)))
+        required_level = int(SKILL_SLOT_UNLOCK_LEVELS[slot - 1])
+
+        if level < required_level:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Слот {slot} откроется "
+                    f"на {required_level} уровне героя"
+                ),
+            )
+
+        collection = normalize_skill_collection(
+            current.get("skills_collection_json")
+        )
+        entry = collection.get(skill_id)
+
+        if not isinstance(entry, dict) or not bool(entry.get("owned")):
+            raise HTTPException(
+                status_code=403,
+                detail="Сначала получите этот навык",
+            )
+
+        slots = normalize_skill_slots(
+            current.get("skill_slots_json"),
+            collection,
+        )
+
+        # Один навык нельзя установить сразу в два слота.
+        slots = [
+            None if equipped_id == skill_id else equipped_id
+            for equipped_id in slots
+        ]
+        slots[slot - 1] = skill_id
+
+        now = int(time.time())
+        connection.execute(
+            """
+            UPDATE players
+            SET skill_slots_json = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                json.dumps(
+                    slots,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                now,
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        skill_equipped=True,
+        equipped_skill_id=skill_id,
+        equipped_slot=slot,
+        message=(
+            f"✅ {definition['name']} установлен "
+            f"в слот {slot}"
+        ),
+    )
+
+
+@app.post("/skills/unequip")
+def unequip_skill(
+    slot: int,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    if slot not in (1, 2, 3):
+        raise HTTPException(
+            status_code=400,
+            detail="Номер слота должен быть от 1 до 3",
+        )
+
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        collection = normalize_skill_collection(
+            current.get("skills_collection_json")
+        )
+        slots = normalize_skill_slots(
+            current.get("skill_slots_json"),
+            collection,
+        )
+
+        removed_skill_id = slots[slot - 1]
+        slots[slot - 1] = None
+
+        now = int(time.time())
+        connection.execute(
+            """
+            UPDATE players
+            SET skill_slots_json = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                json.dumps(
+                    slots,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                now,
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    removed_definition = (
+        SKILL_CATALOG.get(removed_skill_id)
+        if removed_skill_id
+        else None
+    )
+    removed_name = (
+        removed_definition.get("name")
+        if removed_definition
+        else None
+    )
+
+    return build_player_response(
+        updated,
+        skill_unequipped=True,
+        unequipped_skill_id=removed_skill_id,
+        unequipped_slot=slot,
+        message=(
+            f"Снят навык {removed_name} из слота {slot}"
+            if removed_name
+            else f"Слот {slot} уже пуст"
+        ),
+    )
+
+
 @app.post("/skills/summon")
 def summon_skills(
     count: int = 1,
