@@ -38,6 +38,11 @@ MUSHROOM_SHIELD_UNLOCK_LEVEL = 20
 MUSHROOM_SHIELD_HP_RATIO = 0.35
 MUSHROOM_SHIELD_COOLDOWN_SECONDS = 15.0
 MUSHROOM_SHIELD_AUTO_HP_RATIO = 0.60
+POISON_CLOUD_UNLOCK_LEVEL = 40
+POISON_CLOUD_DAMAGE_MULTIPLIER = 0.50
+POISON_CLOUD_DURATION_SECONDS = 5.0
+POISON_CLOUD_TICK_SECONDS = 1.0
+POISON_CLOUD_COOLDOWN_SECONDS = 20.0
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
 STARTER_CHESTS = 3
@@ -850,6 +855,32 @@ def build_player_response(player: dict, **extra) -> dict:
         ),
     )
 
+    poison_last_used_at = float(
+        player.get("poison_cloud_last_used_at", 0)
+    )
+    poison_until = float(player.get("poison_cloud_until", 0))
+    poison_next_tick_at = float(
+        player.get("poison_cloud_next_tick_at", 0)
+    )
+    current_time = time.time()
+    poison_cooldown_remaining = (
+        0.0
+        if poison_last_used_at <= 0
+        else max(
+            0.0,
+            POISON_CLOUD_COOLDOWN_SECONDS
+            - (current_time - poison_last_used_at),
+        )
+    )
+    poison_duration_remaining = max(
+        0.0,
+        poison_until - current_time,
+    )
+    poison_active = (
+        poison_duration_remaining > 0
+        and poison_next_tick_at > 0
+    )
+
     hidden_fields = {"equipment_json", "pending_loot_json"}
     public_player = {
         key: value
@@ -891,6 +922,22 @@ def build_player_response(player: dict, **extra) -> dict:
                 "ready": (
                     level >= MUSHROOM_SHIELD_UNLOCK_LEVEL
                     and shield_cooldown_remaining <= 0
+                ),
+            },
+            "poison_cloud": {
+                "unlocked": level >= POISON_CLOUD_UNLOCK_LEVEL,
+                "unlock_level": POISON_CLOUD_UNLOCK_LEVEL,
+                "damage_multiplier": POISON_CLOUD_DAMAGE_MULTIPLIER,
+                "duration_seconds": POISON_CLOUD_DURATION_SECONDS,
+                "tick_seconds": POISON_CLOUD_TICK_SECONDS,
+                "cooldown_seconds": POISON_CLOUD_COOLDOWN_SECONDS,
+                "cooldown_remaining": poison_cooldown_remaining,
+                "duration_remaining": poison_duration_remaining,
+                "active": poison_active,
+                "ready": (
+                    level >= POISON_CLOUD_UNLOCK_LEVEL
+                    and poison_cooldown_remaining <= 0
+                    and not poison_active
                 ),
             },
         },
@@ -1023,6 +1070,9 @@ def create_database() -> None:
         ("spore_strike_last_used_at", "REAL NOT NULL DEFAULT 0"),
         ("mushroom_shield_amount", "INTEGER NOT NULL DEFAULT 0"),
         ("mushroom_shield_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("poison_cloud_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("poison_cloud_until", "REAL NOT NULL DEFAULT 0"),
+        ("poison_cloud_next_tick_at", "REAL NOT NULL DEFAULT 0"),
     )
     for column_name, definition in columns:
         add_column_if_missing(connection, column_name, definition)
@@ -1268,12 +1318,79 @@ def attack(
             else 1.0
         )
 
+        poison_last_used_at = float(
+            current.get("poison_cloud_last_used_at", 0)
+        )
+        poison_until = float(
+            current.get("poison_cloud_until", 0)
+        )
+        poison_next_tick_at = float(
+            current.get("poison_cloud_next_tick_at", 0)
+        )
+        poison_active = (
+            poison_until > now
+            and poison_next_tick_at > 0
+        )
+        poison_ready = (
+            poison_last_used_at <= 0
+            or now - poison_last_used_at
+                >= POISON_CLOUD_COOLDOWN_SECONDS
+        )
+        poison_unlocked = level >= POISON_CLOUD_UNLOCK_LEVEL
+        poison_auto_used = (
+            not requested_skill
+            and bool(int(current.get("skills_auto_enabled", 0)))
+            and poison_unlocked
+            and poison_ready
+            and not poison_active
+        )
+
+        if poison_auto_used:
+            poison_last_used_at = now
+            poison_until = now + POISON_CLOUD_DURATION_SECONDS
+            poison_next_tick_at = now + POISON_CLOUD_TICK_SECONDS
+            poison_active = True
+
+        poison_ticks = 0
+        poison_damage = 0
+
+        if poison_next_tick_at > 0:
+            tick_limit = min(now, poison_until)
+            if tick_limit >= poison_next_tick_at:
+                poison_ticks = (
+                    int(
+                        (tick_limit - poison_next_tick_at)
+                        // POISON_CLOUD_TICK_SECONDS
+                    )
+                    + 1
+                )
+                poison_ticks = max(0, min(5, poison_ticks))
+                poison_next_tick_at += (
+                    poison_ticks * POISON_CLOUD_TICK_SECONDS
+                )
+
+                poison_damage_per_tick = max(
+                    1,
+                    round(
+                        int(current["damage"])
+                        * POISON_CLOUD_DAMAGE_MULTIPLIER
+                    ),
+                )
+                poison_damage = (
+                    poison_damage_per_tick * poison_ticks
+                )
+
+            if now >= poison_until:
+                poison_until = 0.0
+                poison_next_tick_at = 0.0
+
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
         dealt_damage, critical = calculate_hero_attack_damage(
             current,
             damage_multiplier=damage_multiplier,
         )
+        dealt_damage += poison_damage
         enemy_hp = int(current["enemy_hp"]) - dealt_damage
         enemy_max_hp = int(current["enemy_max_hp"])
         enemy_defeated = enemy_hp <= 0
@@ -1357,6 +1474,9 @@ def attack(
                 progress_reached_at = ?,
                 last_attack_at = ?, last_enemy_attack_at = ?,
                 spore_strike_last_used_at = ?,
+                poison_cloud_last_used_at = ?,
+                poison_cloud_until = ?,
+                poison_cloud_next_tick_at = ?,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -1382,6 +1502,9 @@ def attack(
                     if use_spore_strike
                     else spore_last_used_at
                 ),
+                poison_last_used_at,
+                poison_until,
+                poison_next_tick_at,
                 int(now),
                 telegram_id,
             ),
@@ -1417,6 +1540,9 @@ def attack(
         critical=critical,
         skill_used=("spore_strike" if use_spore_strike else None),
         spore_strike_used=use_spore_strike,
+        poison_cloud_used=poison_auto_used,
+        poison_ticks=poison_ticks,
+        poison_damage=poison_damage,
         enemy_defeated=enemy_defeated,
         boss_defeated=boss_defeated,
         stage_completed=stage_completed,
@@ -1424,6 +1550,93 @@ def attack(
         experience_reward=experience_reward,
         reward=0,
         message=message,
+    )
+
+
+@app.post("/skills/poison-cloud/use")
+def use_poison_cloud(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        if int(current.get("hero_hp", 0)) <= 0:
+            connection.commit()
+            return build_player_response(
+                current,
+                poison_used=False,
+                message="💀 Герой ожидает возрождения",
+            )
+
+        if int(current.get("level", 1)) < POISON_CLOUD_UNLOCK_LEVEL:
+            connection.commit()
+            return build_player_response(
+                current,
+                poison_used=False,
+                message=(
+                    f"🔒 Poison Cloud откроется "
+                    f"на {POISON_CLOUD_UNLOCK_LEVEL} уровне"
+                ),
+            )
+
+        last_used_at = float(
+            current.get("poison_cloud_last_used_at", 0)
+        )
+        elapsed = now - last_used_at
+
+        if (
+            last_used_at > 0
+            and elapsed < POISON_CLOUD_COOLDOWN_SECONDS
+        ):
+            remaining = max(
+                0.0,
+                POISON_CLOUD_COOLDOWN_SECONDS - elapsed,
+            )
+            connection.commit()
+            return build_player_response(
+                current,
+                poison_used=False,
+                skill_retry_after=remaining,
+                message=f"☁️ Poison Cloud: ещё {remaining:.1f} сек.",
+            )
+
+        poison_until = now + POISON_CLOUD_DURATION_SECONDS
+        poison_next_tick_at = now + POISON_CLOUD_TICK_SECONDS
+
+        connection.execute(
+            """
+            UPDATE players
+            SET poison_cloud_last_used_at = ?,
+                poison_cloud_until = ?,
+                poison_cloud_next_tick_at = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                now,
+                poison_until,
+                poison_next_tick_at,
+                int(now),
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        poison_used=True,
+        skill_used="poison_cloud",
+        message="☁️ Poison Cloud активировано на 5 секунд",
     )
 
 
