@@ -2810,6 +2810,9 @@
       mushroomShieldButton: document.querySelector(
         '.skill-button[data-skill="mushroom_shield"]'
       ),
+      poisonCloudButton: document.querySelector(
+        '.skill-button[data-skill="poison_cloud"]'
+      ),
       heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
       heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm")
     };
@@ -3056,6 +3059,54 @@
           activeAmount: player?.skills?.mushroom_shield?.amount,
         }
       );
+
+      const poisonSkill = player?.skills?.poison_cloud;
+      const poisonButton = elements.poisonCloudButton;
+
+      if (poisonButton && poisonSkill) {
+        const unlocked = Boolean(poisonSkill.unlocked);
+        const active = Boolean(poisonSkill.active);
+        const lastUsedAt = Number(player?.poison_cloud_last_used_at || 0);
+        const cooldownSeconds = Number(poisonSkill.cooldown_seconds || 20);
+        const elapsed = lastUsedAt > 0
+          ? Date.now() / 1000 - lastUsedAt
+          : cooldownSeconds;
+        const remaining = Math.max(0, cooldownSeconds - elapsed);
+        const durationRemaining = Math.max(
+          0,
+          Number(player?.poison_cloud_until || 0) - Date.now() / 1000
+        );
+
+        poisonButton.classList.toggle("locked", !unlocked);
+        poisonButton.classList.toggle("active", active || remaining <= 0);
+        poisonButton.disabled = !unlocked;
+        poisonButton.setAttribute("aria-disabled", String(!unlocked));
+
+        const levelLabel = poisonButton.querySelector(".skill-level");
+
+        if (levelLabel) {
+          if (!unlocked) {
+            levelLabel.textContent = `УР. ${poisonSkill.unlock_level}`;
+          } else if (durationRemaining > 0) {
+            levelLabel.textContent = `${durationRemaining.toFixed(1)}с`;
+          } else if (remaining > 0) {
+            levelLabel.textContent = `${remaining.toFixed(1)}с`;
+          } else {
+            levelLabel.textContent = "ГОТОВ";
+          }
+        }
+
+        poisonButton.setAttribute(
+          "aria-label",
+          !unlocked
+            ? `Poison Cloud откроется на уровне ${poisonSkill.unlock_level}`
+            : durationRemaining > 0
+              ? `Poison Cloud действует ещё ${durationRemaining.toFixed(1)} секунды`
+              : remaining > 0
+                ? `Poison Cloud, перезарядка ${remaining.toFixed(1)} секунды`
+                : "Poison Cloud готов"
+        );
+      }
     }
 
 
@@ -3326,6 +3377,41 @@
       finally { elements.autoToggle.disabled = false; }
     }
 
+    async function usePoisonCloud() {
+      const skill = player?.skills?.poison_cloud;
+
+      if (!skill?.unlocked) {
+        setMessage(
+          `🔒 Poison Cloud откроется на ${skill?.unlock_level || 40} уровне`,
+          true
+        );
+        return;
+      }
+
+      elements.poisonCloudButton.disabled = true;
+
+      try {
+        player = await apiRequest(
+          "/skills/poison-cloud/use",
+          "POST"
+        );
+        renderPlayer();
+        setMessage(player.message);
+
+        if (player.poison_used) {
+          restartAnimation(elements.sporeEffect, "fx-spore");
+          try {
+            telegram.HapticFeedback?.notificationOccurred("success");
+          } catch (_) {}
+        }
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      } finally {
+        renderSkills();
+      }
+    }
+
+
     async function useMushroomShield() {
       const skill = player?.skills?.mushroom_shield;
 
@@ -3470,6 +3556,10 @@
     elements.mushroomShieldButton.addEventListener(
       "click",
       useMushroomShield
+    );
+    elements.poisonCloudButton.addEventListener(
+      "click",
+      usePoisonCloud
     );
     elements.bossButton.addEventListener("click", startBoss);
     $("claimOfflineButton").addEventListener("click", claimOffline);
