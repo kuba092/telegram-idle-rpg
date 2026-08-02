@@ -52,6 +52,7 @@ STARTER_SKILL_IDS = (
     "poison_cloud",
 )
 STARTER_SKILL_SCROLLS = 0
+SKILL_POWER_PER_LEVEL = 0.05
 
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
@@ -840,6 +841,86 @@ def normalize_skill_slots(value, collection: dict) -> list[str | None]:
     return slots[:3]
 
 
+def get_player_skill_state(
+    player: dict,
+    skill_id: str,
+) -> dict:
+    collection = normalize_skill_collection(
+        player.get("skills_collection_json")
+    )
+    slots = normalize_skill_slots(
+        player.get("skill_slots_json"),
+        collection,
+    )
+    hero_level = clamp_int(
+        player.get("level", 1),
+        1,
+        MAX_HERO_LEVEL,
+    )
+    unlocked_slot_count = sum(
+        1
+        for unlock_level in SKILL_SLOT_UNLOCK_LEVELS
+        if hero_level >= unlock_level
+    )
+
+    entry = collection.get(skill_id, {})
+    owned = bool(entry.get("owned", False))
+    skill_level = clamp_int(entry.get("level", 1), 1, 20)
+
+    slot_index = next(
+        (
+            index
+            for index, equipped_skill_id in enumerate(slots)
+            if equipped_skill_id == skill_id
+        ),
+        None,
+    )
+    equipped = slot_index is not None
+    slot_unlocked = (
+        slot_index is not None
+        and slot_index < unlocked_slot_count
+    )
+
+    return {
+        "owned": owned,
+        "level": skill_level,
+        "equipped": equipped,
+        "slot_index": (
+            slot_index + 1
+            if slot_index is not None
+            else None
+        ),
+        "slot_unlocked": slot_unlocked,
+        "available": owned and equipped and slot_unlocked,
+    }
+
+
+def skill_power_multiplier(skill_level: int) -> float:
+    skill_level = clamp_int(skill_level, 1, 20)
+    return 1.0 + (
+        (skill_level - 1)
+        * SKILL_POWER_PER_LEVEL
+    )
+
+
+def unavailable_skill_message(
+    state: dict,
+    skill_name: str,
+) -> str:
+    if not state["owned"]:
+        return f"🔒 Навык {skill_name} ещё не получен"
+    if not state["equipped"]:
+        return f"🔒 Установите {skill_name} в боевой слот"
+    if not state["slot_unlocked"]:
+        slot_index = int(state.get("slot_index") or 1)
+        unlock_level = SKILL_SLOT_UNLOCK_LEVELS[slot_index - 1]
+        return (
+            f"🔒 Слот {slot_index} откроется "
+            f"на {unlock_level} уровне"
+        )
+    return f"🔒 Навык {skill_name} недоступен"
+
+
 def ensure_player_skill_data(
     connection: sqlite3.Connection,
     telegram_id: int,
@@ -963,6 +1044,32 @@ def build_player_response(player: dict, **extra) -> dict:
         if level >= unlock_level
     )
 
+    spore_skill_state = get_player_skill_state(
+        player,
+        "spore_strike",
+    )
+    shield_skill_state = get_player_skill_state(
+        player,
+        "mushroom_shield",
+    )
+    poison_skill_state = get_player_skill_state(
+        player,
+        "poison_cloud",
+    )
+
+    spore_damage_multiplier = (
+        SPORE_STRIKE_DAMAGE_MULTIPLIER
+        * skill_power_multiplier(spore_skill_state["level"])
+    )
+    shield_hp_ratio = (
+        MUSHROOM_SHIELD_HP_RATIO
+        * skill_power_multiplier(shield_skill_state["level"])
+    )
+    poison_damage_multiplier = (
+        POISON_CLOUD_DAMAGE_MULTIPLIER
+        * skill_power_multiplier(poison_skill_state["level"])
+    )
+
     spore_last_used_at = float(
         player.get("spore_strike_last_used_at", 0)
     )
@@ -991,7 +1098,7 @@ def build_player_response(player: dict, **extra) -> dict:
         1,
         round(
             int(player.get("hero_max_hp", 1))
-            * MUSHROOM_SHIELD_HP_RATIO
+            * shield_hp_ratio
         ),
     )
     shield_amount = max(
@@ -1072,34 +1179,64 @@ def build_player_response(player: dict, **extra) -> dict:
         "attack_interval": attack_interval,
         "skills": {
             "spore_strike": {
-                "unlocked": level >= SPORE_STRIKE_UNLOCK_LEVEL,
-                "unlock_level": SPORE_STRIKE_UNLOCK_LEVEL,
-                "damage_multiplier": SPORE_STRIKE_DAMAGE_MULTIPLIER,
+                **spore_skill_state,
+                "unlocked": spore_skill_state["available"],
+                "unlock_level": (
+                    SKILL_SLOT_UNLOCK_LEVELS[
+                        max(
+                            0,
+                            int(spore_skill_state.get("slot_index") or 1) - 1,
+                        )
+                    ]
+                ),
+                "damage_multiplier": round(
+                    spore_damage_multiplier,
+                    3,
+                ),
                 "cooldown_seconds": SPORE_STRIKE_COOLDOWN_SECONDS,
                 "cooldown_remaining": spore_cooldown_remaining,
                 "ready": (
-                    level >= SPORE_STRIKE_UNLOCK_LEVEL
+                    spore_skill_state["available"]
                     and spore_cooldown_remaining <= 0
                 ),
             },
             "mushroom_shield": {
-                "unlocked": level >= MUSHROOM_SHIELD_UNLOCK_LEVEL,
-                "unlock_level": MUSHROOM_SHIELD_UNLOCK_LEVEL,
-                "hp_ratio": MUSHROOM_SHIELD_HP_RATIO,
+                **shield_skill_state,
+                "unlocked": shield_skill_state["available"],
+                "unlock_level": (
+                    SKILL_SLOT_UNLOCK_LEVELS[
+                        max(
+                            0,
+                            int(shield_skill_state.get("slot_index") or 1) - 1,
+                        )
+                    ]
+                ),
+                "hp_ratio": round(shield_hp_ratio, 4),
                 "cooldown_seconds": MUSHROOM_SHIELD_COOLDOWN_SECONDS,
                 "cooldown_remaining": shield_cooldown_remaining,
                 "capacity": shield_capacity,
                 "amount": shield_amount,
                 "active": shield_amount > 0,
                 "ready": (
-                    level >= MUSHROOM_SHIELD_UNLOCK_LEVEL
+                    shield_skill_state["available"]
                     and shield_cooldown_remaining <= 0
                 ),
             },
             "poison_cloud": {
-                "unlocked": level >= POISON_CLOUD_UNLOCK_LEVEL,
-                "unlock_level": POISON_CLOUD_UNLOCK_LEVEL,
-                "damage_multiplier": POISON_CLOUD_DAMAGE_MULTIPLIER,
+                **poison_skill_state,
+                "unlocked": poison_skill_state["available"],
+                "unlock_level": (
+                    SKILL_SLOT_UNLOCK_LEVELS[
+                        max(
+                            0,
+                            int(poison_skill_state.get("slot_index") or 1) - 1,
+                        )
+                    ]
+                ),
+                "damage_multiplier": round(
+                    poison_damage_multiplier,
+                    3,
+                ),
                 "duration_seconds": POISON_CLOUD_DURATION_SECONDS,
                 "tick_seconds": POISON_CLOUD_TICK_SECONDS,
                 "cooldown_seconds": POISON_CLOUD_COOLDOWN_SECONDS,
@@ -1107,7 +1244,7 @@ def build_player_response(player: dict, **extra) -> dict:
                 "duration_remaining": poison_duration_remaining,
                 "active": poison_active,
                 "ready": (
-                    level >= POISON_CLOUD_UNLOCK_LEVEL
+                    poison_skill_state["available"]
                     and poison_cooldown_remaining <= 0
                     and not poison_active
                 ),
@@ -1451,7 +1588,11 @@ def attack(
             raise HTTPException(status_code=400, detail="Неизвестный навык")
 
         level = int(current.get("level", 1))
-        spore_unlocked = level >= SPORE_STRIKE_UNLOCK_LEVEL
+        spore_state = get_player_skill_state(
+            current,
+            "spore_strike",
+        )
+        spore_unlocked = spore_state["available"]
         spore_last_used_at = float(
             current.get("spore_strike_last_used_at", 0)
         )
@@ -1475,9 +1616,9 @@ def attack(
                 current,
                 attacked=False,
                 skill_used=None,
-                message=(
-                    f"🔒 Spore Strike откроется "
-                    f"на {SPORE_STRIKE_UNLOCK_LEVEL} уровне"
+                message=unavailable_skill_message(
+                    spore_state,
+                    "Spore Strike",
                 ),
             )
 
@@ -1498,6 +1639,7 @@ def attack(
         use_spore_strike = manual_spore or auto_spore
         damage_multiplier = (
             SPORE_STRIKE_DAMAGE_MULTIPLIER
+            * skill_power_multiplier(spore_state["level"])
             if use_spore_strike
             else 1.0
         )
@@ -1520,7 +1662,11 @@ def attack(
             or now - poison_last_used_at
                 >= POISON_CLOUD_COOLDOWN_SECONDS
         )
-        poison_unlocked = level >= POISON_CLOUD_UNLOCK_LEVEL
+        poison_state = get_player_skill_state(
+            current,
+            "poison_cloud",
+        )
+        poison_unlocked = poison_state["available"]
         poison_auto_used = (
             not requested_skill
             and bool(int(current.get("skills_auto_enabled", 0)))
@@ -1558,6 +1704,9 @@ def attack(
                     round(
                         int(current["damage"])
                         * POISON_CLOUD_DAMAGE_MULTIPLIER
+                        * skill_power_multiplier(
+                            poison_state["level"]
+                        )
                     ),
                 )
                 poison_damage = (
@@ -1759,14 +1908,18 @@ def use_poison_cloud(
                 message="💀 Герой ожидает возрождения",
             )
 
-        if int(current.get("level", 1)) < POISON_CLOUD_UNLOCK_LEVEL:
+        poison_state = get_player_skill_state(
+            current,
+            "poison_cloud",
+        )
+        if not poison_state["available"]:
             connection.commit()
             return build_player_response(
                 current,
                 poison_used=False,
-                message=(
-                    f"🔒 Poison Cloud откроется "
-                    f"на {POISON_CLOUD_UNLOCK_LEVEL} уровне"
+                message=unavailable_skill_message(
+                    poison_state,
+                    "Poison Cloud",
                 ),
             )
 
@@ -1845,14 +1998,18 @@ def use_mushroom_shield(
                 message="💀 Герой ожидает возрождения",
             )
 
-        if int(current.get("level", 1)) < MUSHROOM_SHIELD_UNLOCK_LEVEL:
+        shield_state = get_player_skill_state(
+            current,
+            "mushroom_shield",
+        )
+        if not shield_state["available"]:
             connection.commit()
             return build_player_response(
                 current,
                 shield_used=False,
-                message=(
-                    f"🔒 Mushroom Shield откроется "
-                    f"на {MUSHROOM_SHIELD_UNLOCK_LEVEL} уровне"
+                message=unavailable_skill_message(
+                    shield_state,
+                    "Mushroom Shield",
                 ),
             )
 
@@ -1881,6 +2038,9 @@ def use_mushroom_shield(
             round(
                 int(current["hero_max_hp"])
                 * MUSHROOM_SHIELD_HP_RATIO
+                * skill_power_multiplier(
+                    shield_state["level"]
+                )
             ),
         )
         connection.execute(
@@ -1956,9 +2116,19 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
 
         hero_hp_before = max(0, int(current["hero_hp"]))
         hero_max_hp = max(1, int(current["hero_max_hp"]))
+        shield_state = get_player_skill_state(
+            current,
+            "mushroom_shield",
+        )
         shield_capacity = max(
             1,
-            round(hero_max_hp * MUSHROOM_SHIELD_HP_RATIO),
+            round(
+                hero_max_hp
+                * MUSHROOM_SHIELD_HP_RATIO
+                * skill_power_multiplier(
+                    shield_state["level"]
+                )
+            ),
         )
         shield_amount = max(
             0,
@@ -1975,10 +2145,7 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             shield_last_used_at <= 0
             or shield_elapsed >= MUSHROOM_SHIELD_COOLDOWN_SECONDS
         )
-        shield_unlocked = (
-            int(current.get("level", 1))
-            >= MUSHROOM_SHIELD_UNLOCK_LEVEL
-        )
+        shield_unlocked = shield_state["available"]
         shield_auto_used = (
             bool(int(current.get("skills_auto_enabled", 0)))
             and shield_unlocked
