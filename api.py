@@ -51,6 +51,90 @@ COMPANION_MAX_LEVEL = 20
 COMPANION_SUMMON_MAX_LEVEL = 10
 COMPANION_SUMMON_COST = 1
 
+# COMPANION_SUMMON_LOGIC_V1
+COMPANION_SUMMON_LEVEL_THRESHOLDS = {
+    1: 0,
+    2: 20,
+    3: 60,
+    4: 150,
+    5: 350,
+    6: 700,
+    7: 1300,
+    8: 2200,
+    9: 3500,
+    10: 5000,
+}
+
+COMPANION_SUMMON_RARITY_WEIGHTS = {
+    1: {
+        "common": 8490,
+        "rare": 1350,
+        "epic": 150,
+        "legendary": 10,
+    },
+    2: {
+        "common": 8220,
+        "rare": 1550,
+        "epic": 210,
+        "legendary": 20,
+    },
+    3: {
+        "common": 7900,
+        "rare": 1800,
+        "epic": 270,
+        "legendary": 30,
+    },
+    4: {
+        "common": 7550,
+        "rare": 2080,
+        "epic": 330,
+        "legendary": 40,
+    },
+    5: {
+        "common": 7150,
+        "rare": 2400,
+        "epic": 400,
+        "legendary": 50,
+    },
+    6: {
+        "common": 6700,
+        "rare": 2700,
+        "epic": 530,
+        "legendary": 70,
+    },
+    7: {
+        "common": 6200,
+        "rare": 3000,
+        "epic": 700,
+        "legendary": 100,
+    },
+    8: {
+        "common": 5600,
+        "rare": 3300,
+        "epic": 950,
+        "legendary": 150,
+    },
+    9: {
+        "common": 4900,
+        "rare": 3600,
+        "epic": 1250,
+        "legendary": 250,
+    },
+    10: {
+        "common": 4200,
+        "rare": 3800,
+        "epic": 1650,
+        "legendary": 350,
+    },
+}
+
+COMPANION_DUPLICATE_FRAGMENTS = {
+    "common": 1,
+    "rare": 2,
+    "epic": 4,
+    "legendary": 8,
+}
+
 COMPANION_RARITY_NAMES = {
     "common": "Обычный",
     "rare": "Редкий",
@@ -1243,6 +1327,207 @@ def skill_fragments_required(skill_level: int) -> int:
     return 5 * skill_level
 
 
+def companion_summon_level_from_exp(
+    summon_exp: int,
+) -> int:
+    summon_exp = max(0, int(summon_exp))
+    level = 1
+
+    for candidate_level in range(
+        2,
+        COMPANION_SUMMON_MAX_LEVEL + 1,
+    ):
+        if summon_exp < COMPANION_SUMMON_LEVEL_THRESHOLDS[
+            candidate_level
+        ]:
+            break
+
+        level = candidate_level
+
+    return level
+
+
+def companion_summon_progress(summon_exp: int) -> dict:
+    summon_exp = max(0, int(summon_exp))
+    level = companion_summon_level_from_exp(summon_exp)
+    level_start = COMPANION_SUMMON_LEVEL_THRESHOLDS[level]
+
+    if level >= COMPANION_SUMMON_MAX_LEVEL:
+        return {
+            "level": level,
+            "exp": summon_exp,
+            "current": 0,
+            "required": 0,
+            "remaining": 0,
+            "progress": 1.0,
+            "max_level": True,
+        }
+
+    next_threshold = COMPANION_SUMMON_LEVEL_THRESHOLDS[
+        level + 1
+    ]
+    required = max(1, next_threshold - level_start)
+    current = max(0, summon_exp - level_start)
+
+    return {
+        "level": level,
+        "exp": summon_exp,
+        "current": current,
+        "required": required,
+        "remaining": max(0, required - current),
+        "progress": round(
+            min(1.0, current / required),
+            4,
+        ),
+        "next_level_total_exp": next_threshold,
+        "max_level": False,
+    }
+
+
+def public_companion_summon_chances(
+    summon_level: int,
+) -> dict:
+    summon_level = clamp_int(
+        summon_level,
+        1,
+        COMPANION_SUMMON_MAX_LEVEL,
+    )
+    weights = COMPANION_SUMMON_RARITY_WEIGHTS[
+        summon_level
+    ]
+
+    return {
+        rarity: {
+            "name": COMPANION_RARITY_NAMES[rarity],
+            "chance": round(weight / 100, 2),
+        }
+        for rarity, weight in weights.items()
+    }
+
+
+def companion_fragments_required(
+    companion_level: int,
+) -> int:
+    companion_level = clamp_int(
+        companion_level,
+        1,
+        COMPANION_MAX_LEVEL,
+    )
+
+    if companion_level >= COMPANION_MAX_LEVEL:
+        return 0
+
+    return 5 * companion_level
+
+
+def roll_companion_id(summon_level: int) -> str:
+    summon_level = clamp_int(
+        summon_level,
+        1,
+        COMPANION_SUMMON_MAX_LEVEL,
+    )
+    rarity_weights = COMPANION_SUMMON_RARITY_WEIGHTS[
+        summon_level
+    ]
+    rarities = list(rarity_weights)
+
+    rarity = random.choices(
+        rarities,
+        weights=[
+            rarity_weights[rarity_name]
+            for rarity_name in rarities
+        ],
+        k=1,
+    )[0]
+
+    candidates = [
+        companion_id
+        for companion_id, definition
+        in COMPANION_CATALOG.items()
+        if definition["rarity"] == rarity
+    ]
+
+    return random.choice(candidates)
+
+
+def apply_companion_summon(
+    collection: dict,
+    companion_id: str,
+) -> dict:
+    definition = COMPANION_CATALOG[companion_id]
+    rarity = str(definition["rarity"])
+    entry = collection.get(companion_id)
+
+    if (
+        not isinstance(entry, dict)
+        or not bool(entry.get("owned"))
+    ):
+        collection[companion_id] = {
+            "owned": True,
+            "level": 1,
+            "fragments": 0,
+        }
+
+        return {
+            "companion_id": companion_id,
+            "name": definition["name"],
+            "icon": definition["icon"],
+            "rarity": rarity,
+            "rarity_name": COMPANION_RARITY_NAMES[rarity],
+            "new": True,
+            "fragments_gained": 0,
+            "levels_gained": 0,
+            "level": 1,
+            "fragments": 0,
+        }
+
+    companion_level = clamp_int(
+        entry.get("level", 1),
+        1,
+        COMPANION_MAX_LEVEL,
+    )
+    fragments = max(
+        0,
+        int(entry.get("fragments", 0)),
+    )
+    fragments_gained = COMPANION_DUPLICATE_FRAGMENTS[
+        rarity
+    ]
+    fragments += fragments_gained
+    levels_gained = 0
+
+    while companion_level < COMPANION_MAX_LEVEL:
+        required = companion_fragments_required(
+            companion_level
+        )
+
+        if required <= 0 or fragments < required:
+            break
+
+        fragments -= required
+        companion_level += 1
+        levels_gained += 1
+
+    collection[companion_id] = {
+        "owned": True,
+        "level": companion_level,
+        "fragments": fragments,
+    }
+
+    return {
+        "companion_id": companion_id,
+        "name": definition["name"],
+        "icon": definition["icon"],
+        "rarity": rarity,
+        "rarity_name": COMPANION_RARITY_NAMES[rarity],
+        "new": False,
+        "fragments_gained": fragments_gained,
+        "levels_gained": levels_gained,
+        "level": companion_level,
+        "fragments": fragments,
+    }
+
+
 # COMPANION_PUBLIC_API_V1
 def public_companion_catalog() -> list[dict]:
     rarity_order = {
@@ -2320,6 +2605,18 @@ def build_player_response(player: dict, **extra) -> dict:
     companion_collection = normalize_companion_collection(
         player.get("companions_collection_json")
     )
+    companion_summon_exp = max(
+        0,
+        int(player.get("companion_summon_exp", 0)),
+    )
+    companion_summon_level = (
+        companion_summon_level_from_exp(
+            companion_summon_exp
+        )
+    )
+    companion_summon_state = companion_summon_progress(
+        companion_summon_exp
+    )
     companion_slots = normalize_companion_slots(
         player.get("companion_slots_json"),
         companion_collection,
@@ -2415,6 +2712,20 @@ def build_player_response(player: dict, **extra) -> dict:
             "unlocked_slot_count": (
                 unlocked_companion_slot_count
             ),
+            "summon": {
+                "single_cost": COMPANION_SUMMON_COST,
+                "ten_cost": COMPANION_SUMMON_COST * 10,
+                "allowed_counts": [1, 10],
+                "level": companion_summon_level,
+                "max_level": COMPANION_SUMMON_MAX_LEVEL,
+                "exp": companion_summon_exp,
+                "progress": companion_summon_state,
+                "rarity_chances": (
+                    public_companion_summon_chances(
+                        companion_summon_level
+                    )
+                ),
+            },
             "catalog": public_companion_catalog(),
             "slots": [
                 {
@@ -5420,6 +5731,184 @@ def summon_skills(
         summon_level_before=old_summon_level,
         summon_level_after=new_summon_level,
         summon_levels_gained=summon_levels_gained,
+        message=message,
+    )
+
+
+# COMPANION_SUMMON_API_V1
+@app.post("/companions/summon")
+def summon_companions(
+    count: int = 1,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    if count not in (1, 10):
+        raise HTTPException(
+            status_code=400,
+            detail="Доступен призыв только ×1 или ×10",
+        )
+
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        if (
+            int(current.get("level", 1))
+            < COMPANION_SYSTEM_UNLOCK_LEVEL
+        ):
+            connection.commit()
+            return build_player_response(
+                current,
+                companion_summoned=False,
+                companion_summon_results=[],
+                message=(
+                    f"🔒 Система спутников откроется "
+                    f"на {COMPANION_SYSTEM_UNLOCK_LEVEL} уровне"
+                ),
+            )
+
+        cost = COMPANION_SUMMON_COST * count
+        scrolls = max(
+            0,
+            int(current.get("companion_scrolls", 0)),
+        )
+
+        if scrolls < cost:
+            connection.commit()
+            return build_player_response(
+                current,
+                companion_summoned=False,
+                companion_summon_results=[],
+                companion_summon_cost=cost,
+                missing_companion_scrolls=(
+                    cost - scrolls
+                ),
+                message=(
+                    f"🐾 Недостаточно свитков спутников: "
+                    f"нужно {cost}, есть {scrolls}"
+                ),
+            )
+
+        collection = normalize_companion_collection(
+            current.get("companions_collection_json")
+        )
+        summon_exp = max(
+            0,
+            int(current.get("companion_summon_exp", 0)),
+        )
+        old_summon_level = (
+            companion_summon_level_from_exp(
+                summon_exp
+            )
+        )
+        results = []
+
+        for _ in range(count):
+            current_summon_level = (
+                companion_summon_level_from_exp(
+                    summon_exp
+                )
+            )
+            companion_id = roll_companion_id(
+                current_summon_level
+            )
+            result = apply_companion_summon(
+                collection,
+                companion_id,
+            )
+            result["summon_level"] = (
+                current_summon_level
+            )
+            results.append(result)
+            summon_exp += 1
+
+        new_summon_level = (
+            companion_summon_level_from_exp(
+                summon_exp
+            )
+        )
+        remaining_scrolls = scrolls - cost
+        now = int(time.time())
+
+        connection.execute(
+            """
+            UPDATE players
+            SET companion_scrolls = ?,
+                companion_summon_exp = ?,
+                companions_collection_json = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                remaining_scrolls,
+                summon_exp,
+                json.dumps(
+                    collection,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                now,
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(
+            connection,
+            telegram_id,
+        )
+    finally:
+        connection.close()
+
+    new_count = sum(
+        1
+        for result in results
+        if result["new"]
+    )
+    levels_gained = sum(
+        int(result["levels_gained"])
+        for result in results
+    )
+    summon_levels_gained = (
+        new_summon_level - old_summon_level
+    )
+
+    message = f"🐾 Призвано спутников: {count}"
+
+    if new_count > 0:
+        message += f". Новых спутников: {new_count}"
+
+    if levels_gained > 0:
+        message += (
+            f". Улучшений спутников: {levels_gained}"
+        )
+
+    if summon_levels_gained > 0:
+        message += (
+            f". Уровень призыва повышен "
+            f"до {new_summon_level}"
+        )
+
+    return build_player_response(
+        updated,
+        companion_summoned=True,
+        companion_summon_count=count,
+        companion_summon_cost=cost,
+        companion_summon_results=results,
+        new_companions_count=new_count,
+        companion_levels_gained=levels_gained,
+        companion_summon_level_before=(
+            old_summon_level
+        ),
+        companion_summon_level_after=(
+            new_summon_level
+        ),
+        companion_summon_levels_gained=(
+            summon_levels_gained
+        ),
         message=message,
     )
 
