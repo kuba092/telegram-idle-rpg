@@ -2908,7 +2908,9 @@
       elements.enemySprite.className = "fighter-sprite anim-enemy-hit"; restartAnimation(elements.hitEffect, "fx-hit"); restoreEnemyIdle(330);
     }
     async function animateEnemyDefeat(result) {
-      enemyDefeating = true; clearTimeout(monsterAttackTimer);
+      enemyDefeating = true;
+    clearTimeout(monsterAttackTimer);
+    monsterAttackTimer = null;
       elements.enemyHp.textContent = "0"; elements.enemyHpBar.style.width = "0%";
       restartAnimation(elements.hitEffect, "fx-hit"); elements.enemySprite.className = "fighter-sprite anim-enemy-death";
       await wait(450); player = result; renderPlayer();
