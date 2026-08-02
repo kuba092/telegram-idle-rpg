@@ -236,6 +236,36 @@ SKILL_CATALOG = {
     },
 }
 
+DAILY_QUEST_DEFINITIONS = {
+    "kill_enemies": {
+        "name": "Охотник",
+        "description": "Победите 30 обычных врагов",
+        "icon": "⚔️",
+        "counter": "daily_kills",
+        "target": 30,
+        "scrolls": 1,
+    },
+    "kill_bosses": {
+        "name": "Победитель боссов",
+        "description": "Победите 3 боссов",
+        "icon": "👑",
+        "counter": "daily_bosses",
+        "target": 3,
+        "scrolls": 2,
+    },
+    "open_chests": {
+        "name": "Искатель сокровищ",
+        "description": "Откройте 10 сундуков",
+        "icon": "🧰",
+        "counter": "daily_chests_opened",
+        "target": 10,
+        "scrolls": 1,
+    },
+}
+
+DAILY_ALL_QUESTS_REWARD_SCROLLS = 3
+DAILY_ALL_QUESTS_ID = "daily_complete"
+
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
 STARTER_CHESTS = 3
@@ -1370,6 +1400,11 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             (telegram_id, username, first_name, now, now, now),
         )
         ensure_player_skill_data(connection, telegram_id)
+        ensure_daily_quest_state(
+            connection,
+            telegram_id,
+            now,
+        )
         player = load_player(connection, telegram_id)
         if accrue_offline:
             apply_offline_accrual(connection, player, now)
@@ -1387,6 +1422,132 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
         return load_player(connection, telegram_id)
     finally:
         connection.close()
+
+
+def current_daily_quest_date(now: int | float | None = None) -> str:
+    timestamp = time.time() if now is None else float(now)
+    return time.strftime("%Y-%m-%d", time.gmtime(timestamp))
+
+
+def normalize_daily_claims(value: object) -> dict:
+    parsed = parse_json_object(value)
+    return {
+        quest_id: bool(parsed.get(quest_id, False))
+        for quest_id in DAILY_QUEST_DEFINITIONS
+    }
+
+
+def ensure_daily_quest_state(
+    connection: sqlite3.Connection,
+    telegram_id: int,
+    now: int | float | None = None,
+) -> None:
+    today = current_daily_quest_date(now)
+    row = connection.execute(
+        """
+        SELECT daily_quest_date
+        FROM players
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    ).fetchone()
+
+    if row is None:
+        return
+
+    stored_date = str(row["daily_quest_date"] or "")
+
+    if stored_date == today:
+        return
+
+    connection.execute(
+        """
+        UPDATE players
+        SET daily_quest_date = ?,
+            daily_kills = 0,
+            daily_bosses = 0,
+            daily_chests_opened = 0,
+            daily_quests_claimed_json = '{}',
+            daily_all_claimed = 0
+        WHERE telegram_id = ?
+        """,
+        (today, telegram_id),
+    )
+
+
+def build_daily_quests(player: dict) -> dict:
+    claims = normalize_daily_claims(
+        player.get("daily_quests_claimed_json")
+    )
+    quests = []
+    completed_count = 0
+    claimed_count = 0
+
+    for quest_id, definition in DAILY_QUEST_DEFINITIONS.items():
+        progress = max(
+            0,
+            int(player.get(definition["counter"], 0)),
+        )
+        target = int(definition["target"])
+        completed = progress >= target
+        claimed = bool(claims.get(quest_id, False))
+
+        if completed:
+            completed_count += 1
+        if claimed:
+            claimed_count += 1
+
+        quests.append(
+            {
+                "id": quest_id,
+                "name": definition["name"],
+                "description": definition["description"],
+                "icon": definition["icon"],
+                "progress": min(progress, target),
+                "raw_progress": progress,
+                "target": target,
+                "completed": completed,
+                "claimed": claimed,
+                "claimable": completed and not claimed,
+                "reward": {
+                    "skill_scrolls": int(
+                        definition["scrolls"]
+                    ),
+                },
+            }
+        )
+
+    all_claimed = bool(
+        int(player.get("daily_all_claimed", 0))
+    )
+    bonus_unlocked = claimed_count == len(
+        DAILY_QUEST_DEFINITIONS
+    )
+
+    return {
+        "type": "daily",
+        "date": str(
+            player.get("daily_quest_date")
+            or current_daily_quest_date()
+        ),
+        "reset_timezone": "UTC",
+        "quests": quests,
+        "completed_count": completed_count,
+        "claimed_count": claimed_count,
+        "total_count": len(DAILY_QUEST_DEFINITIONS),
+        "bonus": {
+            "id": DAILY_ALL_QUESTS_ID,
+            "name": "Все ежедневные задания",
+            "description": "Заберите награды всех ежедневных заданий",
+            "icon": "🎁",
+            "completed": bonus_unlocked,
+            "claimed": all_claimed,
+            "claimable": bonus_unlocked and not all_claimed,
+            "reward": {
+                "skill_scrolls": DAILY_ALL_QUESTS_REWARD_SCROLLS,
+            },
+        },
+    }
 
 
 def public_equipment(player: dict) -> dict:
@@ -1531,6 +1692,7 @@ def build_player_response(player: dict, **extra) -> dict:
         "pending_loot_json",
         "skills_collection_json",
         "skill_slots_json",
+        "daily_quests_claimed_json",
     }
     public_player = {
         key: value
@@ -1540,6 +1702,7 @@ def build_player_response(player: dict, **extra) -> dict:
     response = {
         **public_player,
         "equipment": equipment,
+        "quests": build_daily_quests(player),
         "pending_loot": pending_loot,
         "pending_loot_comparison": (
             compare_loot(player, pending_loot) if pending_loot else None
@@ -1820,6 +1983,30 @@ def create_database() -> None:
             "skill_summon_exp",
             "INTEGER NOT NULL DEFAULT 0",
         ),
+        (
+            "daily_quest_date",
+            "TEXT NOT NULL DEFAULT ''",
+        ),
+        (
+            "daily_kills",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "daily_bosses",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "daily_chests_opened",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "daily_quests_claimed_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        ),
+        (
+            "daily_all_claimed",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
     )
     for column_name, definition in columns:
         add_column_if_missing(connection, column_name, definition)
@@ -1910,6 +2097,149 @@ def player(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user, accrue_offline=True)
     return build_player_response(player_data)
+
+
+@app.post("/quests/claim")
+def claim_daily_quest(
+    quest_id: str,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    quest_id = str(quest_id or "").strip()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        ensure_daily_quest_state(
+            connection,
+            telegram_id,
+            time.time(),
+        )
+        current = load_player(connection, telegram_id)
+        claims = normalize_daily_claims(
+            current.get("daily_quests_claimed_json")
+        )
+
+        if quest_id == DAILY_ALL_QUESTS_ID:
+            if bool(int(current.get("daily_all_claimed", 0))):
+                connection.commit()
+                return build_player_response(
+                    current,
+                    quest_claimed=False,
+                    message="🎁 Общая награда уже получена",
+                )
+
+            if not all(
+                bool(claims.get(item_id, False))
+                for item_id in DAILY_QUEST_DEFINITIONS
+            ):
+                connection.commit()
+                return build_player_response(
+                    current,
+                    quest_claimed=False,
+                    message=(
+                        "Сначала заберите награды "
+                        "всех ежедневных заданий"
+                    ),
+                )
+
+            reward_scrolls = DAILY_ALL_QUESTS_REWARD_SCROLLS
+
+            connection.execute(
+                """
+                UPDATE players
+                SET skill_scrolls = skill_scrolls + ?,
+                    daily_all_claimed = 1,
+                    updated_at = ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    reward_scrolls,
+                    int(time.time()),
+                    telegram_id,
+                ),
+            )
+            quest_name = "Все ежедневные задания"
+
+        else:
+            definition = DAILY_QUEST_DEFINITIONS.get(quest_id)
+
+            if definition is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Задание не найдено",
+                )
+
+            if bool(claims.get(quest_id, False)):
+                connection.commit()
+                return build_player_response(
+                    current,
+                    quest_claimed=False,
+                    message="Награда этого задания уже получена",
+                )
+
+            progress = max(
+                0,
+                int(current.get(definition["counter"], 0)),
+            )
+            target = int(definition["target"])
+
+            if progress < target:
+                connection.commit()
+                return build_player_response(
+                    current,
+                    quest_claimed=False,
+                    quest_id=quest_id,
+                    quest_progress=progress,
+                    quest_target=target,
+                    message=(
+                        f"Задание ещё не выполнено: "
+                        f"{progress}/{target}"
+                    ),
+                )
+
+            claims[quest_id] = True
+            reward_scrolls = int(definition["scrolls"])
+            quest_name = str(definition["name"])
+
+            connection.execute(
+                """
+                UPDATE players
+                SET skill_scrolls = skill_scrolls + ?,
+                    daily_quests_claimed_json = ?,
+                    updated_at = ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    reward_scrolls,
+                    json.dumps(
+                        claims,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                    int(time.time()),
+                    telegram_id,
+                ),
+            )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        quest_claimed=True,
+        quest_id=quest_id,
+        quest_reward_scrolls=reward_scrolls,
+        message=(
+            f"✅ {quest_name}: "
+            f"+{reward_scrolls} свитк."
+        ),
+    )
 
 
 @app.post("/offline/claim")
@@ -2268,6 +2598,21 @@ def attack(
                 telegram_id,
             ),
         )
+        if enemy_defeated:
+            connection.execute(
+                """
+                UPDATE players
+                SET daily_kills = daily_kills + ?,
+                    daily_bosses = daily_bosses + ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    0 if boss_defeated else 1,
+                    1 if boss_defeated else 0,
+                    telegram_id,
+                ),
+            )
+
         sync_player_stats(connection, telegram_id)
         connection.commit()
         updated = load_player(connection, telegram_id)
@@ -2886,6 +3231,7 @@ def open_loot_transaction(
             """
             UPDATE players
             SET chests = chests - 1,
+                daily_chests_opened = daily_chests_opened + 1,
                 gold = gold + ?,
                 experience = ?,
                 level = ?,
@@ -2917,6 +3263,7 @@ def open_loot_transaction(
         """
         UPDATE players
         SET chests = chests - 1,
+            daily_chests_opened = daily_chests_opened + 1,
             pending_loot_json = ?,
             experience = ?,
             level = ?,
