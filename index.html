@@ -3716,6 +3716,225 @@
       }
     }
 
+
+    /* CHEST_BOSS_TRIAL_UI_V1 */
+
+    .trials-content {
+      display: flex;
+      min-height: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      padding-bottom: 10px;
+    }
+
+    .chest-boss-card {
+      position: relative;
+      overflow: hidden;
+      padding: 14px;
+      border: 1px solid rgba(255, 215, 104, 0.24);
+      border-radius: 20px;
+      background:
+        radial-gradient(
+          circle at 50% 5%,
+          rgba(255, 213, 90, 0.16),
+          transparent 45%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(25, 39, 30, 0.94),
+          rgba(6, 18, 17, 0.96)
+        );
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .chest-boss-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .chest-boss-title {
+      color: #fff3a7;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .chest-boss-subtitle {
+      margin-top: 3px;
+      color: rgba(235, 244, 238, 0.65);
+      font-size: 10px;
+      font-weight: 750;
+    }
+
+    .chest-boss-level {
+      min-width: 70px;
+      padding: 7px 9px;
+      border: 1px solid rgba(255, 225, 128, 0.24);
+      border-radius: 12px;
+      background: rgba(255, 215, 90, 0.09);
+      color: #ffe58f;
+      font-size: 11px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .chest-boss-visual {
+      display: grid;
+      min-height: 150px;
+      place-items: center;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 17px;
+      background:
+        radial-gradient(
+          circle at 50% 55%,
+          rgba(255, 196, 77, 0.15),
+          transparent 44%
+        ),
+        rgba(4, 15, 15, 0.56);
+    }
+
+    .chest-boss-icon {
+      font-size: 78px;
+      filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.38));
+    }
+
+    .challenge-hp-block {
+      margin-bottom: 8px;
+    }
+
+    .challenge-hp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .challenge-hp-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(48, 12, 19, 0.94);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .challenge-hp-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ff394f, #ff8b4b);
+      transition: width 0.2s ease;
+    }
+
+    .challenge-hero-hp-track {
+      background: rgba(8, 47, 31, 0.95);
+    }
+
+    .challenge-hero-hp-fill {
+      background: linear-gradient(90deg, #39d978, #9afb79);
+    }
+
+    .chest-boss-info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      margin: 11px 0;
+    }
+
+    .chest-boss-info {
+      min-width: 0;
+      padding: 8px 5px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.045);
+      text-align: center;
+    }
+
+    .chest-boss-info span {
+      display: block;
+      margin-bottom: 3px;
+      color: rgba(237, 244, 241, 0.58);
+      font-size: 7px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+    }
+
+    .chest-boss-info strong {
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .chest-boss-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+    }
+
+    .challenge-main-button,
+    .challenge-secondary-button {
+      min-height: 46px;
+      border-radius: 14px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .challenge-main-button {
+      border: 1px solid rgba(214, 255, 118, 0.45);
+      background:
+        linear-gradient(180deg, #b7ef55, #4fa63e);
+      color: #10240d;
+      box-shadow:
+        0 8px 18px rgba(76, 153, 50, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .challenge-main-button.attack {
+      background: linear-gradient(180deg, #ffd767, #d07a22);
+      color: #2e1605;
+    }
+
+    .challenge-main-button:disabled,
+    .challenge-secondary-button:disabled {
+      cursor: default;
+      opacity: 0.45;
+    }
+
+    .challenge-extra-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .challenge-secondary-button {
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.07);
+      color: #f4f7f5;
+    }
+
+    .challenge-message {
+      min-height: 36px;
+      margin-top: 9px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      color: rgba(245, 249, 247, 0.76);
+      font-size: 10px;
+      font-weight: 750;
+      line-height: 1.35;
+      text-align: center;
+    }
+
 </style>
 </head>
 <body>
@@ -4023,6 +4242,123 @@
 </div>
 </div>
 </div>
+
+
+<section aria-label="Испытания" class="game-screen hidden" id="trialsScreen">
+<header class="screen-header">
+<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<div class="screen-title">Испытания</div>
+<div class="screen-header-spacer"></div>
+</header>
+
+<div class="trials-content">
+<div class="chest-boss-card">
+
+<div class="chest-boss-heading">
+<div>
+<div class="chest-boss-title">Хранитель сундуков</div>
+<div class="chest-boss-subtitle">
+Побеждайте босса и повышайте уровень испытания
+</div>
+</div>
+<div class="chest-boss-level">
+УР. <span id="chestBossLevel">1</span>
+</div>
+</div>
+
+<div class="chest-boss-visual">
+<div class="chest-boss-icon">🧰</div>
+</div>
+
+<div class="challenge-hp-block">
+<div class="challenge-hp-row">
+<span>ХРАНИТЕЛЬ</span>
+<span>
+<span id="chestBossHp">0</span> /
+<span id="chestBossMaxHp">0</span>
+</span>
+</div>
+<div class="challenge-hp-track">
+<div class="challenge-hp-fill" id="chestBossHpBar"></div>
+</div>
+</div>
+
+<div class="challenge-hp-block">
+<div class="challenge-hp-row">
+<span>ГЕРОЙ</span>
+<span>
+<span id="chestBossHeroHp">0</span> /
+<span id="chestBossHeroMaxHp">0</span>
+</span>
+</div>
+<div class="challenge-hp-track challenge-hero-hp-track">
+<div
+  class="challenge-hp-fill challenge-hero-hp-fill"
+  id="chestBossHeroHpBar"
+></div>
+</div>
+</div>
+
+<div class="chest-boss-info-grid">
+<div class="chest-boss-info">
+<span>НАГРАДА</span>
+<strong>🧰 <span id="chestBossReward">2</span></strong>
+</div>
+
+<div class="chest-boss-info">
+<span>ПОПЫТКИ</span>
+<strong id="chestBossAttempts">3 / 3</strong>
+</div>
+
+<div class="chest-boss-info">
+<span>КЛЮЧИ</span>
+<strong>🔑 <span id="chestBossKeys">0</span></strong>
+</div>
+</div>
+
+<div class="chest-boss-actions">
+<button
+  class="challenge-main-button"
+  id="chestBossMainButton"
+  type="button"
+>
+НАЧАТЬ БОЙ
+</button>
+
+<div class="challenge-extra-actions">
+<button
+  class="challenge-secondary-button"
+  id="chestBossAdButton"
+  type="button"
+>
+📺 ПОПЫТКА
+</button>
+
+<button
+  class="challenge-secondary-button"
+  id="chestBossKeyButton"
+  type="button"
+>
+🔑 ИСПОЛЬЗОВАТЬ
+</button>
+</div>
+
+<button
+  class="challenge-secondary-button hidden"
+  id="chestBossLeaveButton"
+  type="button"
+>
+ПОКИНУТЬ БОЙ
+</button>
+</div>
+
+<div class="challenge-message" id="chestBossMessage">
+Загрузка испытания…
+</div>
+
+</div>
+</div>
+</section>
 
 <section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
 <header class="screen-header">
@@ -5406,6 +5742,207 @@
     }
 
 
+
+    function renderChestBoss() {
+      const state = player?.chest_boss || {};
+      const attempts = state.attempts || {};
+      const active = Boolean(state.active);
+
+      const bossHp = Number(state.boss_hp || 0);
+      const bossMaxHp = Math.max(1, Number(state.boss_max_hp || 1));
+      const heroHp = Number(state.hero_hp || 0);
+      const heroMaxHp = Math.max(1, Number(state.hero_max_hp || 1));
+
+      setText("chestBossLevel", formatNumber(state.level || 1));
+      setText("chestBossHp", formatNumber(bossHp));
+      setText("chestBossMaxHp", formatNumber(active ? bossMaxHp : 0));
+      setText("chestBossHeroHp", formatNumber(active ? heroHp : heroMaxHp));
+      setText("chestBossHeroMaxHp", formatNumber(heroMaxHp));
+      setText(
+        "chestBossReward",
+        formatNumber(state.reward?.chests || 0)
+      );
+      setText(
+        "chestBossAttempts",
+        `${attempts.available || 0} / ${attempts.free_total || 3}`
+      );
+      setText("chestBossKeys", formatNumber(state.keys || 0));
+
+      $("chestBossHpBar").style.width = active
+        ? `${Math.max(0, Math.min(100, bossHp / bossMaxHp * 100))}%`
+        : "100%";
+
+      $("chestBossHeroHpBar").style.width = active
+        ? `${Math.max(0, Math.min(100, heroHp / heroMaxHp * 100))}%`
+        : "100%";
+
+      const mainButton = $("chestBossMainButton");
+      mainButton.textContent = active ? "АТАКОВАТЬ" : "НАЧАТЬ БОЙ";
+      mainButton.classList.toggle("attack", active);
+      mainButton.disabled = !active && Number(attempts.available || 0) <= 0;
+
+      $("chestBossLeaveButton").classList.toggle("hidden", !active);
+
+      const adRemaining = Number(attempts.ad_remaining || 0);
+      $("chestBossAdButton").disabled = active || adRemaining <= 0;
+      $("chestBossAdButton").textContent =
+        `📺 ПОПЫТКА (${adRemaining})`;
+
+      $("chestBossKeyButton").disabled =
+        active || Number(state.keys || 0) <= 0;
+    }
+
+    async function refreshChestBoss() {
+      try {
+        const result = await apiRequest("/challenge/chest-boss");
+        if (result?.chest_boss) {
+          player.chest_boss = result.chest_boss;
+        }
+        renderChestBoss();
+      } catch (error) {
+        setText("chestBossMessage", `❌ ${error.message}`);
+      }
+    }
+
+    async function startChestBoss() {
+      const button = $("chestBossMainButton");
+      button.disabled = true;
+
+      try {
+        const result = await apiRequest(
+          "/challenge/chest-boss/start",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderChestBoss();
+        setText(
+          "chestBossMessage",
+          result.message || "Испытание началось"
+        );
+      } catch (error) {
+        setText("chestBossMessage", `❌ ${error.message}`);
+      } finally {
+        renderChestBoss();
+      }
+    }
+
+    async function attackChestBoss() {
+      const button = $("chestBossMainButton");
+      button.disabled = true;
+
+      try {
+        const result = await apiRequest(
+          "/challenge/chest-boss/attack",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderChestBoss();
+
+        if (result.chest_boss_victory) {
+          try {
+            telegram.HapticFeedback?.notificationOccurred("success");
+          } catch (_) {}
+        } else if (result.chest_boss_defeat) {
+          try {
+            telegram.HapticFeedback?.notificationOccurred("error");
+          } catch (_) {}
+        } else {
+          try {
+            telegram.HapticFeedback?.impactOccurred("medium");
+          } catch (_) {}
+        }
+
+        setText(
+          "chestBossMessage",
+          result.message || "Удар нанесён"
+        );
+      } catch (error) {
+        setText("chestBossMessage", `❌ ${error.message}`);
+      } finally {
+        renderChestBoss();
+      }
+    }
+
+    async function handleChestBossMainAction() {
+      if (player?.chest_boss?.active) {
+        await attackChestBoss();
+      } else {
+        await startChestBoss();
+      }
+    }
+
+    async function grantChestBossAdAttempt() {
+      const button = $("chestBossAdButton");
+      button.disabled = true;
+
+      try {
+        const result = await apiRequest(
+          "/challenge/chest-boss/ad-attempt",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderChestBoss();
+        setText(
+          "chestBossMessage",
+          result.message || "Получена попытка"
+        );
+      } catch (error) {
+        setText("chestBossMessage", `❌ ${error.message}`);
+      } finally {
+        renderChestBoss();
+      }
+    }
+
+    async function useChestBossKey() {
+      const button = $("chestBossKeyButton");
+      button.disabled = true;
+
+      try {
+        const result = await apiRequest(
+          "/challenge/chest-boss/use-key",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderChestBoss();
+        setText(
+          "chestBossMessage",
+          result.message || "Ключ использован"
+        );
+      } catch (error) {
+        setText("chestBossMessage", `❌ ${error.message}`);
+      } finally {
+        renderChestBoss();
+      }
+    }
+
+    async function leaveChestBoss() {
+      try {
+        const result = await apiRequest(
+          "/challenge/chest-boss/leave",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderChestBoss();
+        setText(
+          "chestBossMessage",
+          result.message || "Испытание завершено"
+        );
+      } catch (error) {
+        setText("chestBossMessage", `❌ ${error.message}`);
+      }
+    }
+
+
     const questsModalElement = $("questsModal");
     const appElement = document.querySelector(".app");
 
@@ -5418,6 +5955,7 @@
     }
 
     const heroScreen = $("heroScreen");
+    const trialsScreen = $("trialsScreen");
     const shopScreen = $("shopScreen");
     const comingScreen = $("comingScreen");
     const navButtons = [...document.querySelectorAll(".game-nav-button")];
@@ -5430,6 +5968,7 @@
     function setActiveNav(name) { navButtons.forEach((b) => b.classList.toggle("active", b.dataset.screen === name)); }
     function openBattleScreen() {
       heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       document.body.classList.remove("section-open");
@@ -5437,6 +5976,7 @@
     }
 
     function openHeroScreen() {
+      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       heroScreen.classList.remove("hidden");
@@ -5445,8 +5985,21 @@
       renderHeroStats();
     }
 
+    async function openTrialsScreen() {
+      stopBattle();
+      heroScreen.classList.add("hidden");
+      shopScreen.classList.add("hidden");
+      comingScreen.classList.add("hidden");
+      trialsScreen.classList.remove("hidden");
+      document.body.classList.add("section-open");
+      setActiveNav("trials");
+      renderChestBoss();
+      await refreshChestBoss();
+    }
+
     function openShopScreen() {
       heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       shopScreen.classList.remove("hidden");
       document.body.classList.add("section-open");
@@ -5456,6 +6009,7 @@
     function openComingScreen(name) {
       const copy = SCREEN_COPY[name]; if (!copy) return;
       heroScreen.classList.add("hidden");
+      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       document.body.classList.add("section-open");
       setText("comingHeader", copy.title); setText("comingIcon", copy.icon); setText("comingTitle", copy.heading); setText("comingText", copy.text);
@@ -5482,6 +6036,8 @@
         openBattleScreen();
       } else if (name === "hero") {
         openHeroScreen();
+      } else if (name === "trials") {
+        openTrialsScreen();
       } else if (name === "shop") {
         openShopScreen();
       } else {
@@ -5504,6 +6060,23 @@
     $("skillSummonClose").addEventListener(
       "click",
       () => modalHide("skillSummonModal")
+    );
+
+    $("chestBossMainButton").addEventListener(
+      "click",
+      handleChestBossMainAction
+    );
+    $("chestBossAdButton").addEventListener(
+      "click",
+      grantChestBossAdAttempt
+    );
+    $("chestBossKeyButton").addEventListener(
+      "click",
+      useChestBossKey
+    );
+    $("chestBossLeaveButton").addEventListener(
+      "click",
+      leaveChestBoss
     );
 
     $("lootButton").addEventListener("click", () => { renderChestModal(); modalShow("chestModal"); });
