@@ -979,18 +979,11 @@ def apply_offline_accrual(
 
 
 def default_skill_collection() -> dict:
-    return {
-        skill_id: {
-            "owned": True,
-            "level": 1,
-            "fragments": 0,
-        }
-        for skill_id in STARTER_SKILL_IDS
-    }
+    return {}
 
 
-def default_skill_slots() -> list[str]:
-    return list(STARTER_SKILL_IDS)
+def default_skill_slots() -> list[str | None]:
+    return [None, None, None]
 
 
 def normalize_skill_collection(value) -> dict:
@@ -1039,13 +1032,6 @@ def normalize_skill_slots(value, collection: dict) -> list[str | None]:
             used.add(skill_id)
         else:
             slots.append(None)
-
-    for starter_skill_id in STARTER_SKILL_IDS:
-        if len(slots) >= 3:
-            break
-        if starter_skill_id not in used:
-            slots.append(starter_skill_id)
-            used.add(starter_skill_id)
 
     while len(slots) < 3:
         slots.append(None)
@@ -1341,7 +1327,7 @@ def ensure_player_skill_data(
 ) -> None:
     row = connection.execute(
         """
-        SELECT skills_collection_json, skill_slots_json
+        SELECT level, skills_collection_json, skill_slots_json
         FROM players
         WHERE telegram_id = ?
         """,
@@ -1358,6 +1344,15 @@ def ensure_player_skill_data(
         row["skill_slots_json"],
         collection,
     )
+
+    level = max(1, int(row["level"] or 1))
+    unlocked_count = sum(
+        level >= unlock_level
+        for unlock_level in SKILL_SLOT_UNLOCK_LEVELS
+    )
+
+    for index in range(unlocked_count, 3):
+        slots[index] = None
 
     connection.execute(
         """
