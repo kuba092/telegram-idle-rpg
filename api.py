@@ -43,6 +43,16 @@ POISON_CLOUD_DAMAGE_MULTIPLIER = 0.50
 POISON_CLOUD_DURATION_SECONDS = 5.0
 POISON_CLOUD_TICK_SECONDS = 1.0
 POISON_CLOUD_COOLDOWN_SECONDS = 20.0
+
+SKILL_SYSTEM_UNLOCK_LEVEL = 5
+SKILL_SLOT_UNLOCK_LEVELS = (5, 15, 30)
+STARTER_SKILL_IDS = (
+    "spore_strike",
+    "mushroom_shield",
+    "poison_cloud",
+)
+STARTER_SKILL_SCROLLS = 0
+
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
 STARTER_CHESTS = 3
@@ -755,6 +765,128 @@ def apply_offline_accrual(
     )
 
 
+def default_skill_collection() -> dict:
+    return {
+        skill_id: {
+            "owned": True,
+            "level": 1,
+            "fragments": 0,
+        }
+        for skill_id in STARTER_SKILL_IDS
+    }
+
+
+def default_skill_slots() -> list[str]:
+    return list(STARTER_SKILL_IDS)
+
+
+def normalize_skill_collection(value) -> dict:
+    collection = parse_json_object(value)
+    normalized = {}
+
+    for skill_id, raw_entry in collection.items():
+        if not isinstance(skill_id, str):
+            continue
+        entry = raw_entry if isinstance(raw_entry, dict) else {}
+        normalized[skill_id] = {
+            "owned": bool(entry.get("owned", True)),
+            "level": clamp_int(entry.get("level", 1), 1, 20),
+            "fragments": max(0, int(entry.get("fragments", 0))),
+        }
+
+    for skill_id, starter_entry in default_skill_collection().items():
+        if skill_id not in normalized:
+            normalized[skill_id] = starter_entry
+
+    return normalized
+
+
+def normalize_skill_slots(value, collection: dict) -> list[str | None]:
+    try:
+        parsed = json.loads(value or "[]")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        parsed = []
+
+    if not isinstance(parsed, list):
+        parsed = []
+
+    slots: list[str | None] = []
+    used = set()
+
+    for raw_skill_id in parsed[:3]:
+        skill_id = str(raw_skill_id or "").strip()
+
+        if (
+            skill_id
+            and skill_id in collection
+            and bool(collection[skill_id].get("owned"))
+            and skill_id not in used
+        ):
+            slots.append(skill_id)
+            used.add(skill_id)
+        else:
+            slots.append(None)
+
+    for starter_skill_id in STARTER_SKILL_IDS:
+        if len(slots) >= 3:
+            break
+        if starter_skill_id not in used:
+            slots.append(starter_skill_id)
+            used.add(starter_skill_id)
+
+    while len(slots) < 3:
+        slots.append(None)
+
+    return slots[:3]
+
+
+def ensure_player_skill_data(
+    connection: sqlite3.Connection,
+    telegram_id: int,
+) -> None:
+    row = connection.execute(
+        """
+        SELECT skills_collection_json, skill_slots_json
+        FROM players
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    ).fetchone()
+
+    if row is None:
+        return
+
+    collection = normalize_skill_collection(
+        row["skills_collection_json"]
+    )
+    slots = normalize_skill_slots(
+        row["skill_slots_json"],
+        collection,
+    )
+
+    connection.execute(
+        """
+        UPDATE players
+        SET skills_collection_json = ?,
+            skill_slots_json = ?
+        WHERE telegram_id = ?
+        """,
+        (
+            json.dumps(
+                collection,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            json.dumps(
+                slots,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            telegram_id,
+        ),
+    )
+
+
 def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
     telegram_id = int(user["id"])
     username = user.get("username", "")
@@ -772,6 +904,7 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             """,
             (telegram_id, username, first_name, now, now, now),
         )
+        ensure_player_skill_data(connection, telegram_id)
         player = load_player(connection, telegram_id)
         if accrue_offline:
             apply_offline_accrual(connection, player, now)
@@ -816,6 +949,20 @@ def build_player_response(player: dict, **extra) -> dict:
     chest_step = max(0, int(player.get("chest_upgrade_step", 0)))
     steps_required = chest_upgrade_steps_required(chest_level)
     pending_loot = public_pending_loot(player)
+
+    skill_collection = normalize_skill_collection(
+        player.get("skills_collection_json")
+    )
+    equipped_skill_slots = normalize_skill_slots(
+        player.get("skill_slots_json"),
+        skill_collection,
+    )
+    unlocked_skill_slot_count = sum(
+        1
+        for unlock_level in SKILL_SLOT_UNLOCK_LEVELS
+        if level >= unlock_level
+    )
+
     spore_last_used_at = float(
         player.get("spore_strike_last_used_at", 0)
     )
@@ -881,7 +1028,12 @@ def build_player_response(player: dict, **extra) -> dict:
         and poison_next_tick_at > 0
     )
 
-    hidden_fields = {"equipment_json", "pending_loot_json"}
+    hidden_fields = {
+        "equipment_json",
+        "pending_loot_json",
+        "skills_collection_json",
+        "skill_slots_json",
+    }
     public_player = {
         key: value
         for key, value in player.items()
@@ -894,6 +1046,26 @@ def build_player_response(player: dict, **extra) -> dict:
         "pending_loot_comparison": (
             compare_loot(player, pending_loot) if pending_loot else None
         ),
+        "skill_system": {
+            "unlocked": level >= SKILL_SYSTEM_UNLOCK_LEVEL,
+            "unlock_level": SKILL_SYSTEM_UNLOCK_LEVEL,
+            "scrolls": max(
+                0,
+                int(player.get("skill_scrolls", 0)),
+            ),
+            "slot_unlock_levels": list(SKILL_SLOT_UNLOCK_LEVELS),
+            "unlocked_slot_count": unlocked_skill_slot_count,
+            "slots": [
+                {
+                    "index": index + 1,
+                    "unlocked": index < unlocked_skill_slot_count,
+                    "unlock_level": SKILL_SLOT_UNLOCK_LEVELS[index],
+                    "skill_id": skill_id,
+                }
+                for index, skill_id in enumerate(equipped_skill_slots)
+            ],
+            "collection": skill_collection,
+        },
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
         "crit_damage": stats["total"]["crit_damage"],
@@ -1073,6 +1245,18 @@ def create_database() -> None:
         ("poison_cloud_last_used_at", "REAL NOT NULL DEFAULT 0"),
         ("poison_cloud_until", "REAL NOT NULL DEFAULT 0"),
         ("poison_cloud_next_tick_at", "REAL NOT NULL DEFAULT 0"),
+        (
+            "skill_scrolls",
+            f"INTEGER NOT NULL DEFAULT {STARTER_SKILL_SCROLLS}",
+        ),
+        (
+            "skills_collection_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        ),
+        (
+            "skill_slots_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        ),
     )
     for column_name, definition in columns:
         add_column_if_missing(connection, column_name, definition)
