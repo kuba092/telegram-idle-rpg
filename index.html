@@ -4161,6 +4161,386 @@
       font-weight: 950;
     }
 
+
+    /* CHEST_BOSS_LIVE_BATTLE_V1 */
+
+    .chest-boss-battle-stage {
+      position: relative;
+      height: 184px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(64, 111, 74, 0.5) 0%,
+          rgba(21, 61, 42, 0.7) 57%,
+          rgba(8, 29, 25, 0.98) 100%
+        );
+      box-shadow:
+        inset 0 -25px 42px rgba(0, 0, 0, 0.28);
+    }
+
+    .chest-boss-battle-stage::before {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 48px;
+      content: "";
+      background:
+        radial-gradient(
+          ellipse at center,
+          rgba(126, 93, 48, 0.55),
+          rgba(28, 49, 32, 0.22) 65%,
+          transparent 72%
+        );
+    }
+
+    .chest-boss-stage-level {
+      position: absolute;
+      z-index: 8;
+      top: 8px;
+      right: 8px;
+      padding: 5px 8px;
+      border: 1px solid rgba(255, 225, 126, 0.28);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.36);
+      color: #ffe896;
+      font-size: 9px;
+      font-weight: 950;
+    }
+
+    .chest-boss-fighter {
+      position: absolute;
+      bottom: 19px;
+      display: grid;
+      width: 43%;
+      place-items: center;
+    }
+
+    .chest-boss-hero-fighter {
+      left: 2%;
+    }
+
+    .chest-boss-enemy-fighter {
+      right: 1%;
+    }
+
+    .chest-boss-shadow {
+      position: absolute;
+      bottom: 1px;
+      width: 76px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.36);
+      filter: blur(3px);
+    }
+
+    .chest-fighter-sprite {
+      position: relative;
+      z-index: 3;
+      display: block;
+      object-fit: contain;
+      transform-origin: 50% 100%;
+      filter:
+        drop-shadow(0 8px 8px rgba(0, 0, 0, 0.34));
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .chest-hero-sprite {
+      width: 92px;
+      height: 112px;
+    }
+
+    .chest-boss-sprite {
+      width: 112px;
+      height: 126px;
+    }
+
+    .chest-boss-fighter-name {
+      position: absolute;
+      z-index: 5;
+      bottom: -10px;
+      max-width: 120px;
+      padding: 3px 7px;
+      overflow: hidden;
+      border-radius: 7px;
+      background: rgba(0, 0, 0, 0.46);
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 8px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chest-boss-effects {
+      position: absolute;
+      z-index: 12;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .chest-boss-fx {
+      position: absolute;
+      display: none;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    #chestBossSlashEffect {
+      top: 56px;
+      right: 58px;
+      width: 78px;
+      height: 78px;
+    }
+
+    #chestBossHitEffect {
+      top: 58px;
+      right: 60px;
+      width: 72px;
+      height: 72px;
+    }
+
+    .chest-boss-hero-flash {
+      position: absolute;
+      top: 57px;
+      left: 53px;
+      display: none;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          rgba(255, 245, 187, 0.88),
+          rgba(255, 81, 48, 0.37) 40%,
+          transparent 72%
+        );
+    }
+
+    .chest-boss-damage {
+      position: absolute;
+      z-index: 20;
+      display: none;
+      color: #fff5a0;
+      font-size: 17px;
+      font-weight: 1000;
+      text-shadow:
+        0 2px 0 #682313,
+        0 0 8px rgba(255, 77, 40, 0.75);
+    }
+
+    #chestBossDamageNumber {
+      top: 45px;
+      right: 62px;
+    }
+
+    #chestBossHeroDamageNumber {
+      top: 45px;
+      left: 58px;
+      color: #ff9e90;
+    }
+
+    .chest-boss-fx-slash {
+      display: block !important;
+      animation: chestBossSlash 0.35s ease-out both;
+    }
+
+    .chest-boss-fx-hit {
+      display: block !important;
+      animation: chestBossHitFx 0.32s ease-out both;
+    }
+
+    .chest-boss-fx-hero-hit {
+      display: block !important;
+      animation: chestBossHeroFlash 0.34s ease-out both;
+    }
+
+    .chest-boss-fx-damage {
+      display: block !important;
+      animation: chestBossDamageFloat 0.75s ease-out both;
+    }
+
+    .chest-anim-hero-attack {
+      animation: chestBossHeroAttack 0.42s ease-in-out both;
+    }
+
+    .chest-anim-hero-hit {
+      animation: chestBossHeroHit 0.4s ease-out both;
+    }
+
+    .chest-anim-boss-hit {
+      animation: chestBossEnemyHit 0.34s ease-out both;
+    }
+
+    .chest-anim-boss-attack {
+      animation: chestBossEnemyAttack 0.54s ease-in-out both;
+    }
+
+    .chest-anim-boss-death {
+      animation: chestBossEnemyDeath 0.72s ease-in both;
+    }
+
+    .chest-anim-hero-defeat {
+      animation: chestBossHeroDefeat 0.7s ease-in both;
+    }
+
+    @keyframes chestBossHeroAttack {
+      0% {
+        transform: translateX(0) scale(1);
+      }
+      38% {
+        transform: translateX(72px) translateY(-5px) scale(1.08);
+      }
+      55% {
+        transform: translateX(80px) translateY(1px) rotate(5deg);
+      }
+      100% {
+        transform: translateX(0) scale(1);
+      }
+    }
+
+    @keyframes chestBossEnemyAttack {
+      0% {
+        transform: translateX(0);
+      }
+      42% {
+        transform: translateX(-64px) translateY(-4px) scale(1.07);
+      }
+      58% {
+        transform: translateX(-72px) rotate(-4deg);
+      }
+      100% {
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes chestBossEnemyHit {
+      0% {
+        transform: translateX(0);
+        filter: brightness(1);
+      }
+      25% {
+        transform: translateX(9px) rotate(3deg);
+        filter: brightness(2.1);
+      }
+      52% {
+        transform: translateX(-7px) rotate(-3deg);
+      }
+      100% {
+        transform: translateX(0);
+        filter: brightness(1);
+      }
+    }
+
+    @keyframes chestBossHeroHit {
+      0% {
+        transform: translateX(0);
+        filter: brightness(1);
+      }
+      30% {
+        transform: translateX(-10px) rotate(-5deg);
+        filter: brightness(2);
+      }
+      60% {
+        transform: translateX(5px);
+      }
+      100% {
+        transform: translateX(0);
+        filter: brightness(1);
+      }
+    }
+
+    @keyframes chestBossEnemyDeath {
+      0% {
+        transform: translateY(0) rotate(0);
+        opacity: 1;
+      }
+      45% {
+        transform: translateY(-8px) rotate(-8deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(32px) rotate(18deg) scale(0.72);
+        opacity: 0;
+      }
+    }
+
+    @keyframes chestBossHeroDefeat {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(25px) rotate(-16deg);
+        opacity: 0.42;
+      }
+    }
+
+    @keyframes chestBossSlash {
+      0% {
+        opacity: 0;
+        transform: rotate(-20deg) scale(0.45);
+      }
+      35% {
+        opacity: 1;
+        transform: rotate(8deg) scale(1.18);
+      }
+      100% {
+        opacity: 0;
+        transform: rotate(18deg) scale(1.45);
+      }
+    }
+
+    @keyframes chestBossHitFx {
+      0% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      40% {
+        opacity: 1;
+        transform: scale(1.15);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.5);
+      }
+    }
+
+    @keyframes chestBossHeroFlash {
+      0% {
+        opacity: 0;
+        transform: scale(0.35);
+      }
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.35);
+      }
+    }
+
+    @keyframes chestBossDamageFloat {
+      0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.7);
+      }
+      20% {
+        opacity: 1;
+        transform: translateY(0) scale(1.18);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-38px) scale(0.94);
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -4573,11 +4953,64 @@
 >×</button>
 </div>
 
-<div class="trial-boss-stage">
-<div class="trial-boss-stage-icon">🧰</div>
-<div class="trial-boss-stage-level">
-УР. <span id="chestBossLevel">1</span>
-</div>
+
+<div class="chest-boss-battle-stage" id="chestBossBattleStage">
+  <div class="chest-boss-stage-level">
+    УР. <span id="chestBossLevel">1</span>
+  </div>
+
+  <div class="chest-boss-fighter chest-boss-hero-fighter">
+    <div class="chest-boss-shadow"></div>
+    <img
+      alt="Герой"
+      class="chest-fighter-sprite chest-hero-sprite"
+      id="chestBossHeroSprite"
+      src="assets/hero.png?v=9"
+    />
+    <div class="chest-boss-fighter-name" id="chestBossHeroName">
+      Герой
+    </div>
+  </div>
+
+  <div class="chest-boss-fighter chest-boss-enemy-fighter">
+    <div class="chest-boss-shadow"></div>
+    <img
+      alt="Хранитель сундуков"
+      class="chest-fighter-sprite chest-boss-sprite"
+      id="chestBossEnemySprite"
+      src="assets/forest_colossus.png?v=9"
+    />
+    <div class="chest-boss-fighter-name">
+      Хранитель
+    </div>
+  </div>
+
+  <div class="chest-boss-effects">
+    <img
+      alt=""
+      class="chest-boss-fx"
+      id="chestBossSlashEffect"
+      src="assets/slash.png?v=9"
+    />
+    <img
+      alt=""
+      class="chest-boss-fx"
+      id="chestBossHitEffect"
+      src="assets/hit.png?v=9"
+    />
+    <div
+      class="chest-boss-hero-flash"
+      id="chestBossHeroFlash"
+    ></div>
+    <div
+      class="chest-boss-damage"
+      id="chestBossDamageNumber"
+    >-0</div>
+    <div
+      class="chest-boss-damage"
+      id="chestBossHeroDamageNumber"
+    >-0</div>
+  </div>
 </div>
 
 <div class="challenge-hp-block">
@@ -6130,10 +6563,206 @@
 
 
 
+
+    let chestBossFightTimer = null;
+    let chestBossFightRunning = false;
+    let chestBossRequestInProgress = false;
+
+    const CHEST_BOSS_ASSETS = {
+      heroIdle: "assets/hero.png?v=9",
+      heroAttack: "assets/hero_attack.png?v=9",
+      heroHit: "assets/hero_hit.png?v=9",
+      bossIdle: "assets/forest_colossus.png?v=9"
+    };
+
+    function chestBossModalVisible() {
+      const modal = $("chestBossModal");
+      return modal && !modal.classList.contains("hidden");
+    }
+
+    function restartChestBossFx(id, className) {
+      const element = $(id);
+      if (!element) return;
+
+      element.classList.remove(className);
+      void element.offsetWidth;
+      element.classList.add(className);
+    }
+
+    function resetChestBossSprites() {
+      const hero = $("chestBossHeroSprite");
+      const boss = $("chestBossEnemySprite");
+
+      if (hero) {
+        hero.src = CHEST_BOSS_ASSETS.heroIdle;
+        hero.className =
+          "chest-fighter-sprite chest-hero-sprite";
+      }
+
+      if (boss) {
+        boss.src = CHEST_BOSS_ASSETS.bossIdle;
+        boss.className =
+          "chest-fighter-sprite chest-boss-sprite";
+      }
+    }
+
+    function animateChestBossHeroAttack() {
+      const hero = $("chestBossHeroSprite");
+      if (!hero) return;
+
+      hero.src = CHEST_BOSS_ASSETS.heroAttack;
+      hero.className =
+        "chest-fighter-sprite chest-hero-sprite chest-anim-hero-attack";
+
+      restartChestBossFx(
+        "chestBossSlashEffect",
+        "chest-boss-fx-slash"
+      );
+
+      setTimeout(() => {
+        if (!hero.classList.contains("chest-anim-hero-defeat")) {
+          hero.src = CHEST_BOSS_ASSETS.heroIdle;
+          hero.className =
+            "chest-fighter-sprite chest-hero-sprite";
+        }
+      }, 440);
+    }
+
+    function animateChestBossEnemyHit() {
+      const boss = $("chestBossEnemySprite");
+      if (!boss) return;
+
+      boss.className =
+        "chest-fighter-sprite chest-boss-sprite chest-anim-boss-hit";
+
+      restartChestBossFx(
+        "chestBossHitEffect",
+        "chest-boss-fx-hit"
+      );
+
+      setTimeout(() => {
+        if (!boss.classList.contains("chest-anim-boss-death")) {
+          boss.className =
+            "chest-fighter-sprite chest-boss-sprite";
+        }
+      }, 350);
+    }
+
+    function showChestBossDamage(amount) {
+      const element = $("chestBossDamageNumber");
+      if (!element || Number(amount || 0) <= 0) return;
+
+      element.textContent = `-${formatNumber(amount)}`;
+      restartChestBossFx(
+        "chestBossDamageNumber",
+        "chest-boss-fx-damage"
+      );
+    }
+
+    async function animateChestBossCounterAttack(amount) {
+      const boss = $("chestBossEnemySprite");
+      const hero = $("chestBossHeroSprite");
+
+      if (!boss || !hero || Number(amount || 0) <= 0) return;
+
+      boss.className =
+        "chest-fighter-sprite chest-boss-sprite chest-anim-boss-attack";
+
+      await wait(190);
+
+      hero.src = CHEST_BOSS_ASSETS.heroHit;
+      hero.className =
+        "chest-fighter-sprite chest-hero-sprite chest-anim-hero-hit";
+
+      const damage = $("chestBossHeroDamageNumber");
+      damage.textContent = `-${formatNumber(amount)}`;
+
+      restartChestBossFx(
+        "chestBossHeroDamageNumber",
+        "chest-boss-fx-damage"
+      );
+      restartChestBossFx(
+        "chestBossHeroFlash",
+        "chest-boss-fx-hero-hit"
+      );
+
+      try {
+        telegram.HapticFeedback?.impactOccurred("medium");
+      } catch (_) {}
+
+      setTimeout(() => {
+        if (!boss.classList.contains("chest-anim-boss-death")) {
+          boss.className =
+            "chest-fighter-sprite chest-boss-sprite";
+        }
+      }, 360);
+
+      setTimeout(() => {
+        if (!hero.classList.contains("chest-anim-hero-defeat")) {
+          hero.src = CHEST_BOSS_ASSETS.heroIdle;
+          hero.className =
+            "chest-fighter-sprite chest-hero-sprite";
+        }
+      }, 410);
+    }
+
+    function stopChestBossFight() {
+      chestBossFightRunning = false;
+      clearTimeout(chestBossFightTimer);
+      chestBossFightTimer = null;
+    }
+
+    function scheduleChestBossAttack(seconds = 1) {
+      clearTimeout(chestBossFightTimer);
+      chestBossFightTimer = null;
+
+      if (
+        !chestBossFightRunning
+        || !player?.chest_boss?.active
+        || !chestBossModalVisible()
+        || document.hidden
+      ) {
+        return;
+      }
+
+      const delay = Math.max(
+        0.55,
+        Number(seconds || 1)
+      ) * 1000;
+
+      chestBossFightTimer = setTimeout(
+        attackChestBoss,
+        delay
+      );
+    }
+
+    function startChestBossFight(delay = 250) {
+      if (
+        !player?.chest_boss?.active
+        || !chestBossModalVisible()
+        || document.hidden
+      ) {
+        return;
+      }
+
+      chestBossFightRunning = true;
+      clearTimeout(chestBossFightTimer);
+
+      chestBossFightTimer = setTimeout(
+        attackChestBoss,
+        delay
+      );
+    }
+
     function renderChestBoss() {
       const state = player?.chest_boss || {};
       const attempts = state.attempts || {};
       const active = Boolean(state.active);
+
+      setText(
+        "chestBossHeroName",
+        player?.first_name || "Герой"
+      );
 
       const bossHp = Number(state.boss_hp || 0);
       const bossMaxHp = Math.max(1, Number(state.boss_max_hp || 1));
@@ -6176,9 +6805,13 @@
         : "100%";
 
       const mainButton = $("chestBossMainButton");
-      mainButton.textContent = active ? "АТАКОВАТЬ" : "НАЧАТЬ БОЙ";
+      mainButton.textContent = active
+        ? "БОЙ ИДЁТ"
+        : "НАЧАТЬ БОЙ";
       mainButton.classList.toggle("attack", active);
-      mainButton.disabled = !active && Number(attempts.available || 0) <= 0;
+      mainButton.disabled =
+        active
+        || Number(attempts.available || 0) <= 0;
 
       $("chestBossLeaveButton").classList.toggle("hidden", !active);
 
@@ -6192,11 +6825,18 @@
     }
 
     function openChestBossModal() {
+      resetChestBossSprites();
       renderChestBoss();
       modalShow("chestBossModal");
+
+      if (player?.chest_boss?.active) {
+        startChestBossFight(300);
+      }
     }
 
     function closeChestBossModal() {
+      stopChestBossFight();
+      resetChestBossSprites();
       modalHide("chestBossModal");
     }
 
@@ -6229,6 +6869,9 @@
           "chestBossMessage",
           result.message || "Испытание началось"
         );
+
+        resetChestBossSprites();
+        startChestBossFight(350);
       } catch (error) {
         setText("chestBossMessage", `❌ ${error.message}`);
       } finally {
@@ -6237,8 +6880,25 @@
     }
 
     async function attackChestBoss() {
-      const button = $("chestBossMainButton");
-      button.disabled = true;
+      if (
+        chestBossRequestInProgress
+        || !chestBossFightRunning
+        || !player?.chest_boss?.active
+        || !chestBossModalVisible()
+        || document.hidden
+      ) {
+        return;
+      }
+
+      chestBossRequestInProgress = true;
+      clearTimeout(chestBossFightTimer);
+      chestBossFightTimer = null;
+
+      const beforeState = player?.chest_boss || {};
+      const beforeBossHp = Number(beforeState.boss_hp || 0);
+      const beforeHeroHp = Number(beforeState.hero_hp || 0);
+
+      animateChestBossHeroAttack();
 
       try {
         const result = await apiRequest(
@@ -6246,38 +6906,108 @@
           "POST"
         );
 
+        const afterState = result?.chest_boss || {};
+        const afterBossHp = Number(afterState.boss_hp || 0);
+        const afterHeroHp = Number(afterState.hero_hp || 0);
+
+        const damageToBoss = Math.max(
+          0,
+          beforeBossHp - afterBossHp
+        );
+
+        const damageToHero = Math.max(
+          0,
+          beforeHeroHp - afterHeroHp
+        );
+
+        await wait(150);
+
+        showChestBossDamage(damageToBoss);
+        animateChestBossEnemyHit();
+
         player = result;
         renderPlayer();
         renderChestBoss();
 
         if (result.chest_boss_victory) {
+          stopChestBossFight();
+
+          const boss = $("chestBossEnemySprite");
+          boss.className =
+            "chest-fighter-sprite chest-boss-sprite chest-anim-boss-death";
+
+          setText(
+            "chestBossMessage",
+            result.message || "🏆 Хранитель побеждён"
+          );
+
           try {
             telegram.HapticFeedback?.notificationOccurred("success");
           } catch (_) {}
-        } else if (result.chest_boss_defeat) {
+
+          return;
+        }
+
+        if (damageToHero > 0) {
+          await wait(230);
+          await animateChestBossCounterAttack(damageToHero);
+        }
+
+        if (result.chest_boss_defeat) {
+          stopChestBossFight();
+
+          const hero = $("chestBossHeroSprite");
+          hero.src = CHEST_BOSS_ASSETS.heroHit;
+          hero.className =
+            "chest-fighter-sprite chest-hero-sprite chest-anim-hero-defeat";
+
+          setText(
+            "chestBossMessage",
+            result.message || "💀 Герой повержен"
+          );
+
           try {
             telegram.HapticFeedback?.notificationOccurred("error");
           } catch (_) {}
-        } else {
-          try {
-            telegram.HapticFeedback?.impactOccurred("medium");
-          } catch (_) {}
+
+          return;
         }
 
         setText(
           "chestBossMessage",
-          result.message || "Удар нанесён"
+          result.message
+          || `Нанесено ${formatNumber(damageToBoss)} урона`
         );
+
+        try {
+          telegram.HapticFeedback?.impactOccurred("light");
+        } catch (_) {}
+
+        const nextInterval = Number(
+          result.attack_interval
+          || player?.attack_interval
+          || 1
+        );
+
+        scheduleChestBossAttack(nextInterval);
       } catch (error) {
-        setText("chestBossMessage", `❌ ${error.message}`);
+        setText(
+          "chestBossMessage",
+          `❌ ${error.message}`
+        );
+
+        if (chestBossFightRunning) {
+          scheduleChestBossAttack(3);
+        }
       } finally {
+        chestBossRequestInProgress = false;
         renderChestBoss();
       }
     }
 
     async function handleChestBossMainAction() {
       if (player?.chest_boss?.active) {
-        await attackChestBoss();
+        startChestBossFight(100);
       } else {
         await startChestBoss();
       }
@@ -6332,6 +7062,8 @@
     }
 
     async function leaveChestBoss() {
+      stopChestBossFight();
+
       try {
         const result = await apiRequest(
           "/challenge/chest-boss/leave",
@@ -6614,11 +7346,34 @@
     });
 
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) { stopBattle(); clearTimeout(autoOpenTimer); }
-      else { syncBattleState(); scheduleAutoOpen(300); }
+      if (document.hidden) {
+        stopBattle();
+        stopChestBossFight();
+        clearTimeout(autoOpenTimer);
+      } else {
+        syncBattleState();
+        scheduleAutoOpen(300);
+
+        if (
+          player?.chest_boss?.active
+          && chestBossModalVisible()
+        ) {
+          startChestBossFight(300);
+        }
+      }
     });
-    window.addEventListener("pagehide", () => { stopBattle(); clearTimeout(autoOpenTimer); });
-    window.addEventListener("beforeunload", () => { stopBattle(); clearTimeout(autoOpenTimer); });
+
+    window.addEventListener("pagehide", () => {
+      stopBattle();
+      stopChestBossFight();
+      clearTimeout(autoOpenTimer);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      stopBattle();
+      stopChestBossFight();
+      clearTimeout(autoOpenTimer);
+    });
 
     setInterval(() => {
       if (player && !document.hidden) renderSkills();
