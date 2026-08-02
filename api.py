@@ -1753,6 +1753,169 @@ def consume_chest_boss_attempt(
 
 
 
+
+# GEM_CHALLENGE_BOSS_V1
+
+GEM_BOSS_FREE_ATTEMPTS = 2
+GEM_BOSS_MAX_LEVEL = 500
+
+
+def current_gem_boss_date(
+    now: int | float | None = None,
+) -> str:
+    timestamp = time.time() if now is None else float(now)
+    return time.strftime("%Y-%m-%d", time.gmtime(timestamp))
+
+
+def calculate_gem_boss_hp(level: int) -> int:
+    level = clamp_int(level, 1, GEM_BOSS_MAX_LEVEL)
+    value = round(110 * (1.19 ** (level - 1)))
+    return clamp_int(value, 1, MAX_SAFE_STAT)
+
+
+def calculate_gem_boss_damage(level: int) -> int:
+    level = clamp_int(level, 1, GEM_BOSS_MAX_LEVEL)
+    value = round(6 * (1.13 ** (level - 1)))
+    return clamp_int(value, 1, MAX_SAFE_STAT)
+
+
+def calculate_gem_boss_reward(level: int) -> int:
+    level = clamp_int(level, 1, GEM_BOSS_MAX_LEVEL)
+
+    # Временные значения до общего этапа балансировки.
+    return 5 + level
+
+
+def ensure_gem_boss_state(
+    connection: sqlite3.Connection,
+    telegram_id: int,
+    now: int | float | None = None,
+) -> None:
+    today = current_gem_boss_date(now)
+
+    row = connection.execute(
+        """
+        SELECT gem_boss_attempt_date
+        FROM players
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    ).fetchone()
+
+    if row is None:
+        return
+
+    stored_date = str(row["gem_boss_attempt_date"] or "")
+
+    if stored_date == today:
+        return
+
+    connection.execute(
+        """
+        UPDATE players
+        SET gem_boss_attempt_date = ?,
+            gem_boss_free_attempts_used = 0,
+            gem_boss_active = 0,
+            gem_boss_hp = 0,
+            gem_boss_max_hp = 0,
+            gem_boss_hero_hp = 0
+        WHERE telegram_id = ?
+        """,
+        (
+            today,
+            telegram_id,
+        ),
+    )
+
+
+def build_gem_boss_state(player: dict) -> dict:
+    level = clamp_int(
+        player.get("gem_boss_level", 1),
+        1,
+        GEM_BOSS_MAX_LEVEL,
+    )
+
+    free_used = max(
+        0,
+        int(player.get("gem_boss_free_attempts_used", 0)),
+    )
+
+    free_remaining = max(
+        0,
+        GEM_BOSS_FREE_ATTEMPTS - free_used,
+    )
+
+    active = bool(
+        int(player.get("gem_boss_active", 0))
+    )
+
+    return {
+        "type": "gem_boss",
+        "name": "Страж самоцветов",
+        "level": level,
+        "max_level": GEM_BOSS_MAX_LEVEL,
+        "active": active,
+        "boss_hp": max(
+            0,
+            int(player.get("gem_boss_hp", 0)),
+        ),
+        "boss_max_hp": max(
+            0,
+            int(player.get("gem_boss_max_hp", 0)),
+        ),
+        "boss_damage": calculate_gem_boss_damage(level),
+        "hero_hp": max(
+            0,
+            int(player.get("gem_boss_hero_hp", 0)),
+        ),
+        "hero_max_hp": max(
+            1,
+            int(player.get("hero_max_hp", 1)),
+        ),
+        "reward": {
+            "gems": calculate_gem_boss_reward(level),
+        },
+        "attempts": {
+            "free_total": GEM_BOSS_FREE_ATTEMPTS,
+            "free_used": free_used,
+            "free_remaining": free_remaining,
+            "available": free_remaining,
+        },
+        "attempt_date": str(
+            player.get("gem_boss_attempt_date")
+            or current_gem_boss_date()
+        ),
+        "reset_timezone": "UTC",
+    }
+
+
+def consume_gem_boss_attempt(
+    connection: sqlite3.Connection,
+    player: dict,
+) -> bool:
+    telegram_id = int(player["telegram_id"])
+
+    free_used = max(
+        0,
+        int(player.get("gem_boss_free_attempts_used", 0)),
+    )
+
+    if free_used >= GEM_BOSS_FREE_ATTEMPTS:
+        return False
+
+    connection.execute(
+        """
+        UPDATE players
+        SET gem_boss_free_attempts_used =
+                gem_boss_free_attempts_used + 1
+        WHERE telegram_id = ?
+        """,
+        (telegram_id,),
+    )
+
+    return True
+
+
 def public_equipment(player: dict) -> dict:
     stored = parse_json_object(player.get("equipment_json"))
     return {slot_key: stored.get(slot_key) for slot_key in GEAR_SLOTS}
@@ -1907,6 +2070,7 @@ def build_player_response(player: dict, **extra) -> dict:
         "equipment": equipment,
         "quests": build_daily_quests(player),
         "chest_boss": build_chest_boss_state(player),
+        "gem_boss": build_gem_boss_state(player),
         "pending_loot": pending_loot,
         "pending_loot_comparison": (
             compare_loot(player, pending_loot) if pending_loot else None
@@ -2249,6 +2413,38 @@ def create_database() -> None:
         ),
         (
             "chest_boss_hero_hp",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gems",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_level",
+            "INTEGER NOT NULL DEFAULT 1",
+        ),
+        (
+            "gem_boss_attempt_date",
+            "TEXT NOT NULL DEFAULT ''",
+        ),
+        (
+            "gem_boss_free_attempts_used",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_active",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_hp",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_max_hp",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_hero_hp",
             "INTEGER NOT NULL DEFAULT 0",
         ),
     )
@@ -3837,6 +4033,344 @@ def leave_chest_boss(
         message="Испытание завершено. Попытка не возвращена",
     )
 
+
+
+
+@app.get("/challenge/gem-boss")
+def get_gem_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_gem_boss_state(
+            connection,
+            telegram_id,
+            time.time(),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return {
+        "gem_boss": build_gem_boss_state(updated),
+        "gems": max(0, int(updated.get("gems", 0))),
+    }
+
+
+@app.post("/challenge/gem-boss/start")
+def start_gem_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_gem_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
+
+        current = load_player(connection, telegram_id)
+
+        if bool(int(current.get("gem_boss_active", 0))):
+            connection.commit()
+
+            return build_player_response(
+                current,
+                gem_boss_started=False,
+                message="Бой со Стражем уже идёт",
+            )
+
+        if not consume_gem_boss_attempt(
+            connection,
+            current,
+        ):
+            connection.commit()
+
+            return build_player_response(
+                current,
+                gem_boss_started=False,
+                no_attempts=True,
+                message="Попытки Стража закончились",
+            )
+
+        level = clamp_int(
+            current.get("gem_boss_level", 1),
+            1,
+            GEM_BOSS_MAX_LEVEL,
+        )
+
+        boss_hp = calculate_gem_boss_hp(level)
+        hero_hp = max(
+            1,
+            int(current.get("hero_max_hp", 1)),
+        )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_active = 1,
+                gem_boss_hp = ?,
+                gem_boss_max_hp = ?,
+                gem_boss_hero_hp = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                boss_hp,
+                boss_hp,
+                hero_hp,
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    reward = calculate_gem_boss_reward(level)
+
+    return build_player_response(
+        updated,
+        gem_boss_started=True,
+        message=(
+            f"💎 Страж самоцветов — уровень {level}. "
+            f"Награда: {reward} самоцветов"
+        ),
+    )
+
+
+@app.post("/challenge/gem-boss/attack")
+def attack_gem_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_gem_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
+
+        current = load_player(connection, telegram_id)
+
+        if not bool(int(current.get("gem_boss_active", 0))):
+            connection.commit()
+
+            return build_player_response(
+                current,
+                gem_boss_attacked=False,
+                message="Сначала начните испытание Стража",
+            )
+
+        level = clamp_int(
+            current.get("gem_boss_level", 1),
+            1,
+            GEM_BOSS_MAX_LEVEL,
+        )
+
+        boss_hp = max(
+            0,
+            int(current.get("gem_boss_hp", 0)),
+        )
+        hero_hp = max(
+            0,
+            int(current.get("gem_boss_hero_hp", 0)),
+        )
+
+        outgoing_damage, critical = (
+            calculate_hero_attack_damage(current)
+        )
+
+        boss_damage = calculate_gem_boss_damage(level)
+        boss_hp = max(0, boss_hp - outgoing_damage)
+
+        if boss_hp <= 0:
+            gem_reward = calculate_gem_boss_reward(level)
+            next_level = min(
+                GEM_BOSS_MAX_LEVEL,
+                level + 1,
+            )
+
+            connection.execute(
+                """
+                UPDATE players
+                SET gem_boss_active = 0,
+                    gem_boss_hp = 0,
+                    gem_boss_max_hp = 0,
+                    gem_boss_hero_hp = 0,
+                    gem_boss_level = ?,
+                    gems = gems + ?,
+                    updated_at = ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    next_level,
+                    gem_reward,
+                    int(now),
+                    telegram_id,
+                ),
+            )
+
+            connection.commit()
+            updated = load_player(connection, telegram_id)
+
+            return build_player_response(
+                updated,
+                gem_boss_attacked=True,
+                gem_boss_victory=True,
+                critical=critical,
+                outgoing_damage=outgoing_damage,
+                gem_reward=gem_reward,
+                defeated_level=level,
+                next_level=next_level,
+                message=(
+                    f"🏆 Страж самоцветов побеждён! "
+                    f"Получено: {gem_reward} 💎"
+                ),
+            )
+
+        hero_hp = max(0, hero_hp - boss_damage)
+
+        if hero_hp <= 0:
+            connection.execute(
+                """
+                UPDATE players
+                SET gem_boss_active = 0,
+                    gem_boss_hp = 0,
+                    gem_boss_max_hp = 0,
+                    gem_boss_hero_hp = 0,
+                    updated_at = ?
+                WHERE telegram_id = ?
+                """,
+                (
+                    int(now),
+                    telegram_id,
+                ),
+            )
+
+            connection.commit()
+            updated = load_player(connection, telegram_id)
+
+            return build_player_response(
+                updated,
+                gem_boss_attacked=True,
+                gem_boss_defeat=True,
+                critical=critical,
+                outgoing_damage=outgoing_damage,
+                incoming_damage=boss_damage,
+                message=(
+                    "💀 Страж самоцветов победил. "
+                    "Попытка потрачена"
+                ),
+            )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_hp = ?,
+                gem_boss_hero_hp = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                boss_hp,
+                hero_hp,
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        gem_boss_attacked=True,
+        critical=critical,
+        outgoing_damage=outgoing_damage,
+        incoming_damage=boss_damage,
+        message=(
+            f"⚔️ Нанесено {outgoing_damage}. "
+            f"Получено {boss_damage} урона"
+        ),
+    )
+
+
+@app.post("/challenge/gem-boss/leave")
+def leave_gem_boss(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_active = 0,
+                gem_boss_hp = 0,
+                gem_boss_max_hp = 0,
+                gem_boss_hero_hp = 0,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(time.time()),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        gem_boss_left=True,
+        message=(
+            "Испытание завершено. "
+            "Попытка не возвращена"
+        ),
+    )
 
 
 @app.post("/chest/upgrade")
