@@ -252,6 +252,22 @@ def calculate_enemy_damage(stage: int, boss: bool = False) -> int:
     return clamp_int(normal_damage, 1, MAX_SAFE_STAT)
 
 
+def calculate_hero_attack_damage(
+    player: dict,
+    damage_multiplier: float = 1.0,
+) -> tuple[int, bool]:
+    base_damage = max(1, int(player["damage"]))
+    stats = calculate_equipment_stats(
+        parse_json_object(player["equipment_json"]),
+        int(player["level"]),
+    )["total"]
+    critical = random.random() < float(stats["crit_chance"]) / 100
+    damage = base_damage * max(0.0, float(damage_multiplier))
+    if critical:
+        damage *= float(stats["crit_damage"]) / 100
+    return max(1, round(damage)), critical
+
+
 def calculate_exp_reward(stage: int, boss: bool = False) -> int:
     stage = clamp_int(stage, 1, MAX_STAGE)
     normal_reward = max(1, round(2.05 * stage ** 0.866))
@@ -1123,17 +1139,7 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
             )
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
-        base_damage = max(1, int(current["damage"]))
-        stats = calculate_equipment_stats(
-            parse_json_object(current["equipment_json"]),
-            int(current["level"]),
-        )["total"]
-        critical = random.random() < float(stats["crit_chance"]) / 100
-        dealt_damage = (
-            max(1, round(base_damage * float(stats["crit_damage"]) / 100))
-            if critical
-            else base_damage
-        )
+        dealt_damage, critical = calculate_hero_attack_damage(current)
         enemy_hp = int(current["enemy_hp"]) - dealt_damage
         enemy_max_hp = int(current["enemy_max_hp"])
         enemy_defeated = enemy_hp <= 0
