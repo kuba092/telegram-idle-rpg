@@ -5378,8 +5378,8 @@
 </div>
 
 <div class="chest-boss-info">
-<span>БАЛАНС</span>
-<strong>💎 <span id="gemBossBalance">0</span></strong>
+<span>КЛЮЧИ</span>
+<strong>🔑 <span id="gemBossKeys">0</span></strong>
 </div>
 </div>
 
@@ -5392,6 +5392,27 @@
 НАЧАТЬ БОЙ
 </button>
 
+<div
+  class="challenge-extra-actions"
+  id="gemBossExtraActions"
+>
+<button
+  class="challenge-secondary-button"
+  id="gemBossAdButton"
+  type="button"
+>
+📺 ПОПЫТКА
+</button>
+
+<button
+  class="challenge-secondary-button"
+  id="gemBossKeyButton"
+  type="button"
+>
+🔑 ИСПОЛЬЗОВАТЬ
+</button>
+</div>
+
 <button
   class="challenge-secondary-button hidden"
   id="gemBossLeaveButton"
@@ -5399,6 +5420,8 @@
 >
 ПОКИНУТЬ БОЙ
 </button>
+
+<!-- GEM_BOSS_FULL_ATTEMPTS_UI_V1 -->
 </div>
 
 <div class="challenge-message" id="gemBossMessage">
@@ -8032,7 +8055,7 @@
 
       setText("gemBossLevel", state.level || 1);
       setText("gemBossReward", reward.gems || 0);
-      setText("gemBossBalance", player?.gems || 0);
+      setText("gemBossKeys", state.keys || 0);
 
       setText("gemBossHp", formatNumber(state.boss_hp || 0));
       setText(
@@ -8084,6 +8107,35 @@
         "hidden",
         !active
       );
+
+      $("gemBossExtraActions").classList.toggle(
+        "hidden",
+        active
+      );
+
+      const adRemaining = Number(
+        attempts.ad_remaining || 0
+      );
+
+      const adTotal = Number(
+        attempts.ad_total || 2
+      );
+
+      $("gemBossAdButton").disabled =
+        gemBossRequestInProgress || adRemaining <= 0;
+
+      $("gemBossAdButton").textContent =
+        adRemaining > 0
+        ? `📺 ПОПЫТКА ${adRemaining}/${adTotal}`
+        : "📺 НЕТ ПОПЫТОК";
+
+      const keys = Number(state.keys || 0);
+
+      $("gemBossKeyButton").disabled =
+        gemBossRequestInProgress || keys <= 0;
+
+      $("gemBossKeyButton").textContent =
+        `🔑 ИСПОЛЬЗОВАТЬ (${keys})`;
 
       $("gemBossMainButton").disabled =
         gemBossRequestInProgress || remaining <= 0;
@@ -8519,6 +8571,86 @@
     $("gemBossMainButton").addEventListener(
       "click",
       startGemBossFight
+    );
+
+    async function claimGemBossAdAttempt() {
+      if (gemBossRequestInProgress) {
+        return;
+      }
+
+      gemBossRequestInProgress = true;
+      renderGemBoss();
+
+      try {
+        const result = await apiRequest(
+          "/challenge/gem-boss/ad-attempt",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderGemBoss();
+
+        setText(
+          "gemBossMessage",
+          result.message || "Получена попытка"
+        );
+
+      } catch (error) {
+        setText(
+          "gemBossMessage",
+          `❌ ${error.message}`
+        );
+
+      } finally {
+        gemBossRequestInProgress = false;
+        renderGemBoss();
+      }
+    }
+
+    async function useGemBossKey() {
+      if (gemBossRequestInProgress) {
+        return;
+      }
+
+      gemBossRequestInProgress = true;
+      renderGemBoss();
+
+      try {
+        const result = await apiRequest(
+          "/challenge/gem-boss/use-key",
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderGemBoss();
+
+        setText(
+          "gemBossMessage",
+          result.message || "Ключ использован"
+        );
+
+      } catch (error) {
+        setText(
+          "gemBossMessage",
+          `❌ ${error.message}`
+        );
+
+      } finally {
+        gemBossRequestInProgress = false;
+        renderGemBoss();
+      }
+    }
+
+    $("gemBossAdButton").addEventListener(
+      "click",
+      claimGemBossAdAttempt
+    );
+
+    $("gemBossKeyButton").addEventListener(
+      "click",
+      useGemBossKey
     );
 
     $("gemBossLeaveButton").addEventListener(

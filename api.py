@@ -1757,7 +1757,10 @@ def consume_chest_boss_attempt(
 # GEM_CHALLENGE_BOSS_V1
 
 GEM_BOSS_FREE_ATTEMPTS = 2
+GEM_BOSS_AD_ATTEMPTS = 2
 GEM_BOSS_MAX_LEVEL = 500
+
+# GEM_BOSS_FULL_ATTEMPTS_V1
 
 
 def current_gem_boss_date(
@@ -1815,6 +1818,7 @@ def ensure_gem_boss_state(
         UPDATE players
         SET gem_boss_attempt_date = ?,
             gem_boss_free_attempts_used = 0,
+            gem_boss_ad_attempts_used = 0,
             gem_boss_active = 0,
             gem_boss_hp = 0,
             gem_boss_max_hp = 0,
@@ -1843,6 +1847,21 @@ def build_gem_boss_state(player: dict) -> dict:
     free_remaining = max(
         0,
         GEM_BOSS_FREE_ATTEMPTS - free_used,
+    )
+
+    ad_used = max(
+        0,
+        int(player.get("gem_boss_ad_attempts_used", 0)),
+    )
+
+    ad_remaining = max(
+        0,
+        GEM_BOSS_AD_ATTEMPTS - ad_used,
+    )
+
+    bonus_attempts = max(
+        0,
+        int(player.get("gem_boss_bonus_attempts", 0)),
     )
 
     active = bool(
@@ -1879,8 +1898,16 @@ def build_gem_boss_state(player: dict) -> dict:
             "free_total": GEM_BOSS_FREE_ATTEMPTS,
             "free_used": free_used,
             "free_remaining": free_remaining,
-            "available": free_remaining,
+            "ad_total": GEM_BOSS_AD_ATTEMPTS,
+            "ad_used": ad_used,
+            "ad_remaining": ad_remaining,
+            "bonus": bonus_attempts,
+            "available": free_remaining + bonus_attempts,
         },
+        "keys": max(
+            0,
+            int(player.get("gem_boss_keys", 0)),
+        ),
         "attempt_date": str(
             player.get("gem_boss_attempt_date")
             or current_gem_boss_date()
@@ -1900,20 +1927,36 @@ def consume_gem_boss_attempt(
         int(player.get("gem_boss_free_attempts_used", 0)),
     )
 
-    if free_used >= GEM_BOSS_FREE_ATTEMPTS:
-        return False
+    if free_used < GEM_BOSS_FREE_ATTEMPTS:
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_free_attempts_used =
+                    gem_boss_free_attempts_used + 1
+            WHERE telegram_id = ?
+            """,
+            (telegram_id,),
+        )
+        return True
 
-    connection.execute(
-        """
-        UPDATE players
-        SET gem_boss_free_attempts_used =
-                gem_boss_free_attempts_used + 1
-        WHERE telegram_id = ?
-        """,
-        (telegram_id,),
+    bonus_attempts = max(
+        0,
+        int(player.get("gem_boss_bonus_attempts", 0)),
     )
 
-    return True
+    if bonus_attempts > 0:
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_bonus_attempts =
+                    gem_boss_bonus_attempts - 1
+            WHERE telegram_id = ?
+            """,
+            (telegram_id,),
+        )
+        return True
+
+    return False
 
 
 def public_equipment(player: dict) -> dict:
@@ -2429,6 +2472,18 @@ def create_database() -> None:
         ),
         (
             "gem_boss_free_attempts_used",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_ad_attempts_used",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_bonus_attempts",
+            "INTEGER NOT NULL DEFAULT 0",
+        ),
+        (
+            "gem_boss_keys",
             "INTEGER NOT NULL DEFAULT 0",
         ),
         (
@@ -4325,6 +4380,129 @@ def attack_gem_boss(
             f"⚔️ Нанесено {outgoing_damage}. "
             f"Получено {boss_damage} урона"
         ),
+    )
+
+
+
+@app.post("/challenge/gem-boss/ad-attempt")
+def grant_gem_boss_ad_attempt(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        ensure_gem_boss_state(
+            connection,
+            telegram_id,
+            now,
+        )
+
+        current = load_player(connection, telegram_id)
+
+        ad_used = max(
+            0,
+            int(current.get("gem_boss_ad_attempts_used", 0)),
+        )
+
+        if ad_used >= GEM_BOSS_AD_ATTEMPTS:
+            connection.commit()
+
+            return build_player_response(
+                current,
+                gem_boss_ad_attempt_granted=False,
+                message="Сегодня рекламные попытки закончились",
+            )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_ad_attempts_used =
+                    gem_boss_ad_attempts_used + 1,
+                gem_boss_bonus_attempts =
+                    gem_boss_bonus_attempts + 1,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        gem_boss_ad_attempt_granted=True,
+        message="📺 Получена дополнительная попытка",
+    )
+
+
+@app.post("/challenge/gem-boss/use-key")
+def use_gem_boss_key(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        keys = max(
+            0,
+            int(current.get("gem_boss_keys", 0)),
+        )
+
+        if keys <= 0:
+            connection.commit()
+
+            return build_player_response(
+                current,
+                gem_boss_key_used=False,
+                message="Ключей Стража нет",
+            )
+
+        connection.execute(
+            """
+            UPDATE players
+            SET gem_boss_keys = gem_boss_keys - 1,
+                gem_boss_bonus_attempts =
+                    gem_boss_bonus_attempts + 1,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                int(now),
+                telegram_id,
+            ),
+        )
+
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        gem_boss_key_used=True,
+        message="🔑 Ключ использован. Получена попытка",
     )
 
 
