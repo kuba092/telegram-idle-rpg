@@ -5427,18 +5427,19 @@
           Подключаемся к серверу…
         </div>
 </div>
-<div aria-label="Навыки героя" class="skill-dock">
-<button aria-label="Spore Strike, открывается на уровне 5" class="skill-button locked" data-skill="spore_strike" type="button">
-<span class="skill-level">УР. 5</span>
-<span class="skill-icon">🍄</span>
+<!-- DYNAMIC_BATTLE_SKILL_SLOTS_V1 -->
+<div aria-label="Активные навыки героя" class="skill-dock">
+<button aria-label="Слот навыка 1" class="skill-button locked" data-skill-slot="1" type="button">
+<span class="skill-level">СЛОТ 1</span>
+<span class="skill-icon">🔒</span>
 </button>
-<button aria-label="Mushroom Shield, открывается на уровне 20" class="skill-button locked" data-skill="mushroom_shield" type="button">
-<span class="skill-level">УР. 20</span>
-<span class="skill-icon">🛡️</span>
+<button aria-label="Слот навыка 2" class="skill-button locked" data-skill-slot="2" type="button">
+<span class="skill-level">СЛОТ 2</span>
+<span class="skill-icon">🔒</span>
 </button>
-<button aria-label="Poison Cloud, открывается на уровне 40" class="skill-button locked" data-skill="poison_cloud" type="button">
-<span class="skill-level">УР. 40</span>
-<span class="skill-icon">☁️</span>
+<button aria-label="Слот навыка 3" class="skill-button locked" data-skill-slot="3" type="button">
+<span class="skill-level">СЛОТ 3</span>
+<span class="skill-icon">🔒</span>
 </button>
 <button
   aria-pressed="false"
@@ -6480,15 +6481,11 @@
       loadingText: $("loadingText"), defeatOverlay: $("defeatOverlay"), defeatText: $("defeatText"),
       respawnButton: $("respawnButton"), chestCount: $("chestCount"), chestLevelBadge: $("chestLevelBadge"),
       autoToggle: $("autoToggle"), skillsAutoButton: $("skillsAutoButton"),
-      sporeStrikeButton: document.querySelector(
-        '.skill-button[data-skill="spore_strike"]'
-      ),
-      mushroomShieldButton: document.querySelector(
-        '.skill-button[data-skill="mushroom_shield"]'
-      ),
-      poisonCloudButton: document.querySelector(
-        '.skill-button[data-skill="poison_cloud"]'
-      ),
+      skillButtons: [
+        ...document.querySelectorAll(
+          ".skill-button[data-skill-slot]"
+        )
+      ],
       heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
       heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm"),
       skillShopLocked: $("skillShopLocked"),
@@ -6769,117 +6766,149 @@
       });
     }
 
+    function battleSkillCatalog() {
+      const catalog = player?.skill_system?.catalog || [];
+      return Object.fromEntries(
+        catalog.map((skill) => [skill.id, skill])
+      );
+    }
+
+    function battleSkillButton(skillId) {
+      return elements.skillButtons.find(
+        (button) => button.dataset.skill === skillId
+      );
+    }
+
+    function skillCooldownRemaining(skillId, state) {
+      const fields = {
+        spore_strike: "spore_strike_last_used_at",
+        mushroom_shield: "mushroom_shield_last_used_at",
+        poison_cloud: "poison_cloud_last_used_at",
+      };
+
+      const field = fields[skillId];
+      const lastUsed = Number(
+        field ? player?.[field] || 0 : 0
+      );
+
+      if (!lastUsed) return 0;
+
+      return Math.max(
+        0,
+        Number(state?.cooldown_seconds || 0)
+          - (Date.now() / 1000 - lastUsed)
+      );
+    }
+
     function renderSkills() {
-      const renderCooldownSkill = (button, skill, options = {}) => {
-        if (!button || !skill) return;
+      const system = player?.skill_system || {};
+      const slots = Array.isArray(system.slots)
+        ? system.slots
+        : [];
+      const catalog = battleSkillCatalog();
+      const collection = system.collection || {};
 
-        const unlocked = Boolean(skill.unlocked);
-        const lastUsedAt = Number(options.lastUsedAt || 0);
-        const cooldownSeconds = Number(skill.cooldown_seconds || 1);
-        const elapsed = lastUsedAt > 0
-          ? Date.now() / 1000 - lastUsedAt
-          : cooldownSeconds;
-        const remaining = Math.max(0, cooldownSeconds - elapsed);
-        const activeAmount = Number(options.activeAmount || 0);
-        const ready = unlocked && remaining <= 0;
+      elements.skillButtons.forEach((button, index) => {
+        const slot = slots[index] || {};
+        const icon = button.querySelector(".skill-icon");
+        const label = button.querySelector(".skill-level");
 
-        button.classList.toggle("locked", !unlocked);
-        button.classList.toggle("active", ready || activeAmount > 0);
-        button.disabled = !unlocked;
-        button.setAttribute("aria-disabled", String(!unlocked));
+        button.className = "skill-button locked";
+        button.dataset.skill = "";
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
 
-        const levelLabel = button.querySelector(".skill-level");
+        if (!slot.unlocked) {
+          icon.textContent = "🔒";
+          label.textContent =
+            `УР. ${slot.unlock_level || 5}`;
+          button.setAttribute(
+            "aria-label",
+            `Слот ${index + 1} откроется на уровне ${slot.unlock_level || 5}`
+          );
+          return;
+        }
 
-        if (levelLabel) {
-          if (!unlocked) {
-            levelLabel.textContent = `УР. ${skill.unlock_level}`;
-          } else if (activeAmount > 0) {
-            levelLabel.textContent = `🛡 ${formatNumber(activeAmount)}`;
-          } else if (remaining > 0) {
-            levelLabel.textContent = `${remaining.toFixed(1)}с`;
-          } else {
-            levelLabel.textContent = "ГОТОВ";
-          }
+        const skillId = String(slot.skill_id || "");
+        const definition = catalog[skillId];
+        const state = player?.skills?.[skillId];
+
+        if (!skillId || !definition) {
+          icon.textContent = "＋";
+          label.textContent = "ПУСТО";
+          button.setAttribute(
+            "aria-label",
+            `Пустой слот навыка ${index + 1}`
+          );
+          return;
+        }
+
+        button.dataset.skill = skillId;
+        icon.textContent = definition.icon || "✨";
+
+        if (!definition.implemented) {
+          label.textContent = "СКОРО";
+          button.setAttribute(
+            "aria-label",
+            `${definition.name}: механика пока не реализована`
+          );
+          return;
+        }
+
+        if (!state?.available) {
+          label.textContent = "НЕДОСТ.";
+          button.setAttribute(
+            "aria-label",
+            `${definition.name} сейчас недоступен`
+          );
+          return;
+        }
+
+        button.classList.remove("locked");
+        button.disabled = false;
+        button.setAttribute("aria-disabled", "false");
+
+        const cooldown = skillCooldownRemaining(
+          skillId,
+          state
+        );
+
+        const shield = skillId === "mushroom_shield"
+          ? Number(state.amount || 0)
+          : 0;
+
+        const poisonTime = skillId === "poison_cloud"
+          ? Math.max(
+              0,
+              Number(player?.poison_cloud_until || 0)
+                - Date.now() / 1000
+            )
+          : 0;
+
+        button.classList.toggle(
+          "active",
+          cooldown <= 0 || shield > 0 || poisonTime > 0
+        );
+
+        if (shield > 0) {
+          label.textContent =
+            `🛡 ${formatNumber(shield)}`;
+        } else if (poisonTime > 0) {
+          label.textContent =
+            `${poisonTime.toFixed(1)}с`;
+        } else if (cooldown > 0) {
+          label.textContent =
+            `${cooldown.toFixed(1)}с`;
+        } else {
+          label.textContent =
+            `УР. ${Number(collection[skillId]?.level || 1)}`;
         }
 
         button.setAttribute(
           "aria-label",
-          !unlocked
-            ? `${options.name} откроется на уровне ${skill.unlock_level}`
-            : activeAmount > 0
-              ? `${options.name}, осталось ${activeAmount} защиты`
-              : remaining > 0
-                ? `${options.name}, перезарядка ${remaining.toFixed(1)} секунды`
-                : `${options.name} готов`
+          definition.name
         );
-      };
-
-      renderCooldownSkill(
-        elements.sporeStrikeButton,
-        player?.skills?.spore_strike,
-        {
-          name: "Spore Strike",
-          lastUsedAt: player?.spore_strike_last_used_at,
-        }
-      );
-
-      renderCooldownSkill(
-        elements.mushroomShieldButton,
-        player?.skills?.mushroom_shield,
-        {
-          name: "Mushroom Shield",
-          lastUsedAt: player?.mushroom_shield_last_used_at,
-          activeAmount: player?.skills?.mushroom_shield?.amount,
-        }
-      );
-
-      const poisonSkill = player?.skills?.poison_cloud;
-      const poisonButton = elements.poisonCloudButton;
-
-      if (poisonButton && poisonSkill) {
-        const unlocked = Boolean(poisonSkill.unlocked);
-        const active = Boolean(poisonSkill.active);
-        const lastUsedAt = Number(player?.poison_cloud_last_used_at || 0);
-        const cooldownSeconds = Number(poisonSkill.cooldown_seconds || 20);
-        const elapsed = lastUsedAt > 0
-          ? Date.now() / 1000 - lastUsedAt
-          : cooldownSeconds;
-        const remaining = Math.max(0, cooldownSeconds - elapsed);
-        const durationRemaining = Math.max(
-          0,
-          Number(player?.poison_cloud_until || 0) - Date.now() / 1000
-        );
-
-        poisonButton.classList.toggle("locked", !unlocked);
-        poisonButton.classList.toggle("active", active || remaining <= 0);
-        poisonButton.disabled = !unlocked;
-        poisonButton.setAttribute("aria-disabled", String(!unlocked));
-
-        const levelLabel = poisonButton.querySelector(".skill-level");
-
-        if (levelLabel) {
-          if (!unlocked) {
-            levelLabel.textContent = `УР. ${poisonSkill.unlock_level}`;
-          } else if (durationRemaining > 0) {
-            levelLabel.textContent = `${durationRemaining.toFixed(1)}с`;
-          } else if (remaining > 0) {
-            levelLabel.textContent = `${remaining.toFixed(1)}с`;
-          } else {
-            levelLabel.textContent = "ГОТОВ";
-          }
-        }
-
-        poisonButton.setAttribute(
-          "aria-label",
-          !unlocked
-            ? `Poison Cloud откроется на уровне ${poisonSkill.unlock_level}`
-            : durationRemaining > 0
-              ? `Poison Cloud действует ещё ${durationRemaining.toFixed(1)} секунды`
-              : remaining > 0
-                ? `Poison Cloud, перезарядка ${remaining.toFixed(1)} секунды`
-                : "Poison Cloud готов"
-        );
-      }
+      });
     }
 
 
@@ -7162,7 +7191,8 @@
         return;
       }
 
-      elements.poisonCloudButton.disabled = true;
+      const button = battleSkillButton("poison_cloud");
+      if (button) button.disabled = true;
 
       try {
         player = await apiRequest(
@@ -7197,7 +7227,8 @@
         return;
       }
 
-      elements.mushroomShieldButton.disabled = true;
+      const button = battleSkillButton("mushroom_shield");
+      if (button) button.disabled = true;
 
       try {
         player = await apiRequest(
@@ -7217,6 +7248,39 @@
       } finally {
         renderSkills();
       }
+    }
+
+
+    function useBattleSkill(skillId) {
+      if (!skillId) {
+        setMessage(
+          "Выберите навык в разделе «Усиления»",
+          true
+        );
+        return;
+      }
+
+      if (skillId === "spore_strike") {
+        performAttack("spore_strike");
+        return;
+      }
+
+      if (skillId === "mushroom_shield") {
+        useMushroomShield();
+        return;
+      }
+
+      if (skillId === "poison_cloud") {
+        usePoisonCloud();
+        return;
+      }
+
+      const definition = battleSkillCatalog()[skillId];
+
+      setMessage(
+        `Навык ${definition?.name || skillId} пока не реализован`,
+        true
+      );
     }
 
 
@@ -8791,25 +8855,15 @@
     $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
     elements.autoToggle.addEventListener("click", toggleAuto);
     elements.skillsAutoButton.addEventListener("click", toggleSkillsAuto);
-    elements.sporeStrikeButton.addEventListener("click", () => {
-      const skill = player?.skills?.spore_strike;
-      if (!skill?.unlocked) {
-        setMessage(
-          `🔒 Spore Strike откроется на ${skill?.unlock_level || 5} уровне`,
-          true
+    elements.skillButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        if (button.disabled) return;
+
+        useBattleSkill(
+          String(button.dataset.skill || "")
         );
-        return;
-      }
-      performAttack("spore_strike");
+      });
     });
-    elements.mushroomShieldButton.addEventListener(
-      "click",
-      useMushroomShield
-    );
-    elements.poisonCloudButton.addEventListener(
-      "click",
-      usePoisonCloud
-    );
     elements.bossButton.addEventListener("click", startBoss);
     $("claimOfflineButton").addEventListener("click", claimOffline);
     $("leaderboardButton").addEventListener("click", openLeaderboard);
