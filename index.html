@@ -4789,6 +4789,128 @@
       color: #a9f6ff;
     }
 
+
+    /* ===== MAIN_GEMS_BALANCE_HUD_V1 ===== */
+
+    .top-hud {
+      gap: 6px;
+    }
+
+    .top-hud > :first-child {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+
+    .resources {
+      flex: 0 0 190px;
+      min-width: 0;
+      gap: 6px;
+    }
+
+    .resources .resource-pill {
+      flex: 1 1 0;
+      min-width: 0;
+      gap: 5px;
+      padding-right: 7px;
+      padding-left: 7px;
+    }
+
+    .resources .resource-icon {
+      width: 25px;
+      height: 25px;
+      flex: 0 0 25px;
+      font-size: 15px;
+    }
+
+    .resources .resource-copy {
+      overflow: hidden;
+    }
+
+    .resources .resource-label {
+      overflow: hidden;
+      font-size: 7px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .resources .resource-value {
+      max-width: 52px;
+      font-size: 14px;
+    }
+
+    .gems-pill .resource-value {
+      color: #8de8ff;
+      text-shadow: 0 0 10px rgba(72, 193, 255, 0.42);
+    }
+
+    @media (max-width: 650px) {
+      .top-hud {
+        gap: 5px;
+      }
+
+      .resources {
+        flex-basis: 174px;
+        gap: 5px;
+      }
+
+      .resources .resource-pill {
+        padding: 7px 6px;
+      }
+
+      .resources .resource-icon {
+        width: 23px;
+        height: 23px;
+        flex-basis: 23px;
+        font-size: 14px;
+      }
+
+      .resources .resource-value {
+        max-width: 46px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .top-hud {
+        right: 7px;
+        left: 7px;
+        gap: 4px;
+      }
+
+      .top-hud > :first-child {
+        padding-right: 7px;
+        padding-left: 7px;
+      }
+
+      .resources {
+        flex-basis: 158px;
+        gap: 4px;
+      }
+
+      .resources .resource-pill {
+        gap: 4px;
+        padding: 6px 5px;
+      }
+
+      .resources .resource-icon {
+        width: 21px;
+        height: 21px;
+        flex-basis: 21px;
+        font-size: 13px;
+      }
+
+      .resources .resource-label {
+        font-size: 6px;
+        letter-spacing: 0.03em;
+      }
+
+      .resources .resource-value {
+        max-width: 42px;
+        font-size: 12px;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -4844,6 +4966,16 @@
 <strong class="resource-value" id="gold">0</strong>
 </span>
 </div>
+
+<div class="resource-pill gems-pill">
+<span class="resource-icon">💎</span>
+<span class="resource-copy">
+<span class="resource-label">САМОЦВЕТЫ</span>
+<strong class="resource-value" id="hudGems">0</strong>
+</span>
+</div>
+
+<!-- MAIN_GEMS_BALANCE_HUD_V1 -->
 </div>
 </section>
 <section class="battlefield" id="battlefield">
@@ -5877,7 +6009,7 @@
 
     const $ = (id) => document.getElementById(id);
     const elements = {
-      stageProgress: $("stageProgress"), bossButton: $("bossButton"), gold: $("gold"), bm: $("bm"),
+      stageProgress: $("stageProgress"), bossButton: $("bossButton"), gold: $("gold"), gems: $("hudGems"), bm: $("bm"),
       level: $("level"), xpText: $("xpText"), xpBar: $("xpBar"), enemyName: $("enemyName"),
       enemyNameplate: $("enemyNameplate"), enemyHp: $("enemyHp"), enemyMaxHp: $("enemyMaxHp"),
       enemyHpBar: $("enemyHpBar"), heroHp: $("heroHp"), heroMaxHp: $("heroMaxHp"),
@@ -6297,6 +6429,7 @@
       elements.stageProgress.textContent = player.stage_progress_label || `Этап ${player.stage} • ${player.wave}/10`;
       elements.bossButton.classList.toggle("hidden", !player.boss_button_visible);
       elements.gold.textContent = formatNumber(player.gold);
+      elements.gems.textContent = formatNumber(player.gems || 0);
       elements.bm.textContent = formatNumber(player.power);
       const xp = levelProgress(player);
       elements.level.textContent = player.level;
