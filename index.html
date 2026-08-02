@@ -2804,6 +2804,9 @@
       loadingText: $("loadingText"), defeatOverlay: $("defeatOverlay"), defeatText: $("defeatText"),
       respawnButton: $("respawnButton"), chestCount: $("chestCount"), chestLevelBadge: $("chestLevelBadge"),
       autoToggle: $("autoToggle"), skillsAutoButton: $("skillsAutoButton"),
+      sporeStrikeButton: document.querySelector(
+        '.skill-button[data-skill="spore_strike"]'
+      ),
       heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
       heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm")
     };
@@ -2987,6 +2990,43 @@
       });
     }
 
+    function renderSkills() {
+      const button = elements.sporeStrikeButton;
+      const skill = player?.skills?.spore_strike;
+      if (!button || !skill) return;
+
+      const unlocked = Boolean(skill.unlocked);
+      const lastUsedAt = Number(player?.spore_strike_last_used_at || 0);
+      const cooldownSeconds = Number(skill.cooldown_seconds || 8);
+      const elapsed = lastUsedAt > 0
+        ? Date.now() / 1000 - lastUsedAt
+        : cooldownSeconds;
+      const remaining = Math.max(0, cooldownSeconds - elapsed);
+      const ready = unlocked && remaining <= 0;
+
+      button.classList.toggle("locked", !unlocked);
+      button.classList.toggle("active", ready);
+      button.disabled = !unlocked;
+      button.setAttribute("aria-disabled", String(!unlocked));
+
+      const levelLabel = button.querySelector(".skill-level");
+      if (levelLabel) {
+        if (!unlocked) levelLabel.textContent = `УР. ${skill.unlock_level}`;
+        else if (remaining > 0) levelLabel.textContent = `${remaining.toFixed(1)}с`;
+        else levelLabel.textContent = "ГОТОВ";
+      }
+
+      button.setAttribute(
+        "aria-label",
+        !unlocked
+          ? `Spore Strike откроется на уровне ${skill.unlock_level}`
+          : remaining > 0
+            ? `Spore Strike, перезарядка ${remaining.toFixed(1)} секунды`
+            : "Spore Strike готов"
+      );
+    }
+
+
     function renderPlayer() {
       if (!player) return;
       updateMonster();
@@ -3022,6 +3062,7 @@
       elements.skillsAutoButton.classList.toggle("active", skillsAutoEnabled);
       elements.skillsAutoButton.setAttribute("aria-pressed", String(skillsAutoEnabled));
       elements.skillsAutoButton.textContent = skillsAutoEnabled ? "AUTO: ВКЛ" : "AUTO";
+      renderSkills();
       renderEquipment(); renderHeroStats(); renderChestModal();
       scheduleAutoOpen();
     }
@@ -3090,11 +3131,14 @@
       }
     }
 
-    async function performAttack() {
+    async function performAttack(skillName = null) {
       if (!battleRunning || !player?.can_attack || heroDefeated || requestInProgress || enemyDefeating || document.hidden) return;
       requestInProgress = true;
       try {
-        const result = await apiRequest("/attack", "POST");
+        const attackPath = skillName
+          ? `/attack?skill=${encodeURIComponent(skillName)}`
+          : "/attack";
+        const result = await apiRequest(attackPath, "POST");
         if (!result.attacked) {
           player = result; renderPlayer();
           if (result.hero_defeated) await handleHeroDefeat();
@@ -3102,8 +3146,7 @@
           else syncBattleState();
           return;
         }
-        attackCounter += 1;
-        const useSkill = attackCounter % 5 === 0;
+        const useSkill = result.skill_used === "spore_strike";
         animateHeroAttack(useSkill);
         showDamage(result.damage_dealt || player.damage, result.critical);
         if (result.enemy_defeated) {
@@ -3347,6 +3390,17 @@
     $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
     elements.autoToggle.addEventListener("click", toggleAuto);
     elements.skillsAutoButton.addEventListener("click", toggleSkillsAuto);
+    elements.sporeStrikeButton.addEventListener("click", () => {
+      const skill = player?.skills?.spore_strike;
+      if (!skill?.unlocked) {
+        setMessage(
+          `🔒 Spore Strike откроется на ${skill?.unlock_level || 5} уровне`,
+          true
+        );
+        return;
+      }
+      performAttack("spore_strike");
+    });
     elements.bossButton.addEventListener("click", startBoss);
     $("claimOfflineButton").addEventListener("click", claimOffline);
     $("leaderboardButton").addEventListener("click", openLeaderboard);
@@ -3359,6 +3413,10 @@
     });
     window.addEventListener("pagehide", () => { stopBattle(); clearTimeout(autoOpenTimer); });
     window.addEventListener("beforeunload", () => { stopBattle(); clearTimeout(autoOpenTimer); });
+
+    setInterval(() => {
+      if (player && !document.hidden) renderSkills();
+    }, 100);
 
     startGame();
 </script>
