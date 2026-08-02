@@ -3935,6 +3935,232 @@
       text-align: center;
     }
 
+
+    /* TRIALS_EVENT_LIST_V1 */
+
+    .trials-event-list {
+      display: flex;
+      min-height: 0;
+      flex: 1;
+      flex-direction: column;
+      gap: 9px;
+      overflow-y: auto;
+      padding: 2px 0 12px;
+    }
+
+    .trial-event-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 104px;
+      padding: 11px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 18px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(24, 52, 38, 0.96),
+          rgba(5, 20, 19, 0.97)
+        );
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.23),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .trial-event-card.active {
+      border-color: rgba(255, 218, 92, 0.32);
+      background:
+        radial-gradient(
+          circle at 12% 50%,
+          rgba(255, 197, 59, 0.15),
+          transparent 34%
+        ),
+        linear-gradient(
+          135deg,
+          rgba(40, 54, 31, 0.97),
+          rgba(7, 22, 20, 0.98)
+        );
+    }
+
+    .trial-event-card.locked {
+      opacity: 0.72;
+    }
+
+    .trial-event-art {
+      display: grid;
+      width: 76px;
+      height: 76px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 17px;
+      background:
+        radial-gradient(
+          circle,
+          rgba(255, 218, 101, 0.17),
+          rgba(0, 0, 0, 0.22)
+        );
+      font-size: 42px;
+      filter: drop-shadow(0 7px 9px rgba(0, 0, 0, 0.28));
+    }
+
+    .trial-event-content {
+      min-width: 0;
+    }
+
+    .trial-event-name {
+      margin-bottom: 4px;
+      color: #fff7c0;
+      font-size: 14px;
+      font-weight: 950;
+      line-height: 1.1;
+    }
+
+    .trial-event-description {
+      margin-bottom: 8px;
+      color: rgba(235, 244, 239, 0.66);
+      font-size: 9px;
+      font-weight: 720;
+      line-height: 1.3;
+    }
+
+    .trial-event-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .trial-event-pill {
+      min-height: 22px;
+      padding: 5px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.055);
+      color: rgba(247, 250, 248, 0.84);
+      font-size: 8px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .trial-event-enter {
+      min-width: 58px;
+      min-height: 54px;
+      padding: 7px 8px;
+      border: 1px solid rgba(220, 255, 125, 0.38);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, #b8ed62, #4d9c42);
+      color: #11250f;
+      font: inherit;
+      font-size: 9px;
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow:
+        0 7px 15px rgba(70, 143, 53, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    .trial-event-enter:disabled {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.07);
+      color: rgba(255, 255, 255, 0.5);
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .trial-boss-modal-panel {
+      width: min(94vw, 430px);
+      max-height: calc(100vh - 32px);
+      padding: 12px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 219, 103, 0.24);
+      border-radius: 22px;
+      background:
+        radial-gradient(
+          circle at 50% 0,
+          rgba(255, 201, 73, 0.13),
+          transparent 36%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(19, 43, 31, 0.99),
+          rgba(5, 18, 17, 0.99)
+        );
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    }
+
+    .trial-boss-modal-header {
+      display: grid;
+      grid-template-columns: 34px 1fr 34px;
+      align-items: center;
+      margin-bottom: 9px;
+    }
+
+    .trial-boss-modal-title {
+      color: #fff2a3;
+      font-size: 16px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .trial-boss-modal-close {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 11px;
+      background: rgba(0, 0, 0, 0.22);
+      color: #fff;
+      font: inherit;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    .trial-boss-stage {
+      position: relative;
+      display: grid;
+      min-height: 132px;
+      place-items: center;
+      margin-bottom: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 18px;
+      background:
+        radial-gradient(
+          circle at 50% 56%,
+          rgba(255, 190, 63, 0.18),
+          transparent 42%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(27, 60, 38, 0.76),
+          rgba(4, 17, 17, 0.92)
+        );
+    }
+
+    .trial-boss-stage-icon {
+      font-size: 70px;
+      filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.4));
+    }
+
+    .trial-boss-stage-level {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255, 225, 126, 0.25);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.28);
+      color: #ffe896;
+      font-size: 9px;
+      font-weight: 950;
+    }
+
 </style>
 </head>
 <body>
@@ -4244,30 +4470,114 @@
 </div>
 
 
+
 <section aria-label="Испытания" class="game-screen hidden" id="trialsScreen">
 <header class="screen-header">
-<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
+<button
+  aria-label="Вернуться в бой"
+  class="screen-close"
+  data-close-screen=""
+  type="button"
+>‹</button>
 <div class="screen-title">Испытания</div>
 <div class="screen-header-spacer"></div>
 </header>
 
-<div class="trials-content">
-<div class="chest-boss-card">
+<div class="trials-event-list">
 
-<div class="chest-boss-heading">
-<div>
-<div class="chest-boss-title">Хранитель сундуков</div>
-<div class="chest-boss-subtitle">
-Побеждайте босса и повышайте уровень испытания
+<article class="trial-event-card active">
+<div class="trial-event-art">🧰</div>
+
+<div class="trial-event-content">
+<div class="trial-event-name">Хранитель сундуков</div>
+<div class="trial-event-description">
+Побеждайте Хранителя, повышайте уровень и получайте сундуки.
+</div>
+
+<div class="trial-event-meta">
+<div class="trial-event-pill">
+УР. <span id="chestBossListLevel">1</span>
+</div>
+<div class="trial-event-pill">
+🧰 <span id="chestBossListReward">2</span>
+</div>
+<div class="trial-event-pill">
+⚔️ <span id="chestBossListAttempts">3</span>
 </div>
 </div>
-<div class="chest-boss-level">
+</div>
+
+<button
+  class="trial-event-enter"
+  id="chestBossOpenButton"
+  type="button"
+>
+ВОЙТИ
+</button>
+</article>
+
+<article class="trial-event-card locked">
+<div class="trial-event-art">💎</div>
+
+<div class="trial-event-content">
+<div class="trial-event-name">Страж самоцветов</div>
+<div class="trial-event-description">
+Особое испытание с наградой в премиальной валюте.
+</div>
+
+<div class="trial-event-meta">
+<div class="trial-event-pill">💎 Донатная валюта</div>
+<div class="trial-event-pill">Скоро</div>
+</div>
+</div>
+
+<button class="trial-event-enter" disabled type="button">
+СКОРО
+</button>
+</article>
+
+<article class="trial-event-card locked">
+<div class="trial-event-art">🌍</div>
+
+<div class="trial-event-content">
+<div class="trial-event-name">Мировой босс</div>
+<div class="trial-event-description">
+Общий противник для всех игроков и рейтинг нанесённого урона.
+</div>
+
+<div class="trial-event-meta">
+<div class="trial-event-pill">🏆 Общие награды</div>
+<div class="trial-event-pill">Скоро</div>
+</div>
+</div>
+
+<button class="trial-event-enter" disabled type="button">
+СКОРО
+</button>
+</article>
+
+</div>
+</section>
+
+<div class="game-modal hidden" id="chestBossModal">
+<div class="trial-boss-modal-panel">
+
+<div class="trial-boss-modal-header">
+<div></div>
+<div class="trial-boss-modal-title">Хранитель сундуков</div>
+<button
+  aria-label="Закрыть"
+  class="trial-boss-modal-close"
+  id="chestBossModalClose"
+  type="button"
+>×</button>
+</div>
+
+<div class="trial-boss-stage">
+<div class="trial-boss-stage-icon">🧰</div>
+<div class="trial-boss-stage-level">
 УР. <span id="chestBossLevel">1</span>
 </div>
-</div>
-
-<div class="chest-boss-visual">
-<div class="chest-boss-icon">🧰</div>
 </div>
 
 <div class="challenge-hp-block">
@@ -4353,12 +4663,11 @@
 </div>
 
 <div class="challenge-message" id="chestBossMessage">
-Загрузка испытания…
+Выберите действие
 </div>
 
 </div>
 </div>
-</section>
 
 <section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
 <header class="screen-header">
@@ -5832,6 +6141,18 @@
       const heroMaxHp = Math.max(1, Number(state.hero_max_hp || 1));
 
       setText("chestBossLevel", formatNumber(state.level || 1));
+      setText(
+        "chestBossListLevel",
+        formatNumber(state.level || 1)
+      );
+      setText(
+        "chestBossListReward",
+        formatNumber(state.reward?.chests || 0)
+      );
+      setText(
+        "chestBossListAttempts",
+        formatNumber(attempts.available || 0)
+      );
       setText("chestBossHp", formatNumber(bossHp));
       setText("chestBossMaxHp", formatNumber(active ? bossMaxHp : 0));
       setText("chestBossHeroHp", formatNumber(active ? heroHp : heroMaxHp));
@@ -5868,6 +6189,15 @@
 
       $("chestBossKeyButton").disabled =
         active || Number(state.keys || 0) <= 0;
+    }
+
+    function openChestBossModal() {
+      renderChestBoss();
+      modalShow("chestBossModal");
+    }
+
+    function closeChestBossModal() {
+      modalHide("chestBossModal");
     }
 
     async function refreshChestBoss() {
@@ -6179,6 +6509,25 @@
       () => modalHide("skillSummonModal")
     );
 
+    $("chestBossOpenButton").addEventListener(
+      "click",
+      openChestBossModal
+    );
+
+    $("chestBossModalClose").addEventListener(
+      "click",
+      closeChestBossModal
+    );
+
+    $("chestBossModal").addEventListener(
+      "click",
+      (event) => {
+        if (event.target === $("chestBossModal")) {
+          closeChestBossModal();
+        }
+      }
+    );
+
     $("chestBossMainButton").addEventListener(
       "click",
       handleChestBossMainAction
@@ -6251,6 +6600,7 @@
       "leaderboardModal",
       "skillSummonModal",
       "questsModal",
+      "chestBossModal",
     ].forEach(
       (id) => $(id).addEventListener("click", (event) => {
         if (event.target === $(id)) modalHide(id);
