@@ -2803,7 +2803,8 @@
       message: $("message"), loadingOverlay: $("loadingOverlay"), loadingTitle: $("loadingTitle"),
       loadingText: $("loadingText"), defeatOverlay: $("defeatOverlay"), defeatText: $("defeatText"),
       respawnButton: $("respawnButton"), chestCount: $("chestCount"), chestLevelBadge: $("chestLevelBadge"),
-      autoToggle: $("autoToggle"), heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
+      autoToggle: $("autoToggle"), skillsAutoButton: $("skillsAutoButton"),
+      heroScreenLevel: $("heroScreenLevel"), heroScreenXp: $("heroScreenXp"),
       heroScreenBm: $("heroScreenBm"), heroScreenGold: $("heroScreenGold"), equipmentBm: $("equipmentBm")
     };
 
@@ -3017,6 +3018,10 @@
       elements.autoToggle.classList.toggle("active", autoEnabled);
       elements.autoToggle.setAttribute("aria-pressed", String(autoEnabled));
       elements.autoToggle.textContent = autoEnabled ? "АВТО: ВКЛ" : "АВТО";
+      const skillsAutoEnabled = Boolean(Number(player.skills_auto_enabled));
+      elements.skillsAutoButton.classList.toggle("active", skillsAutoEnabled);
+      elements.skillsAutoButton.setAttribute("aria-pressed", String(skillsAutoEnabled));
+      elements.skillsAutoButton.textContent = skillsAutoEnabled ? "AUTO: ВКЛ" : "AUTO";
       renderEquipment(); renderHeroStats(); renderChestModal();
       scheduleAutoOpen();
     }
@@ -3246,6 +3251,23 @@
       finally { elements.autoToggle.disabled = false; }
     }
 
+    async function toggleSkillsAuto() {
+      elements.skillsAutoButton.disabled = true;
+      try {
+        const enable = !Number(player?.skills_auto_enabled);
+        player = await apiRequest(
+          enable ? "/skills/auto/enable" : "/skills/auto/disable",
+          "POST"
+        );
+        renderPlayer();
+        setMessage(player.message);
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      } finally {
+        elements.skillsAutoButton.disabled = false;
+      }
+    }
+
     async function claimOffline() {
       $("claimOfflineButton").disabled = true;
       try { player = await apiRequest("/offline/claim", "POST"); renderPlayer(); modalHide("offlineModal"); setMessage(player.message); syncBattleState(); }
@@ -3324,6 +3346,7 @@
     $("equipLootButton").addEventListener("click", () => resolveLoot("/loot/equip"));
     $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
     elements.autoToggle.addEventListener("click", toggleAuto);
+    elements.skillsAutoButton.addEventListener("click", toggleSkillsAuto);
     elements.bossButton.addEventListener("click", startBoss);
     $("claimOfflineButton").addEventListener("click", claimOffline);
     $("leaderboardButton").addEventListener("click", openLeaderboard);
