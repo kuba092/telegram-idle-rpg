@@ -1166,7 +1166,7 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
                     boss_active = False
                     enemy_max_hp = calculate_enemy_hp(stage)
                     enemy_hp = enemy_max_hp
-                    last_enemy_attack_at = now
+                    last_enemy_attack_at = now - max(0.0, max(MIN_ENEMY_ATTACK_INTERVAL, 1 / ENEMY_ATTACK_SPEED) - (0.55 if boss_active else 0.85))
                     stage_completed = True
             else:
                 next_wave = kills + 1
@@ -1183,7 +1183,7 @@ def attack(x_telegram_init_data: str = Header(...)) -> dict:
                 else:
                     enemy_max_hp = calculate_enemy_hp(stage)
                     enemy_hp = enemy_max_hp
-                last_enemy_attack_at = now
+                last_enemy_attack_at = now - max(0.0, max(MIN_ENEMY_ATTACK_INTERVAL, 1 / ENEMY_ATTACK_SPEED) - (0.55 if boss_active else 0.85))
         total_exp = max(0, int(current.get("experience", 0))) + experience_reward
         new_level = level_from_total_exp(total_exp)
         provisional = dict(current)

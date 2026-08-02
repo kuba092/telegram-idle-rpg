@@ -2983,7 +2983,14 @@
     }
 
     async function performMonsterAttack() {
-      if (!battleRunning || !player?.can_attack || heroDefeated || enemyRequestInProgress || enemyDefeating || document.hidden) return;
+      if (!battleRunning || !player?.can_attack || heroDefeated || document.hidden) return;
+
+    // Если враг сейчас умирает или предыдущий запрос ещё выполняется,
+    // не останавливаем цикл атак, а пробуем снова через 0,25 секунды.
+    if (enemyRequestInProgress || enemyDefeating) {
+      scheduleMonsterAttack(0.25);
+      return;
+    }
       enemyRequestInProgress = true;
       try {
         const result = await apiRequest("/enemy-attack", "POST");
