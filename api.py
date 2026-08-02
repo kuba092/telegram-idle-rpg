@@ -34,6 +34,10 @@ MIN_ATTACK_INTERVAL = 0.1
 SPORE_STRIKE_UNLOCK_LEVEL = 5
 SPORE_STRIKE_DAMAGE_MULTIPLIER = 2.0
 SPORE_STRIKE_COOLDOWN_SECONDS = 8.0
+MUSHROOM_SHIELD_UNLOCK_LEVEL = 20
+MUSHROOM_SHIELD_HP_RATIO = 0.35
+MUSHROOM_SHIELD_COOLDOWN_SECONDS = 15.0
+MUSHROOM_SHIELD_AUTO_HP_RATIO = 0.60
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
 STARTER_CHESTS = 3
@@ -819,6 +823,33 @@ def build_player_response(player: dict, **extra) -> dict:
             SPORE_STRIKE_COOLDOWN_SECONDS - spore_elapsed,
         )
     )
+    shield_last_used_at = float(
+        player.get("mushroom_shield_last_used_at", 0)
+    )
+    shield_elapsed = time.time() - shield_last_used_at
+    shield_cooldown_remaining = (
+        0.0
+        if shield_last_used_at <= 0
+        else max(
+            0.0,
+            MUSHROOM_SHIELD_COOLDOWN_SECONDS - shield_elapsed,
+        )
+    )
+    shield_capacity = max(
+        1,
+        round(
+            int(player.get("hero_max_hp", 1))
+            * MUSHROOM_SHIELD_HP_RATIO
+        ),
+    )
+    shield_amount = max(
+        0,
+        min(
+            shield_capacity,
+            int(player.get("mushroom_shield_amount", 0)),
+        ),
+    )
+
     hidden_fields = {"equipment_json", "pending_loot_json"}
     public_player = {
         key: value
@@ -846,6 +877,20 @@ def build_player_response(player: dict, **extra) -> dict:
                 "ready": (
                     level >= SPORE_STRIKE_UNLOCK_LEVEL
                     and spore_cooldown_remaining <= 0
+                ),
+            },
+            "mushroom_shield": {
+                "unlocked": level >= MUSHROOM_SHIELD_UNLOCK_LEVEL,
+                "unlock_level": MUSHROOM_SHIELD_UNLOCK_LEVEL,
+                "hp_ratio": MUSHROOM_SHIELD_HP_RATIO,
+                "cooldown_seconds": MUSHROOM_SHIELD_COOLDOWN_SECONDS,
+                "cooldown_remaining": shield_cooldown_remaining,
+                "capacity": shield_capacity,
+                "amount": shield_amount,
+                "active": shield_amount > 0,
+                "ready": (
+                    level >= MUSHROOM_SHIELD_UNLOCK_LEVEL
+                    and shield_cooldown_remaining <= 0
                 ),
             },
         },
@@ -976,6 +1021,8 @@ def create_database() -> None:
         ("auto_open_enabled", "INTEGER NOT NULL DEFAULT 0"),
         ("skills_auto_enabled", "INTEGER NOT NULL DEFAULT 0"),
         ("spore_strike_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("mushroom_shield_amount", "INTEGER NOT NULL DEFAULT 0"),
+        ("mushroom_shield_last_used_at", "REAL NOT NULL DEFAULT 0"),
     )
     for column_name, definition in columns:
         add_column_if_missing(connection, column_name, definition)
@@ -1380,6 +1427,89 @@ def attack(
     )
 
 
+@app.post("/skills/mushroom-shield/use")
+def use_mushroom_shield(
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+
+        if int(current.get("hero_hp", 0)) <= 0:
+            connection.commit()
+            return build_player_response(
+                current,
+                shield_used=False,
+                message="💀 Герой ожидает возрождения",
+            )
+
+        if int(current.get("level", 1)) < MUSHROOM_SHIELD_UNLOCK_LEVEL:
+            connection.commit()
+            return build_player_response(
+                current,
+                shield_used=False,
+                message=(
+                    f"🔒 Mushroom Shield откроется "
+                    f"на {MUSHROOM_SHIELD_UNLOCK_LEVEL} уровне"
+                ),
+            )
+
+        last_used_at = float(
+            current.get("mushroom_shield_last_used_at", 0)
+        )
+        elapsed = now - last_used_at
+        if (
+            last_used_at > 0
+            and elapsed < MUSHROOM_SHIELD_COOLDOWN_SECONDS
+        ):
+            remaining = max(
+                0.0,
+                MUSHROOM_SHIELD_COOLDOWN_SECONDS - elapsed,
+            )
+            connection.commit()
+            return build_player_response(
+                current,
+                shield_used=False,
+                skill_retry_after=remaining,
+                message=f"🛡️ Mushroom Shield: ещё {remaining:.1f} сек.",
+            )
+
+        shield_capacity = max(
+            1,
+            round(
+                int(current["hero_max_hp"])
+                * MUSHROOM_SHIELD_HP_RATIO
+            ),
+        )
+        connection.execute(
+            """
+            UPDATE players
+            SET mushroom_shield_amount = ?,
+                mushroom_shield_last_used_at = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (shield_capacity, now, int(now), telegram_id),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        shield_used=True,
+        shield_gained=shield_capacity,
+        skill_used="mushroom_shield",
+        message=f"🛡️ Mushroom Shield: {shield_capacity} защиты",
+    )
+
+
 @app.post("/enemy-attack")
 def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
@@ -1426,8 +1556,54 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             )
         stage = int(current["stage"])
         boss_active = bool(int(current.get("boss_active", 0)))
-        received_damage = calculate_enemy_damage(stage, boss=boss_active)
-        hero_hp = max(0, int(current["hero_hp"]) - received_damage)
+
+        hero_hp_before = max(0, int(current["hero_hp"]))
+        hero_max_hp = max(1, int(current["hero_max_hp"]))
+        shield_capacity = max(
+            1,
+            round(hero_max_hp * MUSHROOM_SHIELD_HP_RATIO),
+        )
+        shield_amount = max(
+            0,
+            min(
+                shield_capacity,
+                int(current.get("mushroom_shield_amount", 0)),
+            ),
+        )
+        shield_last_used_at = float(
+            current.get("mushroom_shield_last_used_at", 0)
+        )
+        shield_elapsed = now - shield_last_used_at
+        shield_ready = (
+            shield_last_used_at <= 0
+            or shield_elapsed >= MUSHROOM_SHIELD_COOLDOWN_SECONDS
+        )
+        shield_unlocked = (
+            int(current.get("level", 1))
+            >= MUSHROOM_SHIELD_UNLOCK_LEVEL
+        )
+        shield_auto_used = (
+            bool(int(current.get("skills_auto_enabled", 0)))
+            and shield_unlocked
+            and shield_ready
+            and hero_hp_before / hero_max_hp
+                <= MUSHROOM_SHIELD_AUTO_HP_RATIO
+            and shield_amount < shield_capacity
+        )
+
+        if shield_auto_used:
+            shield_amount = shield_capacity
+            shield_last_used_at = now
+
+        incoming_damage = calculate_enemy_damage(
+            stage,
+            boss=boss_active,
+        )
+        absorbed_damage = min(shield_amount, incoming_damage)
+        received_damage = max(0, incoming_damage - absorbed_damage)
+        shield_amount -= absorbed_damage
+
+        hero_hp = max(0, hero_hp_before - received_damage)
         hero_defeated = hero_hp <= 0
         defeats = int(current["defeats"]) + (1 if hero_defeated else 0)
         boss_waiting = int(current.get("boss_waiting", 0))
@@ -1445,6 +1621,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             SET hero_hp = ?, defeats = ?,
                 boss_active = ?, boss_waiting = ?,
                 enemy_hp = ?, enemy_max_hp = ?,
+                mushroom_shield_amount = ?,
+                mushroom_shield_last_used_at = ?,
                 last_enemy_attack_at = ?, updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -1455,6 +1633,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
                 boss_waiting,
                 enemy_hp,
                 enemy_max_hp,
+                shield_amount,
+                shield_last_used_at,
                 now,
                 int(now),
                 telegram_id,
@@ -1465,6 +1645,17 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
     finally:
         connection.close()
     message = f"🩸 Враг нанёс {received_damage} урона"
+    if absorbed_damage > 0:
+        message = (
+            f"🛡️ Щит поглотил {absorbed_damage}, "
+            f"получено {received_damage} урона"
+        )
+    if shield_auto_used:
+        message = (
+            f"🛡️ AUTO активировал щит. "
+            f"Поглощено {absorbed_damage}, "
+            f"получено {received_damage}"
+        )
     if hero_defeated and boss_active:
         message = "💀 Босс победил. После возрождения нажмите «Босс»"
     elif hero_defeated:
@@ -1473,7 +1664,16 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         updated,
         enemy_attacked=True,
         hero_defeated=hero_defeated,
+        incoming_damage=incoming_damage,
         received_damage=received_damage,
+        absorbed_damage=absorbed_damage,
+        shield_remaining=shield_amount,
+        shield_auto_used=shield_auto_used,
+        skill_used=(
+            "mushroom_shield"
+            if shield_auto_used
+            else None
+        ),
         message=message,
     )
 
@@ -1507,6 +1707,7 @@ def respawn(x_telegram_init_data: str = Header(...)) -> dict:
             UPDATE players
             SET hero_hp = hero_max_hp,
                 enemy_hp = ?, enemy_max_hp = ?,
+                mushroom_shield_amount = 0,
                 last_attack_at = ?, last_enemy_attack_at = ?,
                 updated_at = ?
             WHERE telegram_id = ?
