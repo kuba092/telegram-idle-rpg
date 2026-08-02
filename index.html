@@ -2981,6 +2981,109 @@
       text-align: center;
     }
 
+    .quests-battle-button {
+      position: absolute;
+      top: calc(102px + env(safe-area-inset-top));
+      right: 9px;
+      z-index: 36;
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid rgba(226, 255, 145, 0.34);
+      border-radius: 13px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(68, 112, 56, 0.94),
+          rgba(13, 38, 30, 0.96)
+        );
+      color: #f4ffc7;
+      font: inherit;
+      font-size: 21px;
+      box-shadow:
+        0 8px 20px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.13);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .quests-battle-button:active {
+      transform: scale(0.94);
+    }
+
+    .quests-ready-dot {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      display: none;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #153428;
+      border-radius: 50%;
+      background: #ff5c52;
+      box-shadow: 0 0 9px rgba(255, 80, 70, 0.85);
+    }
+
+    .quests-battle-button.ready .quests-ready-dot {
+      display: block;
+    }
+
+    .quests-modal-panel {
+      display: flex;
+      width: min(94vw, 520px);
+      max-height: min(82vh, 720px);
+      flex-direction: column;
+      padding: 13px;
+      overflow: hidden;
+    }
+
+    .quests-modal-header {
+      position: relative;
+      flex: 0 0 auto;
+      min-height: 38px;
+      margin-bottom: 9px;
+    }
+
+    .quests-modal-header .modal-title {
+      padding: 5px 42px 0;
+      text-align: center;
+    }
+
+    .quests-modal-header .modal-close {
+      top: 0;
+      right: 0;
+    }
+
+    .quests-modal-panel .quests-content {
+      flex: 1;
+      min-height: 0;
+      padding: 0 2px 4px;
+      overflow-y: auto;
+    }
+
+    body.section-open .quests-battle-button {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 430px) {
+      .quests-battle-button {
+        top: calc(98px + env(safe-area-inset-top));
+        right: 7px;
+        width: 39px;
+        height: 39px;
+        font-size: 19px;
+      }
+
+      .quests-modal-panel {
+        width: calc(100vw - 18px);
+        max-height: calc(100vh - 86px);
+        padding: 10px;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -3031,6 +3134,17 @@
 </div>
 </div>
 </div>
+
+<button
+  aria-label="Открыть ежедневные задания"
+  class="quests-battle-button"
+  id="questsBattleButton"
+  type="button"
+>
+  📋
+  <span class="quests-ready-dot"></span>
+</button>
+
 <div class="fighters-layer">
 <div class="fighter-slot hero-slot">
 <div class="fighter-shadow"></div>
@@ -3216,14 +3330,20 @@
 </div>
 </div>
 </section>
-<section aria-label="Испытания" class="game-screen hidden" id="trialsScreen">
-<header class="screen-header">
-<button aria-label="Вернуться в бой" class="screen-close" data-close-screen="" type="button">‹</button>
-<div class="screen-title">Испытания</div>
-<div class="screen-header-spacer"></div>
-</header>
+<div class="game-modal hidden" id="questsModal">
+<div class="modal-panel quests-modal-panel">
+<div class="quests-modal-header">
+<div class="modal-title">📋 Ежедневные задания</div>
+<button
+  aria-label="Закрыть задания"
+  class="modal-close"
+  id="questsModalClose"
+  type="button"
+>×</button>
+</div>
 
 <div class="quests-content">
+
 <div class="quests-summary">
 <div class="quests-summary-top">
 <div class="quests-summary-title">Ежедневные задания</div>
@@ -3241,8 +3361,10 @@
 </div>
 
 <div class="quest-list" id="dailyQuestBonus"></div>
+
 </div>
-</section>
+</div>
+</div>
 
 <section aria-label="Магазин" class="game-screen hidden" id="shopScreen">
 <header class="screen-header">
@@ -3514,7 +3636,8 @@
       questSummaryCount: $("questSummaryCount"),
       questResetTimer: $("questResetTimer"),
       dailyQuestList: $("dailyQuestList"),
-      dailyQuestBonus: $("dailyQuestBonus")
+      dailyQuestBonus: $("dailyQuestBonus"),
+      questsBattleButton: $("questsBattleButton")
     };
 
     let player = null;
@@ -4354,6 +4477,16 @@
 
       bindQuestClaimButtons();
       updateQuestResetTimer();
+
+      const hasClaimableReward = [
+        ...quests,
+        questData.bonus,
+      ].some((quest) => Boolean(quest?.claimable));
+
+      elements.questsBattleButton?.classList.toggle(
+        "ready",
+        hasClaimableReward
+      );
     }
 
 
@@ -4616,7 +4749,6 @@
 
 
     const heroScreen = $("heroScreen");
-    const trialsScreen = $("trialsScreen");
     const shopScreen = $("shopScreen");
     const comingScreen = $("comingScreen");
     const navButtons = [...document.querySelectorAll(".game-nav-button")];
@@ -4629,7 +4761,6 @@
     function setActiveNav(name) { navButtons.forEach((b) => b.classList.toggle("active", b.dataset.screen === name)); }
     function openBattleScreen() {
       heroScreen.classList.add("hidden");
-      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       document.body.classList.remove("section-open");
@@ -4637,7 +4768,6 @@
     }
 
     function openHeroScreen() {
-      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       heroScreen.classList.remove("hidden");
@@ -4648,27 +4778,15 @@
 
     function openShopScreen() {
       heroScreen.classList.add("hidden");
-      trialsScreen.classList.add("hidden");
       comingScreen.classList.add("hidden");
       shopScreen.classList.remove("hidden");
       document.body.classList.add("section-open");
       setActiveNav("shop");
       renderSkillShop();
     }
-    function openTrialsScreen() {
-      heroScreen.classList.add("hidden");
-      shopScreen.classList.add("hidden");
-      comingScreen.classList.add("hidden");
-      trialsScreen.classList.remove("hidden");
-      document.body.classList.add("section-open");
-      setActiveNav("trials");
-      renderDailyQuests();
-    }
-
     function openComingScreen(name) {
       const copy = SCREEN_COPY[name]; if (!copy) return;
       heroScreen.classList.add("hidden");
-      trialsScreen.classList.add("hidden");
       shopScreen.classList.add("hidden");
       document.body.classList.add("section-open");
       setText("comingHeader", copy.title); setText("comingIcon", copy.icon); setText("comingTitle", copy.heading); setText("comingText", copy.text);
@@ -4695,8 +4813,6 @@
         openBattleScreen();
       } else if (name === "hero") {
         openHeroScreen();
-      } else if (name === "trials") {
-        openTrialsScreen();
       } else if (name === "shop") {
         openShopScreen();
       } else {
@@ -4753,8 +4869,26 @@
     $("claimOfflineButton").addEventListener("click", claimOffline);
     $("leaderboardButton").addEventListener("click", openLeaderboard);
     $("leaderboardClose").addEventListener("click", () => modalHide("leaderboardModal"));
+
+    elements.questsBattleButton.addEventListener(
+      "click",
+      () => {
+        renderDailyQuests();
+        modalShow("questsModal");
+      }
+    );
+
+    $("questsModalClose").addEventListener(
+      "click",
+      () => modalHide("questsModal")
+    );
     elements.respawnButton.addEventListener("click", respawnHero);
-    ["chestModal", "leaderboardModal", "skillSummonModal"].forEach(
+    [
+      "chestModal",
+      "leaderboardModal",
+      "skillSummonModal",
+      "questsModal",
+    ].forEach(
       (id) => $(id).addEventListener("click", (event) => {
         if (event.target === $(id)) modalHide(id);
       })
@@ -4774,7 +4908,7 @@
       if (
         player
         && !document.hidden
-        && !trialsScreen.classList.contains("hidden")
+        && !$("questsModal").classList.contains("hidden")
       ) {
         updateQuestResetTimer();
       }
