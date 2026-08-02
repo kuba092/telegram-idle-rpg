@@ -1715,6 +1715,48 @@ def disable_auto_open(x_telegram_init_data: str = Header(...)) -> dict:
     return build_player_response(updated, auto_enabled=False, message="Авто выключено")
 
 
+@app.post("/skills/auto/enable")
+def enable_skills_auto(x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+    connection.execute(
+        "UPDATE players SET skills_auto_enabled = 1, updated_at = ? "
+        "WHERE telegram_id = ?",
+        (int(time.time()), telegram_id),
+    )
+    connection.commit()
+    updated = load_player(connection, telegram_id)
+    connection.close()
+    return build_player_response(
+        updated,
+        skills_auto_enabled=True,
+        message="Авто навыков включено",
+    )
+
+
+@app.post("/skills/auto/disable")
+def disable_skills_auto(x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+    connection.execute(
+        "UPDATE players SET skills_auto_enabled = 0, updated_at = ? "
+        "WHERE telegram_id = ?",
+        (int(time.time()), telegram_id),
+    )
+    connection.commit()
+    updated = load_player(connection, telegram_id)
+    connection.close()
+    return build_player_response(
+        updated,
+        skills_auto_enabled=False,
+        message="Авто навыков выключено",
+    )
+
+
 @app.post("/loot/equip")
 def equip_loot(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
