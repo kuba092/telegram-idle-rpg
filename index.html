@@ -6403,11 +6403,19 @@ id="companionSummonChances"
 <div class="loot-rarity" id="lootRarity">Обычный</div>
 <div class="loot-card-title" id="lootItemName">Предмет</div>
 <div class="equipped-item-name hidden" id="equippedItemName"></div>
+<div class="loot-meta" id="comparisonProfileName">Профиль: Баланс</div>
+<div class="loot-actions" id="comparisonProfileButtons">
+<button class="loot-action" data-comparison-profile="damage" type="button">Урон</button>
+<button class="loot-action" data-comparison-profile="defense" type="button">Защита</button>
+<button class="loot-action" data-comparison-profile="balanced" type="button">Баланс</button>
+</div>
 <div class="comparison-grid">
 <div class="comparison-card" id="comparePower"><span>БМ</span><strong>0</strong><small>0</small></div>
 <div class="comparison-card" id="compareDamage"><span>УРОН</span><strong>0</strong><small>0</small></div>
 <div class="comparison-card" id="compareHp"><span>HP</span><strong>0</strong><small>0</small></div>
+<div class="comparison-card" id="compareBuild"><span>BUILD</span><strong>0</strong><small>0</small></div>
 </div>
+<div class="loot-meta" id="lootSecondaryStats"></div>
 <div class="loot-meta" id="lootMeta"></div>
 <div class="loot-actions">
 <button class="loot-action equip" id="equipLootButton" type="button">НАДЕТЬ</button>
@@ -7258,9 +7266,35 @@ id="companionSummonChances"
       comparisonCard("comparePower", comparison.power, comparison.is_empty_slot);
       comparisonCard("compareDamage", comparison.damage, comparison.is_empty_slot);
       comparisonCard("compareHp", comparison.hp, comparison.is_empty_slot);
+      comparisonCard("compareBuild", {
+        old: comparison.equipped_build_score,
+        new: comparison.build_score,
+        delta: comparison.build_score_delta,
+      }, comparison.is_empty_slot);
+      const profileNames = player?.comparison_profiles || {damage: "Урон", defense: "Защита", balanced: "Баланс"};
+      setText("comparisonProfileName", `Профиль: ${profileNames[comparison.comparison_profile || player?.comparison_profile] || "Баланс"} • raw power: ${formatNumber(comparison.raw_power ?? loot.power)}`);
+      const secondary = Array.isArray(loot.secondary_stats_public)
+        ? loot.secondary_stats_public
+        : Object.entries(loot.secondary_stats || {}).map(([key, value]) => ({name: player?.secondary_stat_catalog?.[key]?.name || key, formatted: `+${Number(value).toFixed(1)}%`}));
+      const deltaByStat = Object.fromEntries((comparison.comparison || []).map((row) => [row.stat, row]));
+      $("lootSecondaryStats").innerHTML = secondary.length
+        ? secondary.map((stat) => {
+            const row = deltaByStat[stat.key];
+            const delta = Number(row?.delta || 0);
+            const deltaText = row ? ` (${delta > 0 ? "+" : ""}${delta.toFixed(1)})` : "";
+            return `<div class="${delta > 0 ? "better" : delta < 0 ? "worse" : "equal"}">${escapeHtml(stat.name)}: ${escapeHtml(stat.formatted)}${escapeHtml(deltaText)}</div>`;
+          }).join("")
+        : "Вторичные характеристики: нет";
       setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} золота`);
       $("sellLootButton").textContent = `ПРОДАТЬ +${formatNumber(loot.sell_price)}`;
       modalShow("lootOverlay");
+    }
+    async function setComparisonProfile(profile) {
+      try {
+        player = await apiRequest(`/equipment/comparison-profile?profile=${encodeURIComponent(profile)}`, "POST");
+        renderPlayer();
+        if (player.pending_loot) showLootModal();
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
     async function openChest() {
       $("openChestButton").disabled = true;
@@ -9571,6 +9605,9 @@ id="companionSummonChances"
     $("upgradeChestButton").addEventListener("click", upgradeChest);
     $("lootModalClose").addEventListener("click", () => { if (!player?.pending_loot) modalHide("lootOverlay"); else setMessage("Сначала наденьте или продайте предмет", true); });
     $("equipLootButton").addEventListener("click", () => resolveLoot("/loot/equip"));
+    document.querySelectorAll("[data-comparison-profile]").forEach((button) => {
+      button.addEventListener("click", () => setComparisonProfile(button.dataset.comparisonProfile));
+    });
     $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
     elements.autoToggle.addEventListener("click", toggleAuto);
     elements.skillsAutoButton.addEventListener("click", toggleSkillsAuto);

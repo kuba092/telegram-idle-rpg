@@ -48,6 +48,9 @@ class CombatStats:
     incoming_damage_multiplier: float = 1.0
     healing_multiplier: float = 1.0
     boss_damage_multiplier: float = 1.0
+    dodge_chance: float = 0.0
+    combo_chance: float = 0.0
+    counter_chance: float = 0.0
 
     def apply(self, modifiers: dict[str, float]) -> None:
         additive = {"crit_chance_bonus", "crit_damage_bonus"}
@@ -57,7 +60,16 @@ class CombatStats:
             current = float(getattr(self, name))
             setattr(self, name, current + value if name in additive else current * value)
         self.crit_chance_bonus = min(100.0, max(0.0, self.crit_chance_bonus))
+        self.crit_damage_bonus = min(200.0, max(0.0, self.crit_damage_bonus))
+        self.attack_speed_multiplier = min(1.5, max(0.0, self.attack_speed_multiplier))
+        self.skill_damage_multiplier = min(2.5, max(0.0, self.skill_damage_multiplier))
+        self.companion_damage_multiplier = min(2.5, max(0.0, self.companion_damage_multiplier))
+        self.boss_damage_multiplier = min(2.0, max(0.0, self.boss_damage_multiplier))
+        self.healing_multiplier = min(2.0, max(0.0, self.healing_multiplier))
         self.incoming_damage_multiplier = max(0.0, self.incoming_damage_multiplier)
+        self.dodge_chance = min(50.0, max(0.0, self.dodge_chance))
+        self.combo_chance = min(50.0, max(0.0, self.combo_chance))
+        self.counter_chance = min(50.0, max(0.0, self.counter_chance))
 
 
 @dataclass

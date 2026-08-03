@@ -5,7 +5,6 @@ import json
 import math
 import os
 import random
-import secrets
 import sqlite3
 import time
 from urllib.parse import parse_qsl
@@ -21,6 +20,11 @@ from combat_effects import (
     CombatEvent,
     active_companion_sources,
     public_active_effects,
+)
+from equipment_stats import (
+    SECONDARY_STATS, aggregate_secondary_stats, build_score,
+    comparison_breakdown, generate_secondary_stats, normalize_item,
+    public_secondary_stats,
 )
 
 
@@ -735,6 +739,8 @@ def calculate_enemy_damage(stage: int, boss: bool = False) -> int:
 def calculate_hero_attack_damage(
     player: dict,
     damage_multiplier: float = 1.0,
+    attack_source: str = "normal",
+    boss: bool = False,
 ) -> tuple[int, bool]:
     base_damage = max(1, int(player["damage"]))
     stats = calculate_equipment_stats(
@@ -749,6 +755,10 @@ def calculate_hero_attack_damage(
     )
     critical = random.random() < crit_chance / 100
     damage = base_damage * max(0.0, float(damage_multiplier))
+    if attack_source == "skill":
+        damage *= stats["skill_damage_multiplier"]
+    if boss:
+        damage *= stats["boss_damage_multiplier"]
     if critical:
         damage *= (
             float(stats["crit_damage"])
@@ -879,6 +889,7 @@ def calculate_equipment_stats(equipment: dict, level: int = 1) -> dict:
     power_bonus = 0
     damage_bonus = 0
     hp_bonus = 0
+    secondary = aggregate_secondary_stats(equipment)
     for item in equipment.values():
         if not isinstance(item, dict):
             continue
@@ -891,6 +902,7 @@ def calculate_equipment_stats(equipment: dict, level: int = 1) -> dict:
             "power": power_bonus,
             "damage": damage_bonus,
             "hero_max_hp": hp_bonus,
+            "secondary_stats": secondary,
         },
         "total": {
             "power": clamp_int(base["power"] + power_bonus, 1, MAX_SAFE_STAT),
@@ -900,9 +912,19 @@ def calculate_equipment_stats(equipment: dict, level: int = 1) -> dict:
                 1,
                 MAX_SAFE_STAT,
             ),
-            "attack_speed": base["attack_speed"],
-            "crit_chance": base["crit_chance"],
-            "crit_damage": base["crit_damage"],
+            "attack_speed": base["attack_speed"] * (1 + secondary["attack_speed"] / 100),
+            "attack_speed_multiplier": 1 + secondary["attack_speed"] / 100,
+            "crit_chance": min(100.0, base["crit_chance"] + secondary["crit_chance"]),
+            "crit_damage": base["crit_damage"] + secondary["crit_damage"],
+            "skill_damage_multiplier": max(0.0, 1 + secondary["skill_damage"] / 100),
+            "companion_damage_multiplier": max(0.0, 1 + secondary["companion_damage"] / 100),
+            "boss_damage_multiplier": max(0.0, 1 + secondary["boss_damage"] / 100),
+            "incoming_damage_multiplier": max(.4, 1 - secondary["incoming_damage_reduction"] / 100),
+            "healing_multiplier": max(0.0, 1 + secondary["healing_bonus"] / 100),
+            "dodge_chance": secondary["dodge_chance"],
+            "combo_chance": secondary["combo_chance"],
+            "counter_chance": secondary["counter_chance"],
+            "secondary_stats": secondary,
         },
     }
 
@@ -1108,8 +1130,11 @@ def generate_loot(stage: int, chest_level: int) -> dict:
         3,
         MAX_SAFE_STAT,
     )
+    secondary_stats = generate_secondary_stats(
+        rarity["key"], chest_level, stage, slot["focus"]
+    )
     return {
-        "id": secrets.token_hex(8),
+        "id": f"{random.getrandbits(64):016x}",
         "slot": slot_key,
         "slot_name": slot["name"],
         "icon": slot["icon"],
@@ -1119,6 +1144,8 @@ def generate_loot(stage: int, chest_level: int) -> dict:
         "power": item_power,
         "damage": damage_bonus,
         "hp": hp_bonus,
+        "secondary_stats": secondary_stats,
+        "secondary_stats_public": public_secondary_stats(secondary_stats),
         "sell_price": sell_price,
         "stage_found": stage,
         "chest_level_found": chest_level,
@@ -1178,11 +1205,25 @@ def compare_loot(player: dict, loot: dict) -> dict:
             "delta": new_value - old_value,
         }
     is_empty_slot = not isinstance(equipped_item, dict)
-    is_improvement = is_empty_slot or result["power"]["delta"] > 0
+    profile = str(player.get("comparison_profile", "balanced"))
+    if profile not in {"damage", "defense", "balanced"}:
+        profile = "balanced"
+    raw_power = int(loot.get("power", 0))
+    equipped_raw_power = int(equipped_item.get("power", 0)) if isinstance(equipped_item, dict) else 0
+    candidate_score = build_score(loot, profile)
+    equipped_score = build_score(equipped_item, profile)
+    is_improvement = is_empty_slot or candidate_score > equipped_score
     return {
         **result,
         "is_improvement": is_improvement,
         "is_empty_slot": is_empty_slot,
+        "comparison_profile": profile,
+        "raw_power": raw_power,
+        "equipped_raw_power": equipped_raw_power,
+        "build_score": candidate_score,
+        "equipped_build_score": equipped_score,
+        "build_score_delta": round(candidate_score - equipped_score, 2),
+        "comparison": comparison_breakdown(loot, equipped_item, profile),
         "equipped_item": equipped_item if isinstance(equipped_item, dict) else None,
         "equipped_item_name": (
             equipped_item.get("name")
@@ -2639,17 +2680,20 @@ def consume_gem_boss_attempt(
 
 def public_equipment(player: dict) -> dict:
     stored = parse_json_object(player.get("equipment_json"))
-    return {slot_key: stored.get(slot_key) for slot_key in GEAR_SLOTS}
+    return {slot_key: (normalize_item(stored.get(slot_key)) if isinstance(stored.get(slot_key), dict) else None) for slot_key in GEAR_SLOTS}
 
 
 def public_pending_loot(player: dict) -> dict | None:
     pending = parse_json_object(player.get("pending_loot_json"))
-    return pending or None
+    return normalize_item(pending) if pending else None
 
 
 def build_player_response(player: dict, **extra) -> dict:
     current_time = time.time()
-    attack_speed = max(0.1, float(player.get("attack_speed", 1.0)))
+    level = clamp_int(player.get("level", 1), 1, MAX_HERO_LEVEL)
+    equipment = public_equipment(player)
+    stats = calculate_equipment_stats(equipment, level)
+    attack_speed = max(0.1, float(player.get("attack_speed", 1.0)) * stats["total"]["attack_speed_multiplier"])
     companion_effects = calculate_companion_effects(player)
     attack_interval = max(
         MIN_ATTACK_INTERVAL,
@@ -2659,10 +2703,7 @@ def build_player_response(player: dict, **extra) -> dict:
     boss_waiting = bool(int(player.get("boss_waiting", 0)))
     game_completed = bool(int(player.get("game_completed", 0)))
     stage = clamp_int(player.get("stage", 1), 1, MAX_STAGE)
-    level = clamp_int(player.get("level", 1), 1, MAX_HERO_LEVEL)
     total_exp = max(0, int(player.get("experience", 0)))
-    equipment = public_equipment(player)
-    stats = calculate_equipment_stats(equipment, level)
     chest_level = clamp_int(player.get("chest_level", 1), 1, MAX_CHEST_LEVEL)
     chest_step = max(0, int(player.get("chest_upgrade_step", 0)))
     steps_required = chest_upgrade_steps_required(chest_level)
@@ -2866,6 +2907,9 @@ def build_player_response(player: dict, **extra) -> dict:
     response = {
         **public_player,
         "equipment": equipment,
+        "secondary_stat_catalog": SECONDARY_STATS,
+        "comparison_profiles": {"damage": "Урон", "defense": "Защита", "balanced": "Баланс"},
+        "comparison_profile": str(player.get("comparison_profile", "balanced")),
         "quests": build_daily_quests(player),
         "chest_boss": build_chest_boss_state(player),
         "gem_boss": build_gem_boss_state(player),
@@ -3086,7 +3130,39 @@ def build_player_response(player: dict, **extra) -> dict:
             "max_hours": 4,
             "chest_interval_minutes": 20,
         },
+        "normal_attack_damage": 0,
+        "combo_damage": 0,
+        "counter_damage": 0,
+        "skill_damage": 0,
+        "poison_damage": 0,
+        "companion_damage": 0,
+        "boss_damage_bonus": 0,
+        "damage_reduced": 0,
+        "dodged": False,
+        "combo_triggered": False,
+        "counter_triggered": False,
         **extra,
+    }
+    response["battle_breakdown"] = {
+        "normal_attack_damage": response["normal_attack_damage"],
+        "combo_damage": response["combo_damage"],
+        "counter_damage": response["counter_damage"],
+        "skill_damage": response["skill_damage"],
+        "poison_damage": response["poison_damage"],
+        "companion_damage": response["companion_damage"],
+        "boss_damage_bonus": response["boss_damage_bonus"],
+        "damage_reduced": response["damage_reduced"],
+        "dodged": response["dodged"],
+        "combo_triggered": response["combo_triggered"],
+        "counter_triggered": response["counter_triggered"],
+        "sources": {
+            "normal": response["normal_attack_damage"],
+            "combo": response["combo_damage"],
+            "counter": response["counter_damage"],
+            "skill": response["skill_damage"],
+            "poison": response["poison_damage"],
+            "companion": response["companion_damage"],
+        },
     }
     return response
 
@@ -3160,6 +3236,7 @@ def create_database() -> None:
         ("chest_level", "INTEGER NOT NULL DEFAULT 1"),
         ("chest_upgrade_step", "INTEGER NOT NULL DEFAULT 0"),
         ("equipment_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("comparison_profile", "TEXT NOT NULL DEFAULT 'balanced'"),
         ("pending_loot_json", "TEXT NOT NULL DEFAULT ''"),
         ("experience", "INTEGER NOT NULL DEFAULT 0"),
         ("highest_stage", "INTEGER NOT NULL DEFAULT 1"),
@@ -3678,7 +3755,10 @@ def attack(
                 boss_waiting=True,
                 message="Нажмите кнопку «Босс», чтобы начать реванш",
             )
-        attack_speed = max(0.1, float(current["attack_speed"]))
+        equipment_combat = calculate_equipment_stats(
+            parse_json_object(current["equipment_json"]), int(current["level"])
+        )["total"]
+        attack_speed = max(0.1, float(current["attack_speed"]) * equipment_combat["attack_speed_multiplier"])
         rate_effects = calculate_companion_effects(current)
         attack_interval = max(
             MIN_ATTACK_INTERVAL,
@@ -3845,6 +3925,7 @@ def attack(
                         * calculate_companion_effects(current)[
                             "damage_multiplier"
                         ]
+                        * equipment_combat["skill_damage_multiplier"]
                         * (1.0 + battle_state.poison_owl_bonus)
                         * (1.0 + battle_state.poison_stack_bonus)
                     ),
@@ -3860,6 +3941,8 @@ def attack(
 
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
+        if boss_active:
+            poison_damage = round(poison_damage * equipment_combat["boss_damage_multiplier"])
         combat_context = CombatContext(
             current_hp=int(current["hero_hp"]),
             max_hp=int(current["hero_max_hp"]),
@@ -3884,12 +3967,30 @@ def attack(
                 float(attack_payload["damage_multiplier"])
                 * companion_effects["damage_multiplier"]
             ),
+            attack_source=("skill" if use_spore_strike else "normal"),
+            boss=boss_active,
         )
+        normal_attack_damage = dealt_damage if not use_spore_strike else 0
+        skill_damage_done = dealt_damage if use_spore_strike else 0
         companion_damage = (
             int(companion_effects["extra_attack_damage"])
             if not use_spore_strike
             else 0
         )
+        companion_damage = round(companion_damage * equipment_combat["companion_damage_multiplier"])
+        if boss_active:
+            companion_damage = round(companion_damage * equipment_combat["boss_damage_multiplier"])
+        combo_triggered = False
+        combo_damage = 0
+        combo_critical = False
+        # A combo is one additional normal attack. Its explicit source prevents
+        # recursive combo/counter dispatch.
+        if not use_spore_strike and random.random() < equipment_combat["combo_chance"] / 100:
+            combo_triggered = True
+            combo_damage, combo_critical = calculate_hero_attack_damage(
+                current, companion_effects["damage_multiplier"],
+                attack_source="combo", boss=boss_active,
+            )
         if critical and poison_damage:
             equipment_stats = calculate_equipment_stats(
                 parse_json_object(current["equipment_json"]),
@@ -3906,7 +4007,7 @@ def attack(
                     / 100
                 ),
             )
-        dealt_damage += poison_damage + companion_damage
+        dealt_damage += combo_damage + poison_damage + companion_damage
         damage_payload = {"damage": dealt_damage, "critical": critical}
         COMBAT_EFFECT_ENGINE.dispatch(
             CombatEvent.AFTER_SKILL if use_spore_strike else CombatEvent.AFTER_NORMAL_ATTACK,
@@ -3959,6 +4060,7 @@ def attack(
                 effective_max_hp
                 * float(companion_effects["victory_healing_ratio"])
                 * (2 if boss_active else 1)
+                * equipment_combat["healing_multiplier"]
             )
             companion_healing = max(
                 0, min(requested_healing, effective_max_hp - effective_hp)
@@ -4155,6 +4257,20 @@ def attack(
         attacked=True,
         damage_dealt=dealt_damage,
         companion_damage=companion_damage,
+        normal_attack_damage=normal_attack_damage,
+        combo_damage=combo_damage,
+        counter_damage=0,
+        skill_damage=skill_damage_done,
+        boss_damage_bonus=(
+            max(0, dealt_damage - round(dealt_damage / equipment_combat["boss_damage_multiplier"]))
+            if boss_active and equipment_combat["boss_damage_multiplier"] > 1 else 0
+        ),
+        damage_reduced=0,
+        dodged=False,
+        combo_triggered=combo_triggered,
+        counter_triggered=False,
+        attack_source=("skill" if use_spore_strike else "normal"),
+        combo_critical=combo_critical,
         companion_healing=companion_healing,
         healing_overflow=healing_overflow,
         stage_sequence=sequence,
@@ -4501,10 +4617,17 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             boss=boss_active,
         )
         mitigation_remaining = BATTLE_STATES.mitigation_remaining(battle_state, now)
+        equipment_combat = calculate_equipment_stats(
+            parse_json_object(current["equipment_json"]), int(current["level"])
+        )["total"]
+        dodged = random.random() < equipment_combat["dodge_chance"] / 100
         incoming_damage = round(
             raw_incoming_damage
             * BATTLE_STATES.incoming_damage_multiplier(battle_state, now)
+            * equipment_combat["incoming_damage_multiplier"]
         )
+        if dodged:
+            incoming_damage = 0
         damage_reduced_by_effect = raw_incoming_damage - incoming_damage
         shield_before_damage = shield_amount
         absorbed_damage = min(shield_amount, incoming_damage)
@@ -4517,6 +4640,17 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
 
         effective_hero_hp = max(0, hero_hp_before - received_damage)
         hero_defeated = effective_hero_hp <= 0
+        counter_triggered = False
+        counter_damage = 0
+        counter_critical = False
+        if received_damage > 0 and not hero_defeated and random.random() < equipment_combat["counter_chance"] / 100:
+            counter_triggered = True
+            counter_damage, counter_critical = calculate_hero_attack_damage(
+                current,
+                calculate_companion_effects(current)["damage_multiplier"],
+                attack_source="counter",
+                boss=boss_active,
+            )
         hero_hp = (
             0
             if hero_defeated
@@ -4528,7 +4662,7 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         defeats = int(current["defeats"]) + (1 if hero_defeated else 0)
         boss_waiting = int(current.get("boss_waiting", 0))
         new_boss_active = int(boss_active)
-        enemy_hp = int(current["enemy_hp"])
+        enemy_hp = max(1, int(current["enemy_hp"]) - counter_damage)
         enemy_max_hp = int(current["enemy_max_hp"])
         if hero_defeated and boss_active:
             new_boss_active = 0
@@ -4593,6 +4727,19 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         incoming_damage=incoming_damage,
         raw_incoming_damage=raw_incoming_damage,
         damage_reduced_by_effect=damage_reduced_by_effect,
+        damage_reduced=damage_reduced_by_effect,
+        dodged=dodged,
+        combo_triggered=False,
+        combo_damage=0,
+        counter_triggered=counter_triggered,
+        counter_damage=counter_damage,
+        counter_critical=counter_critical,
+        normal_attack_damage=0,
+        skill_damage=0,
+        poison_damage=0,
+        companion_damage=0,
+        boss_damage_bonus=0,
+        attack_source="counter" if counter_triggered else None,
         shield_mitigation_active=(not hero_defeated and mitigation_remaining > 0),
         shield_mitigation_remaining=(0.0 if hero_defeated else round(mitigation_remaining, 3)),
         received_damage=received_damage,
@@ -5845,6 +5992,30 @@ def open_loot(x_telegram_init_data: str = Header(...)) -> dict:
     finally:
         connection.close()
     return build_player_response(updated, **result)
+
+
+@app.post("/equipment/comparison-profile")
+def set_comparison_profile(
+    profile: str,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    """Persist comparison preference without changing equipment."""
+    profile = str(profile).strip().lower()
+    if profile not in {"damage", "defense", "balanced"}:
+        raise HTTPException(status_code=400, detail="Неизвестный профиль сравнения")
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    connection = get_database()
+    try:
+        connection.execute(
+            "UPDATE players SET comparison_profile = ?, updated_at = ? WHERE telegram_id = ?",
+            (profile, int(time.time()), int(player_data["telegram_id"])),
+        )
+        connection.commit()
+        updated = load_player(connection, int(player_data["telegram_id"]))
+    finally:
+        connection.close()
+    return build_player_response(updated, comparison_profile_saved=True)
 
 
 @app.post("/loot/auto/open")
