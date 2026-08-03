@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
 from combat_effects import CombatContext
+from damage_types import DAMAGE_TYPES, normalize_resistances, resistance_breakdown
 
 
 @dataclass
@@ -19,6 +20,14 @@ class BattleResult:
     damage_source: str
     attack_source: str
     raw_damage: int
+    damage_type: str = "physical"
+    resistance_before: float = 0.0
+    resistance_after_penetration: float = 0.0
+    damage_before_resistance: int = 0
+    damage_after_resistance: int = 0
+    resistance_reduction: int = 0
+    penetration_used: float = 0.0
+    crit_metadata: dict[str, Any] | None = None
     final_damage: int = 0
     enemy_hp_before: int = 0
     enemy_hp_after: int = 0
@@ -49,10 +58,12 @@ class CombatResolution:
         self.killed = self.killed or event.lethal
         return event
 
-    def skip(self, damage_source: str, attack_source: str, raw_damage: int) -> BattleResult:
+    def skip(self, damage_source: str, attack_source: str, raw_damage: int,
+             damage_type: str = "physical") -> BattleResult:
         return self.add(BattleResult(
             damage_source=damage_source, attack_source=attack_source,
-            raw_damage=max(0, round(raw_damage)), skipped_after_kill=True,
+            raw_damage=max(0, round(raw_damage)), damage_type=damage_type,
+            damage_before_resistance=max(0, round(raw_damage)), skipped_after_kill=True,
         ))
 
     def public(self) -> dict[str, Any]:
@@ -96,15 +107,19 @@ class CombatResolver:
         crit_metadata: dict[str, Any] | None,
         boss: bool,
         context: CombatContext,
+        damage_type: str = "physical",
+        penetration: float = 0.0,
     ) -> BattleResult:
         raw_damage = max(0, round(raw_damage))
+        damage_type = damage_type if damage_type in DAMAGE_TYPES else "physical"
         if self.resolution.killed:
-            return self.resolution.skip(damage_source, attack_source, raw_damage)
+            return self.resolution.skip(damage_source, attack_source, raw_damage, damage_type)
 
         if self.battle_identity != self.current_identity(self.player):
             return self.resolution.add(BattleResult(
                 damage_source=damage_source, attack_source=attack_source,
                 raw_damage=raw_damage, stale_battle=True,
+                damage_type=damage_type, damage_before_resistance=raw_damage,
             ))
 
         maximum = max(0, int(self.player.get("enemy_max_hp", 0)))
@@ -113,15 +128,22 @@ class CombatResolver:
             return self.resolution.add(BattleResult(
                 damage_source=damage_source, attack_source=attack_source,
                 raw_damage=raw_damage, stale_battle=True,
+                damage_type=damage_type, damage_before_resistance=raw_damage,
                 enemy_hp_before=0, enemy_hp_after=0,
             ))
-        final_damage = min(before, raw_damage)
+        resistances = normalize_resistances(self.player.get("enemy_resistances_json"))
+        breakdown = resistance_breakdown(
+            raw_damage, damage_type, resistances.get(damage_type, 0), penetration,
+        )
+        final_damage = min(before, breakdown["damage_after_resistance"])
         after = min(maximum, max(0, before - final_damage))
         self.player["enemy_hp"] = after
         context.enemy_hp = after
         result = BattleResult(
             damage_source=damage_source, attack_source=attack_source,
             raw_damage=raw_damage, final_damage=final_damage,
+            **breakdown,
+            crit_metadata=dict(crit_metadata or {}),
             enemy_hp_before=before, enemy_hp_after=after, lethal=after == 0,
         )
         if after:

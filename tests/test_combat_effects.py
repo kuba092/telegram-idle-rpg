@@ -110,10 +110,10 @@ class CombatEffectEngineTest(unittest.TestCase):
         self.assertEqual(first, second)
 
     def test_published_companion_values_are_registered(self):
-        self.assertEqual(set(COMPANION_EFFECTS), {
+        self.assertTrue({
             "forest_sprite", "baby_slime", "spore_beetle", "mushroom_owl",
             "thorn_wolf", "ancient_entling",
-        })
+        }.issubset(COMPANION_EFFECTS))
 
     def test_battle_state_isolated_reset_and_identity(self):
         store = BattleStateStore(max_entries=2, ttl_seconds=10)

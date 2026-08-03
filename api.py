@@ -27,6 +27,10 @@ from equipment_stats import (
     public_secondary_stats,
 )
 from combat_resolver import CombatResolution, CombatResolver
+from damage_types import (
+    ENEMY_ATTACK_TYPES, enemy_profile, generate_enemy_profile,
+    incoming_damage_breakdown, normalize_resistances, resistance_breakdown,
+)
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -58,6 +62,8 @@ POISON_CLOUD_DAMAGE_MULTIPLIER = SKILL_EFFECTS["poison_cloud"]["damage_multiplie
 POISON_CLOUD_DURATION_SECONDS = SKILL_EFFECTS["poison_cloud"]["duration_seconds"]
 POISON_CLOUD_TICK_SECONDS = SKILL_EFFECTS["poison_cloud"]["tick_seconds"]
 POISON_CLOUD_COOLDOWN_SECONDS = SKILL_EFFECTS["poison_cloud"]["cooldown_seconds"]
+THORN_BURST_COOLDOWN_SECONDS = SKILL_EFFECTS["thorn_burst"]["cooldown_seconds"]
+ARCANE_ECHO_COOLDOWN_SECONDS = SKILL_EFFECTS["arcane_echo"]["cooldown_seconds"]
 
 COMBAT_EFFECT_ENGINE = CombatEffectEngine()
 BATTLE_STATES = BattleStateStore()
@@ -75,6 +81,29 @@ def battle_identity(player: dict) -> tuple:
 
 def public_battle_identity(player: dict) -> str:
     return "|".join(str(int(value)) for value in battle_identity(player))
+
+
+def ensure_enemy_damage_profile(connection: sqlite3.Connection, player: dict) -> dict:
+    """Materialize the deterministic profile for the currently spawned enemy."""
+    profile = generate_enemy_profile(
+        int(player.get("stage", 1)), bool(int(player.get("boss_active", 0))),
+        f"{player.get('telegram_id', 0)}:{player.get('kills_in_stage', 0)}:{player.get('enemy_max_hp', 0)}",
+    )
+    encoded = json.dumps(profile["resistances"], separators=(",", ":"), sort_keys=True)
+    player["enemy_archetype"] = profile["enemy_archetype"]
+    player["enemy_resistances_json"] = encoded
+    connection.execute(
+        "UPDATE players SET enemy_archetype=?, enemy_resistances_json=? WHERE telegram_id=?",
+        (profile["enemy_archetype"], encoded, int(player["telegram_id"])),
+    )
+    return profile
+
+
+def damage_penetration(equipment_stats: dict, damage_type: str) -> float:
+    """Equipment stores percentage points; resolver consumes a fraction."""
+    return max(0.0, min(.50, float(
+        equipment_stats.get("penetrations", {}).get(damage_type, 0.0)
+    ) / 100))
 
 
 def owl_is_active(player: dict) -> bool:
@@ -282,6 +311,16 @@ COMPANION_CATALOG = {
         "implemented": True,
         "description": "Лечит на 0,6% максимального HP за уровень после победы (вдвое больше после босса).",
     },
+    "crystal_moth": {
+        "name": "Хрустальная моль", "icon": "🦋", "rarity": "epic",
+        "implemented": True,
+        "description": "После обычной атаки наносит 1,8% arcane-урона за уровень.",
+    },
+    "moss_turtle": {
+        "name": "Моховая черепаха", "icon": "🐢", "rarity": "rare",
+        "implemented": True,
+        "description": "Даёт +0,8 п.п. nature и +0,5 п.п. poison resistance за уровень.",
+    },
 }
 
 COMPANION_DAMAGE_PER_LEVEL = 0.013
@@ -410,8 +449,8 @@ SKILL_CATALOG = {
         "name": "Thorn Burst",
         "icon": "🌵",
         "rarity": "common",
-        "implemented": False,
-        "description": "Выпускает во врага залп острых шипов.",
+        "implemented": True,
+        "description": "Nature-урон; сильнее против врагов, защищённых от physical.",
     },
     "healing_dew": {
         "name": "Healing Dew",
@@ -454,6 +493,11 @@ SKILL_CATALOG = {
         "rarity": "epic",
         "implemented": False,
         "description": "Обрушивает на врага поток огненных спор.",
+    },
+    "arcane_echo": {
+        "name": "Arcane Echo", "icon": "🔮", "rarity": "rare",
+        "implemented": True,
+        "description": "Два независимых arcane-удара в одном действии.",
     },
     "phantom_clone": {
         "name": "Phantom Clone",
@@ -925,6 +969,11 @@ def calculate_equipment_stats(equipment: dict, level: int = 1) -> dict:
             "dodge_chance": secondary["dodge_chance"],
             "combo_chance": secondary["combo_chance"],
             "counter_chance": secondary["counter_chance"],
+            "penetrations": {
+                kind: secondary[f"{kind}_penetration"]
+                for kind in ("physical", "nature", "poison", "arcane")
+            },
+            "hero_resistances": {kind: 0.0 for kind in ("physical", "nature", "poison", "arcane")},
             "secondary_stats": secondary,
         },
     }
@@ -1364,6 +1413,7 @@ def calculate_companion_effects(player: dict) -> dict:
     stats, custom = CombatEffectEngine.combine(sources)
     base_damage = max(1, int(player.get("damage", 1)))
     extra_attack_ratio = custom.get("extra_attack_ratio", 0.0)
+    crystal_moth_ratio = custom.get("crystal_moth_ratio", 0.0)
     extra_attack_damage = (
         max(1, round(base_damage * extra_attack_ratio))
         if extra_attack_ratio > 0
@@ -1373,6 +1423,9 @@ def calculate_companion_effects(player: dict) -> dict:
         "damage_multiplier": round(stats.damage_multiplier, 4),
         "hp_multiplier": round(stats.max_hp_multiplier, 4),
         "extra_attack_damage": extra_attack_damage,
+        "crystal_moth_arcane_damage": max(0, round(base_damage * crystal_moth_ratio)),
+        "moss_turtle_nature_resistance": round(stats.nature_resistance, 4),
+        "moss_turtle_poison_resistance": round(stats.poison_resistance, 4),
         "attack_speed_multiplier": round(stats.attack_speed_multiplier, 4),
         "skill_cooldown_multiplier": round(stats.cooldown_multiplier, 4),
         "crit_chance_bonus": round(stats.crit_chance_bonus, 4),
@@ -2095,7 +2148,7 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
     connection = get_database()
     try:
         connection.execute("BEGIN IMMEDIATE")
-        connection.execute(
+        inserted = connection.execute(
             """
             INSERT OR IGNORE INTO players (
                 telegram_id, username, first_name,
@@ -2117,6 +2170,8 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             now,
         )
         player = load_player(connection, telegram_id)
+        if inserted.rowcount:
+            ensure_enemy_damage_profile(connection, player)
         if accrue_offline:
             apply_offline_accrual(connection, player, now)
         connection.execute(
@@ -2696,6 +2751,8 @@ def build_player_response(player: dict, **extra) -> dict:
     stats = calculate_equipment_stats(equipment, level)
     attack_speed = max(0.1, float(player.get("attack_speed", 1.0)) * stats["total"]["attack_speed_multiplier"])
     companion_effects = calculate_companion_effects(player)
+    # Legacy enemies without persisted resistance JSON remain neutral.
+    profile = enemy_profile(player, generate_missing=False)
     attack_interval = max(
         MIN_ATTACK_INTERVAL,
         1 / (attack_speed * float(companion_effects["attack_speed_multiplier"])),
@@ -2905,6 +2962,12 @@ def build_player_response(player: dict, **extra) -> dict:
         float(stats["total"]["crit_chance"])
         + float(companion_effects["crit_chance_bonus"]),
     )
+    stats["total"]["hero_resistances"] = {
+        "physical": 0.0,
+        "nature": min(.50, float(companion_effects["moss_turtle_nature_resistance"])),
+        "poison": min(.50, float(companion_effects["moss_turtle_poison_resistance"])),
+        "arcane": 0.0,
+    }
     response = {
         **public_player,
         "equipment": equipment,
@@ -3013,6 +3076,13 @@ def build_player_response(player: dict, **extra) -> dict:
             "collection": companion_collection,
         },
         "companion_effects": companion_effects,
+        "enemy_archetype": profile["enemy_archetype"],
+        "enemy_attack_type": profile["enemy_attack_type"],
+        "resistances": profile["resistances"],
+        "weakness": profile["weakness"],
+        "strongest_resistance": profile["strongest_resistance"],
+        "penetrations": stats["total"]["penetrations"],
+        "hero_resistances": stats["total"]["hero_resistances"],
         "battle_effects": battle_effects,
         "stage_sequence": stage_sequence_state(player),
         "hero_stats": stats,
@@ -3144,6 +3214,22 @@ def build_player_response(player: dict, **extra) -> dict:
         "counter_triggered": False,
         **extra,
     }
+    for skill_id, base_cooldown in (
+        ("thorn_burst", THORN_BURST_COOLDOWN_SECONDS),
+        ("arcane_echo", ARCANE_ECHO_COOLDOWN_SECONDS),
+    ):
+        skill_state = get_player_skill_state(player, skill_id)
+        cooldown = companion_skill_cooldown(player, base_cooldown)
+        last_used = float(player.get(f"{skill_id}_last_used_at", 0))
+        remaining = 0.0 if last_used <= 0 else max(0.0, cooldown - (current_time - last_used))
+        response["skills"][skill_id] = {
+            **skill_state,
+            "unlocked": skill_state["available"],
+            "damage_type": "nature" if skill_id == "thorn_burst" else "arcane",
+            "cooldown_seconds": cooldown,
+            "cooldown_remaining": remaining,
+            "ready": skill_state["available"] and remaining <= 0,
+        }
     response["battle_breakdown"] = {
         "normal_attack_damage": response["normal_attack_damage"],
         "combo_damage": response["combo_damage"],
@@ -3257,6 +3343,10 @@ def create_database() -> None:
         ("poison_cloud_last_used_at", "REAL NOT NULL DEFAULT 0"),
         ("poison_cloud_until", "REAL NOT NULL DEFAULT 0"),
         ("poison_cloud_next_tick_at", "REAL NOT NULL DEFAULT 0"),
+        ("thorn_burst_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("arcane_echo_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("enemy_archetype", "TEXT NOT NULL DEFAULT ''"),
+        ("enemy_resistances_json", "TEXT NOT NULL DEFAULT ''"),
         (
             "skill_scrolls",
             f"INTEGER NOT NULL DEFAULT {STARTER_SKILL_SCROLLS}",
@@ -4371,7 +4461,8 @@ def _resolve_victory(connection, current, was_boss, context):
           progress_reached_at=?, last_enemy_attack_at=?, mushroom_shield_amount=0,
           mushroom_shield_last_used_at=0, spore_strike_last_used_at=0,
           poison_cloud_last_used_at=0, poison_cloud_until=0,
-          poison_cloud_next_tick_at=0, updated_at=? WHERE telegram_id=?
+          poison_cloud_next_tick_at=0, thorn_burst_last_used_at=0,
+          arcane_echo_last_used_at=0, updated_at=? WHERE telegram_id=?
         """,
         (enemy_hp, enemy_max_hp, int(current["hero_hp"]), stage, kills,
          total_kills, total_bosses, chests, highest_stage, int(boss_active),
@@ -4382,6 +4473,15 @@ def _resolve_victory(connection, current, was_boss, context):
         "UPDATE players SET daily_kills=daily_kills+?, daily_bosses=daily_bosses+? WHERE telegram_id=?",
         (0 if was_boss else 1, 1 if was_boss else 0, int(current["telegram_id"])),
     )
+    next_profile = generate_enemy_profile(
+        stage, bool(boss_active),
+        f"{current.get('telegram_id', 0)}:{kills}:{enemy_max_hp}",
+    )
+    encoded_resistances = json.dumps(next_profile["resistances"], separators=(",", ":"), sort_keys=True)
+    connection.execute(
+        "UPDATE players SET enemy_archetype=?, enemy_resistances_json=? WHERE telegram_id=?",
+        (next_profile["enemy_archetype"], encoded_resistances, int(current["telegram_id"])),
+    )
     player_update = {
         "enemy_hp": enemy_hp, "enemy_max_hp": enemy_max_hp,
         "hero_hp": int(current["hero_hp"]), "stage": stage,
@@ -4389,6 +4489,8 @@ def _resolve_victory(connection, current, was_boss, context):
         "total_bosses": total_bosses, "chests": chests,
         "highest_stage": highest_stage, "boss_active": int(boss_active),
         "boss_waiting": 0, "game_completed": game_completed,
+        "enemy_archetype": next_profile["enemy_archetype"],
+        "enemy_resistances_json": encoded_resistances,
     }
     return {
         "player": player_update, "reward_granted": True,
@@ -4418,6 +4520,7 @@ def attack(
     try:
         connection.execute("BEGIN IMMEDIATE")
         current = load_player(connection, telegram_id)
+        current_profile = enemy_profile(current, generate_missing=False)
         identity = public_battle_identity(current)
         if battle_id is not None and battle_id != identity:
             connection.commit()
@@ -4438,16 +4541,21 @@ def attack(
         if float(current["last_attack_at"]) > 0 and elapsed < attack_interval:
             connection.commit()
             return build_player_response(current, attacked=False, retry_after=attack_interval-elapsed, combat_resolution=CombatResolution().public(), message="Атака ещё не готова")
-        requested = str(skill or "").strip().lower()
-        manual_skill = requested == "spore_strike"
-        if requested and not manual_skill:
+        requested = str(skill or "").strip().lower().replace("-", "_")
+        attack_skills = {"spore_strike", "thorn_burst", "arcane_echo"}
+        manual_skill = requested in attack_skills
+        if requested and requested not in attack_skills:
             raise HTTPException(status_code=400, detail="Неизвестный навык")
-        spore_state = get_player_skill_state(current, "spore_strike")
+        selected_skill = requested if manual_skill else "spore_strike"
+        spore_state = get_player_skill_state(current, selected_skill)
+        skill_names = {"spore_strike": "Spore Strike", "thorn_burst": "Thorn Burst", "arcane_echo": "Arcane Echo"}
         if manual_skill and not spore_state["available"]:
             connection.commit()
-            return build_player_response(current, attacked=False, combat_resolution=CombatResolution().public(), message=unavailable_skill_message(spore_state, "Spore Strike"))
-        spore_last = float(current.get("spore_strike_last_used_at", 0))
-        spore_cd = companion_skill_cooldown(current, SPORE_STRIKE_COOLDOWN_SECONDS)
+            return build_player_response(current, attacked=False, combat_resolution=CombatResolution().public(), message=unavailable_skill_message(spore_state, skill_names[selected_skill]))
+        cooldowns = {"spore_strike": SPORE_STRIKE_COOLDOWN_SECONDS, "thorn_burst": THORN_BURST_COOLDOWN_SECONDS, "arcane_echo": ARCANE_ECHO_COOLDOWN_SECONDS}
+        cooldown_field = f"{selected_skill}_last_used_at"
+        spore_last = float(current.get(cooldown_field, 0))
+        spore_cd = companion_skill_cooldown(current, cooldowns[selected_skill])
         spore_ready = spore_last <= 0 or now-spore_last >= spore_cd
         if manual_skill and not spore_ready:
             connection.commit()
@@ -4482,8 +4590,15 @@ def attack(
         owl_stacks = owl_bonus = 0
         multiplier = 1.0
         if use_skill:
-            owl_stacks, owl_bonus = BATTLE_STATES.use_skill(state, "spore_strike", owl_is_active(current))
-            multiplier = SPORE_STRIKE_DAMAGE_MULTIPLIER * skill_power_multiplier(spore_state["level"]) * (1 + owl_bonus)
+            owl_stacks, owl_bonus = BATTLE_STATES.use_skill(state, selected_skill, owl_is_active(current))
+            if selected_skill == "spore_strike":
+                multiplier = SPORE_STRIKE_DAMAGE_MULTIPLIER * skill_power_multiplier(spore_state["level"]) * (1 + owl_bonus)
+            elif selected_skill == "thorn_burst":
+                multiplier = 1.25 * (1 + .06 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+                if current_profile["resistances"]["physical"] - current_profile["resistances"]["nature"] >= .15:
+                    multiplier *= 1.20
+            else:
+                multiplier = .80 * (1 + .05 * (spore_state["level"] - 1)) * (1 + owl_bonus)
         context = CombatContext(int(current["hero_hp"]), int(current["hero_max_hp"]), int(current["enemy_hp"]), "boss" if boss else "normal")
         context.resolved_at = now
         hp_before_healing = stage_sequence_state(current)["current_hp"]
@@ -4491,7 +4606,12 @@ def attack(
         resolver = CombatResolver(connection, current, identity, public_battle_identity, _resolve_victory, resolution)
         main_damage, critical = calculate_hero_attack_damage(current, multiplier * companions["damage_multiplier"], "skill" if use_skill else "normal", boss)
         main_source = "skill" if use_skill else "normal"
-        main_event = resolver.resolve(damage_source=main_source, raw_damage=main_damage, attack_source=main_source, crit_metadata={"critical": critical}, boss=boss, context=context)
+        main_type = ({"spore_strike": "nature", "thorn_burst": "nature", "arcane_echo": "arcane"}.get(selected_skill) if use_skill else "physical")
+        main_event = resolver.resolve(damage_source=selected_skill if use_skill else main_source, raw_damage=main_damage, attack_source=main_source, crit_metadata={"critical": critical}, boss=boss, context=context, damage_type=main_type, penetration=damage_penetration(equipment, main_type))
+        if use_skill and selected_skill == "arcane_echo":
+            echo_multiplier = .55 * (1 + .05 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+            echo_damage, echo_critical = calculate_hero_attack_damage(current, echo_multiplier * companions["damage_multiplier"], "skill", boss)
+            resolver.resolve(damage_source="arcane_echo_hit_2", raw_damage=echo_damage, attack_source="skill", crit_metadata={"critical": echo_critical, "hit": 2}, boss=boss, context=context, damage_type="arcane", penetration=damage_penetration(equipment, "arcane"))
         combo_damage = 0
         combo_critical = False
         combo_triggered = False
@@ -4502,10 +4622,13 @@ def attack(
             elif random.random() < equipment["combo_chance"] / 100:
                 combo_triggered = True
                 combo_damage, combo_critical = calculate_hero_attack_damage(current, companions["damage_multiplier"], "combo", boss)
-                resolver.resolve(damage_source="combo", raw_damage=combo_damage, attack_source="combo", crit_metadata={"critical": combo_critical}, boss=boss, context=context)
+                resolver.resolve(damage_source="combo", raw_damage=combo_damage, attack_source="combo", crit_metadata={"critical": combo_critical}, boss=boss, context=context, damage_type="physical", penetration=damage_penetration(equipment, "physical"))
             companion_damage = round(int(companions["extra_attack_damage"]) * equipment["companion_damage_multiplier"] * (equipment["boss_damage_multiplier"] if boss else 1))
             if companion_damage or resolution.killed:
-                resolver.resolve(damage_source="companion", raw_damage=companion_damage, attack_source="companion", crit_metadata={}, boss=boss, context=context)
+                resolver.resolve(damage_source="spore_beetle", raw_damage=companion_damage, attack_source="companion", crit_metadata={}, boss=boss, context=context, damage_type="physical", penetration=damage_penetration(equipment, "physical"))
+            moth_damage = round(int(companions["crystal_moth_arcane_damage"]) * equipment["companion_damage_multiplier"] * (equipment["boss_damage_multiplier"] if boss else 1))
+            if moth_damage or resolution.killed:
+                resolver.resolve(damage_source="crystal_moth", raw_damage=moth_damage, attack_source="companion", crit_metadata={"critical": False}, boss=boss, context=context, damage_type="arcane", penetration=damage_penetration(equipment, "arcane"))
         poison_damage = 0
         poison_processed = 0
         poison_per_tick = max(1, round(
@@ -4519,7 +4642,7 @@ def attack(
             tick_index = state.poison_ticks + offset + 1
             if not BATTLE_STATES.claim_poison_tick(state, state.poison_instance_id, tick_index):
                 continue
-            event = resolver.resolve(damage_source="poison", raw_damage=poison_per_tick, attack_source="poison", crit_metadata={"poison_instance_id": state.poison_instance_id, "tick_index": tick_index}, boss=boss, context=context)
+            event = resolver.resolve(damage_source="poison", raw_damage=poison_per_tick, attack_source="poison", crit_metadata={"poison_instance_id": state.poison_instance_id, "tick_index": tick_index}, boss=boss, context=context, damage_type="poison", penetration=damage_penetration(equipment, "poison"))
             poison_processed += 1
             poison_damage += event.final_damage
             if event.lethal:
@@ -4531,7 +4654,10 @@ def attack(
             poison_until = 0.0
             poison_next = 0.0
         lethal = next((event for event in resolution.events if event.lethal), None)
-        connection.execute("UPDATE players SET last_attack_at=?, spore_strike_last_used_at=?, poison_cloud_last_used_at=?, poison_cloud_until=?, poison_cloud_next_tick_at=?, updated_at=? WHERE telegram_id=?", (now, now if use_skill else spore_last, poison_last, poison_until, poison_next, int(now), telegram_id))
+        if use_skill:
+            current[cooldown_field] = now
+            connection.execute(f"UPDATE players SET {cooldown_field}=? WHERE telegram_id=?", (now, telegram_id))
+        connection.execute("UPDATE players SET last_attack_at=?, poison_cloud_last_used_at=?, poison_cloud_until=?, poison_cloud_next_tick_at=?, updated_at=? WHERE telegram_id=?", (now, poison_last, poison_until, poison_next, int(now), telegram_id))
         sync_player_stats(connection, telegram_id)
         connection.commit()
         reset_battle = resolution.killed
@@ -4553,11 +4679,11 @@ def attack(
         normal_attack_damage=main_event.final_damage if main_source == "normal" else 0,
         skill_damage=main_event.final_damage if main_source == "skill" else 0,
         combo_damage=next((e.final_damage for e in resolution.events if e.damage_source == "combo"), 0),
-        companion_damage=next((e.final_damage for e in resolution.events if e.damage_source == "companion"), 0),
+        companion_damage=sum(e.final_damage for e in resolution.events if e.attack_source == "companion"),
         poison_damage=poison_damage, poison_ticks=poison_processed, counter_damage=0, combo_triggered=combo_triggered,
         counter_triggered=False, critical=critical, combo_critical=combo_critical,
-        attack_source=main_source, skill_used="spore_strike" if use_skill else None,
-        spore_strike_used=use_skill, poison_cloud_used=poison_auto_used, enemy_defeated=public_resolution["enemy_defeated"],
+        attack_source=main_source, skill_used=selected_skill if use_skill else None,
+        spore_strike_used=use_skill and selected_skill == "spore_strike", poison_cloud_used=poison_auto_used, enemy_defeated=public_resolution["enemy_defeated"],
         boss_defeated=bool(lethal and lethal.boss_defeated),
         stage_completed=bool(lethal and lethal.stage_advanced),
         chest_reward=(boss_reward_chests(int(current["stage"])) if lethal and boss else (3 if lethal and lethal.boss_started else 2 if lethal else 0)),
@@ -4824,6 +4950,7 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             )
         stage = int(current["stage"])
         boss_active = bool(int(current.get("boss_active", 0)))
+        attack_profile = enemy_profile(current, generate_missing=False)
 
         hp_multiplier = float(
             calculate_companion_effects(current)["hp_multiplier"]
@@ -4900,10 +5027,19 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             parse_json_object(current["equipment_json"]), int(current["level"])
         )["total"]
         dodged = random.random() < equipment_combat["dodge_chance"] / 100
+        companion_defense = calculate_companion_effects(current)
+        hero_resistances = {
+            "physical": 0.0, "arcane": 0.0,
+            "nature": companion_defense["moss_turtle_nature_resistance"],
+            "poison": companion_defense["moss_turtle_poison_resistance"],
+        }
+        incoming_breakdown = incoming_damage_breakdown(
+            raw_incoming_damage, attack_profile["enemy_attack_type"], hero_resistances,
+            equipment_combat["incoming_damage_multiplier"],
+        )
         incoming_damage = round(
-            raw_incoming_damage
+            incoming_breakdown["damage_after_reduction"]
             * BATTLE_STATES.incoming_damage_multiplier(battle_state, now)
-            * equipment_combat["incoming_damage_multiplier"]
         )
         if dodged:
             incoming_damage = 0
@@ -4955,7 +5091,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             ).resolve(
                 damage_source="counter", raw_damage=counter_damage,
                 attack_source="counter", crit_metadata={"critical": counter_critical},
-                boss=boss_active, context=counter_context,
+                boss=boss_active, context=counter_context, damage_type="physical",
+                penetration=damage_penetration(equipment_combat, "physical"),
             )
             counter_lethal = counter_event.lethal
             if counter_lethal:
@@ -5027,6 +5164,9 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         hero_defeated=hero_defeated,
         incoming_damage=incoming_damage,
         raw_incoming_damage=raw_incoming_damage,
+        enemy_attack_type=attack_profile["enemy_attack_type"],
+        incoming_resistance_before=incoming_breakdown["resistance_before"],
+        incoming_damage_after_resistance=incoming_breakdown["damage_after_resistance"],
         damage_reduced_by_effect=damage_reduced_by_effect,
         damage_reduced=damage_reduced_by_effect,
         dodged=dodged,

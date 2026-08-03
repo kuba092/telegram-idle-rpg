@@ -5376,6 +5376,7 @@
 <div class="hp-track">
 <div class="hp-fill" id="enemyHpBar"></div>
 </div>
+<div id="enemyDamageProfile" style="margin-top:5px;font-size:9px;color:rgba(235,245,238,.72)"></div>
 </div>
 
 <div class="enemy-toolbar">
@@ -6559,6 +6560,7 @@ id="companionSummonChances"
       level: $("level"), xpText: $("xpText"), xpBar: $("xpBar"), enemyName: $("enemyName"),
       enemyNameplate: $("enemyNameplate"), enemyHp: $("enemyHp"), enemyMaxHp: $("enemyMaxHp"),
       enemyHpBar: $("enemyHpBar"), heroHp: $("heroHp"), heroMaxHp: $("heroMaxHp"),
+      enemyDamageProfile: $("enemyDamageProfile"),
       heroHpBar: $("heroHpBar"), heroName: $("heroName"), heroSprite: $("heroSprite"),
       enemySprite: $("enemySprite"), slashEffect: $("slashEffect"), hitEffect: $("hitEffect"),
       sporeEffect: $("sporeEffect"), damageNumber: $("damageNumber"), heroHitFlash: $("heroHitFlash"),
@@ -7037,6 +7039,12 @@ id="companionSummonChances"
       const enemyPercent = Number(player.enemy_max_hp) > 0 ? Number(player.enemy_hp) / Number(player.enemy_max_hp) * 100 : 0;
       elements.heroHpBar.style.width = `${Math.max(0, Math.min(100, heroPercent))}%`;
       elements.enemyHpBar.style.width = `${Math.max(0, Math.min(100, enemyPercent))}%`;
+      const resistanceNames = {physical:"физ.", nature:"природа", poison:"яд", arcane:"магия"};
+      const resistanceText = Object.entries(player.resistances || {}).map(
+        ([kind, value]) => `${resistanceNames[kind] || kind} ${Number(value || 0) >= 0 ? "+" : ""}${Math.round(Number(value || 0) * 100)}%`
+      ).join(" · ");
+      const weakType = player.weakness?.damage_type;
+      elements.enemyDamageProfile.textContent = `${player.enemy_archetype || "guardian"} · атака: ${player.enemy_attack_type || "physical"} · ${resistanceText}${weakType ? ` · слабость: ${resistanceNames[weakType] || weakType}` : ""}`;
       elements.chestCount.textContent = formatNumber(player.chests);
       elements.chestLevelBadge.textContent = `УР. ${player.chest_level}`;
       const autoEnabled = Boolean(Number(player.auto_open_enabled));
@@ -7093,6 +7101,14 @@ id="companionSummonChances"
     function combatEffectSuffix(result) {
       const effects = result?.battle_effects || {};
       const parts = [];
+      const damageEvents = result?.combat_resolution?.events || [];
+      if (damageEvents.length) {
+        parts.push(damageEvents.filter(event => !event.skipped_after_kill).map(event => {
+          const delta = Number(event.resistance_reduction || 0);
+          const note = delta > 0 ? `Сопротивление уменьшило урон на ${delta}` : delta < 0 ? `Слабость увеличила урон на ${Math.abs(delta)}` : "";
+          return `${event.damage_type || "physical"}${note ? `: ${note}` : ""}`;
+        }).join("; "));
+      }
       const owlStacks = effects.owl_repeat_stacks || {};
       const owlTotal = Object.values(owlStacks).reduce(
         (sum, value) => sum + Number(value || 0), 0

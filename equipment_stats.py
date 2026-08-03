@@ -18,7 +18,13 @@ SECONDARY_STATS = {
     "dodge_chance": {"name": "Уклонение", "format": "+{value:.1f}%", "min": 0.0, "max": 50.0, "combine": "add"},
     "combo_chance": {"name": "Шанс комбо", "format": "+{value:.1f}%", "min": 0.0, "max": 50.0, "combine": "add"},
     "counter_chance": {"name": "Шанс контратаки", "format": "+{value:.1f}%", "min": 0.0, "max": 50.0, "combine": "add"},
+    "physical_penetration": {"name": "Пробивание физической защиты", "format": "+{value:.1f} п.п.", "min": 0.0, "max": 50.0, "combine": "add"},
+    "nature_penetration": {"name": "Пробивание защиты природы", "format": "+{value:.1f} п.п.", "min": 0.0, "max": 50.0, "combine": "add"},
+    "poison_penetration": {"name": "Пробивание защиты от яда", "format": "+{value:.1f} п.п.", "min": 0.0, "max": 50.0, "combine": "add"},
+    "arcane_penetration": {"name": "Пробивание магической защиты", "format": "+{value:.1f} п.п.", "min": 0.0, "max": 50.0, "combine": "add"},
 }
+
+PENETRATION_STATS = {key for key in SECONDARY_STATS if key.endswith("_penetration")}
 
 STAT_COUNT = {
     "common": (0, 0), "uncommon": (0, 1), "rare": (1, 1),
@@ -31,7 +37,7 @@ RARITY_SCALE = {
     "divine": 1.80, "celestial": 2.05,
 }
 
-ATTACKING = {"attack_speed", "crit_chance", "crit_damage", "skill_damage", "boss_damage", "combo_chance"}
+ATTACKING = {"attack_speed", "crit_chance", "crit_damage", "skill_damage", "boss_damage", "combo_chance", *PENETRATION_STATS}
 DEFENSIVE = {"incoming_damage_reduction", "healing_bonus", "dodge_chance", "counter_chance"}
 SLOT_STAT_WEIGHTS = {
     "attack": {key: (5.0 if key in ATTACKING else 1.0) for key in SECONDARY_STATS},
@@ -46,6 +52,8 @@ BASE_ROLL = {
     "skill_damage": 3.5, "companion_damage": 3.5, "boss_damage": 3.0,
     "incoming_damage_reduction": 2.0, "healing_bonus": 3.5,
     "dodge_chance": 1.6, "combo_chance": 1.6, "counter_chance": 1.6,
+    "physical_penetration": 2.5, "nature_penetration": 2.5,
+    "poison_penetration": 2.5, "arcane_penetration": 2.5,
 }
 
 BUILD_WEIGHTS = {
@@ -53,6 +61,8 @@ BUILD_WEIGHTS = {
     "defense": {"power": .05, "damage": .1, "hp": .10, "attack_speed": .1, "crit_chance": .1, "crit_damage": .03, "skill_damage": .1, "companion_damage": .1, "boss_damage": .1, "combo_chance": .2, "incoming_damage_reduction": 4.0, "healing_bonus": 1.7, "dodge_chance": 3.2, "counter_chance": 1.6},
     "balanced": {"power": .08, "damage": .65, "hp": .055, "attack_speed": 1.5, "crit_chance": 1.2, "crit_damage": .32, "skill_damage": .9, "companion_damage": .6, "boss_damage": .7, "combo_chance": 1.1, "incoming_damage_reduction": 2.0, "healing_bonus": .85, "dodge_chance": 1.6, "counter_chance": .9},
 }
+for _profile, _weight in (("damage", 1.4), ("balanced", .65), ("defense", .05)):
+    BUILD_WEIGHTS[_profile].update({key: _weight for key in PENETRATION_STATS})
 
 
 def normalize_secondary_stats(value: Any) -> dict[str, float]:
@@ -103,6 +113,9 @@ def generate_secondary_stats(rarity: str, chest_level: int, effective_stage: int
     if count == 0:
         return {}
     available = list(SECONDARY_STATS)
+    rarity_order = list(STAT_COUNT)
+    if rarity not in rarity_order or rarity_order.index(rarity) < rarity_order.index("rare"):
+        available = [key for key in available if key not in PENETRATION_STATS]
     selected = []
     weights = SLOT_STAT_WEIGHTS.get(slot_focus, SLOT_STAT_WEIGHTS["mixed"])
     for _ in range(min(count, len(available))):
@@ -111,7 +124,7 @@ def generate_secondary_stats(rarity: str, chest_level: int, effective_stage: int
         available.remove(key)
     progress = 1.0 + min(1.5, max(0, effective_stage - 1) / 800 + max(0, chest_level - 1) / 48)
     scale = RARITY_SCALE.get(rarity, 1.0) * progress
-    return {key: round(BASE_ROLL[key] * scale * rng.uniform(.85, 1.15), 2) for key in selected}
+    return {key: round(min(SECONDARY_STATS[key]["max"], BASE_ROLL[key] * scale * rng.uniform(.85, 1.15)), 2) for key in selected}
 
 
 def build_score(item: Any, profile: str = "balanced") -> float:

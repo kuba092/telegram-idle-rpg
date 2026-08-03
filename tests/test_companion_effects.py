@@ -51,6 +51,9 @@ class CompanionEffectsTest(unittest.TestCase):
             "hero_max_hp": 100,
             "enemy_hp": 10000,
             "enemy_max_hp": 10000,
+            # These pre-resistance fixtures model a legacy persisted enemy.
+            "enemy_archetype": "",
+            "enemy_resistances_json": "",
             "last_attack_at": 0,
             "skills_auto_enabled": 0,
             "skills_collection_json": json.dumps({

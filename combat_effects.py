@@ -53,9 +53,14 @@ class CombatStats:
     dodge_chance: float = 0.0
     combo_chance: float = 0.0
     counter_chance: float = 0.0
+    physical_resistance: float = 0.0
+    nature_resistance: float = 0.0
+    poison_resistance: float = 0.0
+    arcane_resistance: float = 0.0
 
     def apply(self, modifiers: dict[str, float]) -> None:
-        additive = {"crit_chance_bonus", "crit_damage_bonus"}
+        additive = {"crit_chance_bonus", "crit_damage_bonus", "physical_resistance",
+                    "nature_resistance", "poison_resistance", "arcane_resistance"}
         for name, value in modifiers.items():
             if not hasattr(self, name):
                 raise ValueError(f"Unknown combat stat: {name}")
@@ -72,6 +77,8 @@ class CombatStats:
         self.dodge_chance = min(50.0, max(0.0, self.dodge_chance))
         self.combo_chance = min(50.0, max(0.0, self.combo_chance))
         self.counter_chance = min(50.0, max(0.0, self.counter_chance))
+        for name in ("physical_resistance", "nature_resistance", "poison_resistance", "arcane_resistance"):
+            setattr(self, name, min(.50, max(-.50, float(getattr(self, name)))))
 
 
 @dataclass
@@ -148,12 +155,16 @@ COMPANION_EFFECTS: dict[str, EffectDefinition] = {
     "mushroom_owl": EffectDefinition("mushroom_owl", "companion", modifiers_per_level={"cooldown_multiplier": -.015}, description="Снижает время перезарядки всех навыков на 1,5% за уровень (до 30%)."),
     "thorn_wolf": EffectDefinition("thorn_wolf", "companion", modifiers_per_level={"crit_chance_bonus": .75, "crit_damage_bonus": 1.0}, description="Даёт +0,75 п.п. к шансу крита и +1% к критическому урону за уровень.", public_extra=lambda level: {"crit_damage_bonus": round(level * 1.0, 4)}),
     "ancient_entling": EffectDefinition("ancient_entling", "companion", events=(CombatEvent.ENEMY_KILLED, CombatEvent.BOSS_KILLED), custom_per_level={"victory_healing_ratio": .006}, description="Восстанавливает 0,6% максимального HP за уровень после победы и вдвое больше после босса."),
+    "crystal_moth": EffectDefinition("crystal_moth", "companion", events=(CombatEvent.AFTER_NORMAL_ATTACK,), custom_per_level={"crystal_moth_ratio": .018}, description="После обычной атаки наносит 1,8% arcane-урона за уровень."),
+    "moss_turtle": EffectDefinition("moss_turtle", "companion", modifiers_per_level={"nature_resistance": .008, "poison_resistance": .005}, description="Даёт сопротивление природе и яду."),
 }
 
 SKILL_EFFECTS: dict[str, dict[str, Any]] = {
     "spore_strike": {"event": CombatEvent.BEFORE_SKILL, "damage_multiplier": 2.0, "cooldown_seconds": 8.0},
     "mushroom_shield": {"event": CombatEvent.SHIELD_CREATED, "hp_ratio": .30, "cooldown_seconds": 15.0},
     "poison_cloud": {"event": CombatEvent.POISON_TICK, "damage_multiplier": .45, "duration_seconds": 5.0, "tick_seconds": 1.0, "cooldown_seconds": 20.0},
+    "thorn_burst": {"event": CombatEvent.BEFORE_SKILL, "damage_multiplier": 1.25, "growth": .06, "cooldown_seconds": 7.0},
+    "arcane_echo": {"event": CombatEvent.BEFORE_SKILL, "damage_multipliers": (.80, .55), "growth": .05, "cooldown_seconds": 9.0},
 }
 
 # New temporary effects must be registered before persisted/client supplied IDs are accepted.
