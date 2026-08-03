@@ -5311,6 +5311,53 @@
     .growth-step { margin:0;font-size:11px; }.growth-step.ready { border-color:#7cf39b77; }.growth-step.blocked { opacity:.62; }.growth-step.completed { opacity:.55; }
     .growth-badges { display:flex;flex-wrap:wrap;gap:5px;margin-top:9px; }.growth-badges span { padding:4px 7px;border-radius:10px;background:#ffffff13;font-size:10px; }
 
+    /* MOBILE_APP_SHELL_V2 */
+    :root {
+      --background:#08130f; --surface:#12231c; --surface_alt:#192e25;
+      --border:#315044; --text_primary:#f4faf6; --text_secondary:#a9bbb2;
+      --accent:#8bd450; --danger:#ff6b72; --success:#62d994; --warning:#f4c95d;
+      --premium:#bfa2ff; --rarity-common:#aeb8b3; --rarity-uncommon:#65d67e;
+      --rarity-rare:#62a6ff; --rarity-epic:#bd79ff; --rarity-legendary:#ffb84d;
+      --rarity-mythic:#ff6680; --rarity-ancient:#43dac6; --rarity-divine:#ffe987;
+      --rarity-celestial:#d4eeff; --space-1:4px; --space-2:8px; --space-3:12px;
+      --space-4:16px; --space-5:20px; --radius-sm:10px; --radius-md:16px;
+      --radius-lg:22px; --shadow-sm:0 4px 14px #0004; --shadow-lg:0 18px 50px #0009;
+    }
+    html,body{background:var(--background);color:var(--text_primary);overflow:hidden;overscroll-behavior:none}
+    button,select{font:inherit} button{min-height:44px;touch-action:manipulation}
+    button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--warning);outline-offset:2px}
+    .app{background:var(--background);max-width:900px;margin:auto}
+    .top-hud{position:fixed;top:0;left:0;right:0;z-index:120;height:calc(66px + env(safe-area-inset-top));padding:calc(6px + env(safe-area-inset-top)) 10px 6px;max-width:900px;background:#0b1814f2;border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+    .top-hud .level-card{padding:5px 8px;border:0;background:transparent;box-shadow:none;display:flex;align-items:center;max-width:none}
+    .hero-top-avatar{width:42px!important;height:42px!important;flex:0 0 42px!important}.hero-top-main{flex:1;min-width:0}
+    .hero-top-meta{margin:0!important}.level-caption{font-size:8px}.level-value{font-size:14px}.hero-top-bm{font-size:10px!important}
+    .xp-row,.xp-track{display:none}.hero-top-health{margin-top:3px!important}.resources{gap:4px}.resource-pill{min-width:66px;padding:5px 7px;border:0;background:transparent;box-shadow:none}.resource-icon{display:none}.resource-label{font-size:7px}.resource-value{font-size:13px}
+    .hud-actions{display:flex;gap:4px;align-items:center}.icon-button{width:44px;min-width:44px;padding:0;border:1px solid var(--border);border-radius:13px;background:var(--surface_alt);color:var(--text_primary);font-size:18px}
+    .api-error-indicator{display:none;color:var(--danger);font-size:10px}.api-error .api-error-indicator{display:block}
+    .shell-screen{position:fixed;inset:calc(66px + env(safe-area-inset-top)) 0 calc(70px + env(safe-area-inset-bottom));z-index:25;max-width:900px;margin:auto;padding:12px;overflow-y:auto;overflow-x:hidden;background:var(--background)}
+    .shell-screen[hidden]{display:none!important}.screen-stack{display:grid;gap:12px;padding-bottom:12px}.ui-card{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);padding:14px;box-shadow:var(--shadow-sm)}
+    .ui-card h2,.ui-card h3{margin:0 0 8px}.eyebrow{color:var(--text_secondary);font-size:10px;font-weight:900;letter-spacing:.11em;text-transform:uppercase}.priority-card{border-color:#8bd450aa;background:#172d1d;box-shadow:0 0 0 1px #8bd45022,0 10px 30px #0006}.priority-card h2{font-size:21px}.priority-card button,.primary-action{width:100%;border:0;border-radius:12px;background:var(--accent);color:#10200f;font-weight:950;padding:10px 14px}
+    .quick-grid,.resource-grid,.equipment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.quick-link{border:1px solid var(--border);border-radius:12px;background:var(--surface_alt);color:var(--text_primary);padding:10px;text-align:left;font-weight:800;overflow-wrap:anywhere}.quick-link small{display:block;color:var(--text_secondary);margin-top:3px}
+    .shell-nav{position:fixed;left:0;right:0;bottom:0;z-index:150;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));height:calc(66px + env(safe-area-inset-bottom));padding:4px 4px env(safe-area-inset-bottom);max-width:900px;margin:auto;border-top:1px solid var(--border);background:#0b1814f5;backdrop-filter:blur(12px)}
+    .shell-nav button{position:relative;min-width:0;border:0;border-radius:10px;background:transparent;color:var(--text_secondary);font-size:9px;font-weight:800;padding:4px 1px}.shell-nav button.active{color:var(--text_primary);background:#8bd45018}.shell-nav-icon{display:block;font-size:20px;line-height:23px}.nav-badge{position:absolute;top:1px;right:7px;display:none;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--danger);color:white;font-size:9px;line-height:16px}.nav-badge.has-value{display:block}
+    .resource-drawer{position:fixed;inset:0;z-index:300;background:#000a}.resource-drawer[hidden]{display:none}.drawer-panel{position:absolute;left:0;right:0;bottom:0;max-height:82dvh;overflow:auto;max-width:900px;margin:auto;padding:16px calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom));border:1px solid var(--border);border-radius:22px 22px 0 0;background:var(--surface);box-shadow:var(--shadow-lg)}
+    .drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.drawer-head h2{margin:0}.resource-tile{padding:10px;border-radius:12px;background:var(--surface_alt);min-width:0}.resource-tile span{display:block;color:var(--text_secondary);font-size:11px}.resource-tile strong{display:block;margin-top:3px;overflow:hidden;text-overflow:ellipsis}
+    .confirm-dialog{position:fixed;inset:0;z-index:500;display:grid;place-items:end center;padding:16px;background:#000b}.confirm-dialog[hidden]{display:none}.confirm-panel{width:min(430px,100%);padding:18px;border:1px solid var(--border);border-radius:20px;background:var(--surface);box-shadow:var(--shadow-lg)}.confirm-panel h2{margin:0 0 8px}.confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.danger-action{border:0;border-radius:12px;background:var(--danger);color:#fff;font-weight:900}.secondary-action{border:1px solid var(--border);border-radius:12px;background:var(--surface_alt);color:var(--text_primary);font-weight:800}
+    .toast-region{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:600;display:grid;gap:7px;pointer-events:none}.ui-toast{max-width:500px;margin:auto;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:#172b23;color:white;box-shadow:var(--shadow-lg)}
+    .skeleton{height:70px;border-radius:12px;background:linear-gradient(90deg,var(--surface),var(--surface_alt),var(--surface));background-size:220% 100%;animation:skeleton 1.4s infinite}@keyframes skeleton{to{background-position:-220% 0}}
+    .empty-state,.error-state{text-align:center;padding:28px 14px;color:var(--text_secondary)}.error-state{color:#ffc3c6}.status-chip{display:inline-flex;align-items:center;min-height:28px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--text_secondary);font-size:11px}
+    [class*="rarity-"]{--rarity:var(--rarity-common)}.rarity-uncommon{--rarity:var(--rarity-uncommon)}.rarity-rare{--rarity:var(--rarity-rare)}.rarity-epic{--rarity:var(--rarity-epic)}.rarity-legendary{--rarity:var(--rarity-legendary)}.rarity-mythic{--rarity:var(--rarity-mythic)}.rarity-ancient{--rarity:var(--rarity-ancient)}.rarity-divine{--rarity:var(--rarity-divine)}.rarity-celestial{--rarity:var(--rarity-celestial)}
+    .rarity-frame{border:1px solid var(--rarity);box-shadow:inset 0 0 16px color-mix(in srgb,var(--rarity) 12%,transparent)}
+    .growth-center-button,#progressionLaunchers,.game-nav{display:none!important}.growth-center-modal{display:none!important}
+    body[data-active-screen="battle"] #battlefield{display:block}body:not([data-active-screen="battle"]) #battlefield{visibility:hidden;pointer-events:none}
+    #battlefield{padding-top:66px;padding-bottom:70px}.battle-bottom{bottom:78px}.equipment-dock{display:none}.skill-dock{bottom:126px}.auto-toggle{bottom:78px}.normal-attack{position:absolute;right:88px;bottom:78px;z-index:30;border:1px solid #ffffff33;border-radius:999px;background:var(--danger);color:white;font-weight:950;padding:8px 14px}.fighters-layer{bottom:205px}.enemy-hud{top:76px}
+    .game-modal,.loot-overlay{z-index:400}.loading-overlay{z-index:700}.modal-panel,.loot-card{max-height:calc(100dvh - 32px);overflow:auto}
+    .subtabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.subtab{flex:0 0 auto;border:1px solid var(--border);border-radius:11px;background:var(--surface_alt);color:var(--text_secondary);padding:8px 12px;font-weight:800}.subtab.active{border-color:var(--accent);color:var(--text_primary)}
+    .combat-log{display:grid;gap:2px;max-height:72px;overflow:hidden;margin-top:5px;font-size:10px;color:var(--text_secondary)}.combat-event{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.combat-event.damage{color:#ffb0a6}.combat-event.heal{color:var(--success)}.combat-event.crit{color:var(--warning)}.combat-event.poison{color:#b8e66b}.combat-event.reward{color:var(--premium)}.combat-event.blocked{color:#9fc9ff}
+    @media(max-width:359px){.shell-nav button{font-size:8px}.shell-nav-icon{font-size:18px}.resource-pill{display:none}.top-hud{gap:3px}.quick-grid{grid-template-columns:1fr}}
+    @media(min-width:700px){.shell-screen{padding:20px}.screen-stack{grid-template-columns:repeat(2,minmax(0,1fr))}.priority-card{grid-column:1/-1}.resource-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.equipment-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
 </style>
 </head>
 <body>
@@ -5328,8 +5375,9 @@
 <div class="hero-top-main">
 <div class="hero-top-meta">
 <div class="hero-top-level">
-<span class="level-caption">УРОВЕНЬ</span>
+<span class="level-caption" id="headerPlayerName">ИГРОК</span>
 <strong class="level-value" id="level">1</strong>
+<span class="level-caption" id="headerStage">Этап 1</span>
 </div>
 
 <div class="hero-top-bm">
@@ -5377,8 +5425,47 @@
 
 <!-- MAIN_GEMS_BALANCE_HUD_V1 -->
 </div>
+<div class="hud-actions">
+<span aria-live="polite" class="api-error-indicator" id="apiErrorIndicator">Нет связи</span>
+<button aria-label="Открыть все ресурсы" class="icon-button" id="resourceDrawerOpen" type="button">🎒</button>
+<button aria-label="Открыть настройки" class="icon-button" id="settingsButton" type="button">⚙️</button>
+</div>
 </section>
-<section class="battlefield" id="battlefield">
+<section aria-label="Главная" class="shell-screen" data-main-screen="home" id="homeScreen">
+  <div class="screen-stack">
+    <article class="ui-card priority-card" id="homePriority"><div class="skeleton" aria-label="Загрузка приоритетного действия"></div></article>
+    <article class="ui-card"><div class="eyebrow">Сегодня</div><h2>Ежедневный маршрут</h2><div id="homeDailyFlow" class="growth-flow"></div></article>
+    <article class="ui-card"><div class="eyebrow">Следующий шаг</div><h2>Рекомендации</h2><div id="homeRecommendations"></div></article>
+    <article class="ui-card"><div class="eyebrow">Быстрые действия</div><div class="quick-grid">
+      <button class="quick-link" data-quick-action="offline">🌙 Офлайн-награда<small id="homeOfflineHint">Проверить накопление</small></button>
+      <button class="quick-link" data-open-screen="quests">📋 Задания<small id="homeQuestHint">Доступные награды</small></button>
+      <button class="quick-link" data-open-screen="summon">🔮 Призыв<small id="homeSummonHint">Билеты и гарантии</small></button>
+      <button class="quick-link" data-open-screen="equipment">🧰 Сундук<small id="homeChestHint">Добыча и инвентарь</small></button>
+    </div></article>
+  </div>
+</section>
+<section aria-label="Снаряжение" class="shell-screen" data-main-screen="equipment" id="equipmentScreen" hidden>
+  <div class="screen-stack">
+    <article class="ui-card"><div class="eyebrow">Текущий сундук</div><h2>Добыча</h2><p id="equipmentChestSummary">Сундуки, прогресс и шансы редкости.</p><button class="primary-action" data-quick-action="chest">Открыть сундук и инвентарь</button></article>
+    <article class="ui-card"><div class="eyebrow">Экипировано</div><h2>Слоты героя</h2><div class="equipment-grid" id="equipmentSlotSummary"></div></article>
+    <article class="ui-card"><div class="eyebrow">Инвентарь</div><h2>Управление предметами</h2><p>Фильтры, сравнение build score, блокировка, переработка и массовый разбор доступны в панели сундука.</p><button class="secondary-action" data-quick-action="chest">Открыть список</button></article>
+  </div>
+</section>
+<section aria-label="Развитие" class="shell-screen" data-main-screen="progression" id="progressionScreen" hidden>
+  <div class="screen-stack">
+    <article class="ui-card priority-card"><div class="eyebrow">Развитие героя</div><h2>Усиливайте сборку</h2><p>Навыки, спутники, сундук и пробуждение собраны в одном цикле.</p></article>
+    <article class="ui-card"><div class="subtabs" role="tablist" aria-label="Разделы развития">
+      <button class="subtab active" data-progression-tab="skills" role="tab">Навыки</button><button class="subtab" data-progression-tab="companions" role="tab">Спутники</button><button class="subtab" data-progression-tab="chest" role="tab">Сундук</button><button class="subtab" data-progression-tab="awakening" role="tab">Пробуждение</button>
+    </div><div id="progressionSummary" class="empty-state">Выберите раздел развития</div><button class="primary-action" id="progressionDetailOpen">Открыть коллекцию</button></article>
+  </div>
+</section>
+<section aria-label="Призыв" class="shell-screen" data-main-screen="summon" id="summonScreen" hidden>
+  <div class="screen-stack"><article class="ui-card priority-card"><div class="eyebrow">Знамя призыва</div><h2>Навыки и спутники</h2><p>Реальные шансы, pity и баланс показываются непосредственно из ответа сервера.</p><button class="primary-action" data-quick-action="summon">Открыть знамя</button></article><article class="ui-card"><h2>История</h2><div class="empty-state">История появится после загрузки знамени.</div></article></div>
+</section>
+<section aria-label="Задания" class="shell-screen" data-main-screen="quests" id="questsScreen" hidden>
+  <div class="screen-stack"><article class="ui-card priority-card"><div class="eyebrow">Активность</div><h2>Задания и награды</h2><p>Ежедневные, недельные и достижения с прогрессом и таймером сброса.</p><button class="primary-action" data-quick-action="quests">Открыть список заданий</button></article><article class="ui-card"><div class="empty-state" id="questsEmptyState">Нет загруженных заданий — откройте список для обновления.</div></article></div>
+</section>
+<section aria-label="Бой" class="battlefield" data-main-screen="battle" id="battlefield" hidden>
 <div class="enemy-hud">
 <div class="enemy-panel">
 <div class="enemy-hud-row">
@@ -5444,6 +5531,7 @@
 <div class="battle-message" id="message">
           Подключаемся к серверу…
         </div>
+<div aria-label="Последние события боя" aria-live="polite" class="combat-log" id="combatLog"></div>
 </div>
 <!-- DYNAMIC_BATTLE_SKILL_SLOTS_V1 -->
 <div aria-label="Активные навыки героя" class="skill-dock">
@@ -5513,7 +5601,7 @@
 <span class="gear-empty"></span>
 </button>
 </div>
-</div><button aria-pressed="false" class="auto-toggle" id="autoToggle" type="button">АВТО</button>
+</div><button aria-label="Обычная атака" class="normal-attack" id="normalAttackButton" type="button">⚔️ АТАКА</button><button aria-pressed="false" class="auto-toggle" id="autoToggle" type="button">АВТО</button>
 <nav aria-label="Основные игровые разделы" class="game-nav">
 <button aria-label="Герой" class="game-nav-button" data-screen="hero" type="button">
 <span class="game-nav-icon">🍄</span>
@@ -6526,6 +6614,19 @@ id="companionSummonChances"
 </div>
 </section>
 </main>
+<nav aria-label="Основная навигация" class="shell-nav" id="shellNavigation">
+  <button class="active" data-open-screen="home" type="button"><span class="shell-nav-icon">🍄</span>Главная<span class="nav-badge" data-badge="home"></span></button>
+  <button data-open-screen="battle" type="button"><span class="shell-nav-icon">⚔️</span>Бой<span class="nav-badge" data-badge="battle"></span></button>
+  <button data-open-screen="equipment" type="button"><span class="shell-nav-icon">🧰</span>Снаряж.<span class="nav-badge" data-badge="equipment"></span></button>
+  <button data-open-screen="progression" type="button"><span class="shell-nav-icon">🌿</span>Развитие<span class="nav-badge" data-badge="progression"></span></button>
+  <button data-open-screen="summon" type="button"><span class="shell-nav-icon">🔮</span>Призыв<span class="nav-badge" data-badge="summon"></span></button>
+  <button data-open-screen="quests" type="button"><span class="shell-nav-icon">📋</span>Задания<span class="nav-badge" data-badge="quests"></span></button>
+</nav>
+<aside aria-labelledby="resourceDrawerTitle" class="resource-drawer" id="resourceDrawer" hidden>
+  <div class="drawer-panel" role="dialog" aria-modal="true"><div class="drawer-head"><h2 id="resourceDrawerTitle">Все ресурсы</h2><button aria-label="Закрыть ресурсы" class="icon-button" id="resourceDrawerClose">×</button></div><div class="resource-grid" id="resourceDrawerGrid"></div></div>
+</aside>
+<div aria-labelledby="confirmTitle" class="confirm-dialog" id="confirmDialog" hidden role="alertdialog" aria-modal="true"><div class="confirm-panel"><h2 id="confirmTitle">Подтвердите действие</h2><p id="confirmMessage"></p><div class="confirm-actions"><button class="secondary-action" id="confirmCancel">Отмена</button><button class="danger-action" id="confirmAccept">Подтвердить</button></div></div></div>
+<div aria-atomic="true" aria-live="polite" class="toast-region" id="toastRegion"></div>
 <button class="growth-center-button" id="growthCenterOpen">🌱 Центр развития <span class="growth-center-badge" id="growthCenterBadge">0</span></button>
 <div class="growth-center-modal hidden" id="growthCenterModal"><div class="growth-center-card">
   <div class="growth-center-head"><div><strong>Центр развития</strong><div class="growth-meta">Ежедневный маршрут</div></div><button id="growthCenterClose">Закрыть</button></div>
@@ -6695,6 +6796,102 @@ id="companionSummonChances"
     let attackCounter = 0;
     let pendingPlayerAfterDefeat = null;
 
+    // Server payloads remain the only source of gameplay truth. This state is UI-only.
+    const frontendState = {
+      activeScreen: "home",
+      activeSubtab: { progression:"skills", summon:"skills", quests:"daily" },
+      modal: null,
+      lastPlayerPayload: null,
+      loadingActions: new Set(),
+      toastQueue: []
+    };
+    let pendingConfirmAction = null;
+
+    function showToast(message, tone = "info") {
+      frontendState.toastQueue.push({message, tone});
+      const toast = document.createElement("div");
+      toast.className = `ui-toast ${tone}`;
+      toast.textContent = message;
+      $("toastRegion").appendChild(toast);
+      setTimeout(() => { toast.remove(); frontendState.toastQueue.shift(); }, 3200);
+    }
+
+    function closeConfirm(result = false) {
+      $("confirmDialog").hidden = true;
+      frontendState.modal = null;
+      const action = pendingConfirmAction;
+      pendingConfirmAction = null;
+      if (result && action) action();
+    }
+
+    function confirmAction(title, message, action) {
+      frontendState.modal = "confirm";
+      pendingConfirmAction = action;
+      setText("confirmTitle", title);
+      setText("confirmMessage", message);
+      $("confirmDialog").hidden = false;
+      $("confirmCancel").focus();
+    }
+
+    function setNavBadge(name, value) {
+      const badge = document.querySelector(`[data-badge="${name}"]`);
+      if (!badge) return;
+      const count = Math.max(0, Number(value || 0));
+      badge.textContent = count > 99 ? "99+" : String(count);
+      badge.classList.toggle("has-value", count > 0);
+      badge.setAttribute("aria-label", `${count} уведомлений`);
+    }
+
+    function openMainScreen(name) {
+      const valid = ["home", "battle", "equipment", "progression", "summon", "quests"];
+      if (!valid.includes(name)) return;
+      frontendState.activeScreen = name;
+      document.body.dataset.activeScreen = name;
+      document.querySelectorAll("[data-main-screen]").forEach(section => { section.hidden = section.dataset.mainScreen !== name; });
+      document.querySelectorAll("#shellNavigation [data-open-screen]").forEach(button => {
+        const active = button.dataset.openScreen === name;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-current", active ? "page" : "false");
+      });
+      if (name === "battle") openBattleScreen();
+      if (name === "equipment") renderEquipmentHub();
+      if (name === "progression") renderProgressionSummary();
+    }
+
+    function renderEquipmentHub() {
+      const inventory = player?.loot_progression || {};
+      setText("equipmentChestSummary", `${formatNumber(player?.chests || 0)} сундуков · уровень ${player?.chest_level || 1} · инвентарь ${inventory.inventory_count || 0}/${inventory.inventory_capacity || 50}`);
+      $("equipmentSlotSummary").innerHTML = Object.entries(SLOT_NAMES).map(([slot, label]) => {
+        const item = player?.equipment?.[slot];
+        return `<div class="resource-tile rarity-frame rarity-${escapeHtml(item?.rarity || "common")}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(item?.name || "Пусто")}</strong><small>${item ? `БМ +${formatNumber(item.power || 0)}` : "Нет предмета"}</small></div>`;
+      }).join("");
+    }
+
+    function renderProgressionSummary() {
+      const tab = frontendState.activeSubtab.progression;
+      const copy = {
+        skills:["Навыки", "Уровни, ранги, звёзды и активные слоты."],
+        companions:["Спутники", "Команда, фрагменты, ранги и эффекты."],
+        chest:["Сундук", "Прогресс сундука, опыт и доступное улучшение."],
+        awakening:["Пробуждение", "Доступные узлы открываются в детальной панели."]
+      }[tab];
+      $("progressionSummary").innerHTML = `<h3>${copy[0]}</h3><p>${copy[1]}</p>`;
+      $("progressionDetailOpen").textContent = tab === "chest" ? "Открыть сундук" : "Открыть коллекцию";
+    }
+
+    function renderResourceDrawer() {
+      const loot = player?.loot_progression || {};
+      const resources = player?.progression_resources || {};
+      const rows = [
+        ["🪙", "Золото", player?.gold], ["💎", "Премиальные кристаллы", resources.premium_crystals],
+        ["♻️", "Пыль разбора", loot.salvage_dust], ["⛏️", "Руда улучшения", resources.refinement_ore],
+        ["📚", "Тома навыков", resources.skill_tomes], ["🐾", "Эссенция спутников", resources.companion_essence],
+        ["📜", "Свитки призыва", resources.summon_scrolls], ["📨", "Контракты призыва", resources.summon_contracts],
+        ["🧰", "Опыт сундука", loot.chest_xp_current], ["🎒", "Вместимость", `${loot.inventory_count || 0}/${loot.inventory_capacity || 50}`]
+      ];
+      $("resourceDrawerGrid").innerHTML = rows.map(([icon,label,value]) => `<div class="resource-tile"><span>${icon} ${label}</span><strong>${typeof value === "string" ? value : formatNumber(value || 0)}</strong></div>`).join("");
+    }
+
     const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
     function renderGrowthCenter() {
@@ -6705,7 +6902,7 @@ id="companionSummonChances"
       const priority = root.priority_action || {};
       const warning = root.counters?.inventory_free === 0
         ? `<div class="growth-warning">🔴 Инвентарь заполнен. Освободите место перед добычей.</div>` : "";
-      const recommendations = (root.recommended_actions || []).slice(0, 5).map(action =>
+      const recommendations = (root.recommended_actions || []).filter(action => action.target_route !== priority.target_route).slice(0, 4).map(action =>
         `<div class="growth-row"><strong>${escapeHtml(action.reason)}</strong><div class="growth-meta">${escapeHtml(action.category)}${action.candidate?.entity_id ? ` · ${escapeHtml(action.candidate.entity_id)}` : ""}</div><button data-growth-route="${escapeHtml(action.target_route)}">Перейти</button></div>`
       ).join("");
       const steps = (root.daily_flow?.steps || []).map(step =>
@@ -6716,7 +6913,13 @@ id="companionSummonChances"
       ).join("");
       const best = root.summaries?.better_items?.best_item;
       const blockers = (root.blockers || []).slice(0, 4).map(item => escapeHtml(item.message)).join(" · ");
-      $("growthCenterContent").innerHTML = `${warning}<div class="growth-priority"><strong>${escapeHtml(priority.title || "Маршрут завершён")}</strong><div class="growth-meta">${escapeHtml(priority.description || priority.reason || "")}</div>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}</div><div class="growth-badges">${badges}</div>${recommendations}${best ? `<div class="growth-row">🏆 Лучший предмет: ${escapeHtml(best.slot)} · +${best.build_score_delta} build score${best.locked ? " · 🔒" : ""}</div>` : ""}${blockers ? `<div class="growth-row"><strong>Что мешает</strong><div class="growth-meta">${blockers}</div></div>` : ""}<h3>Сегодня</h3><div class="growth-flow">${steps}</div>`;
+      $("homePriority").innerHTML = `<div class="eyebrow">Приоритетное действие</div>${warning}<h2>${escapeHtml(priority.title || "Маршрут завершён")}</h2><p>${escapeHtml(priority.description || priority.reason || "Все важные действия выполнены.")}</p>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}<div class="growth-badges">${badges}</div>`;
+      $("homeRecommendations").innerHTML = recommendations || `<div class="empty-state">Новых рекомендаций нет.</div>${best ? `<p>🏆 Лучший предмет: ${escapeHtml(best.slot)} · +${best.build_score_delta} build score</p>` : ""}${blockers ? `<p>${blockers}</p>` : ""}`;
+      $("homeDailyFlow").innerHTML = steps || `<div class="empty-state">Маршрут на сегодня пуст.</div>`;
+      setNavBadge("home", root.notifications?.total_count);
+      setNavBadge("equipment", root.counters?.inventory_free === 0 ? 1 : 0);
+      setNavBadge("quests", root.counters?.claimable_quests || 0);
+      setNavBadge("summon", root.counters?.summon_tickets || 0);
     }
 
     async function refreshGrowthCenter() {
@@ -6729,15 +6932,16 @@ id="companionSummonChances"
       if (route.startsWith("/offline")) return $("offlineOpen")?.click();
       if (route.startsWith("/summon")) return $("summonOpen")?.click();
       if (route.startsWith("/quests")) return $("questsBattleButton")?.click();
-      if (route.includes("skill") || route.includes("companion")) return openEnhancementsScreen();
-      if (route.includes("loot") || route.includes("inventory") || route.includes("chest")) return showLootModal();
-      if (route === "/boss/start") return elements.bossButton?.scrollIntoView({behavior:"smooth"});
-      document.body.classList.remove("section-open");
+      if (route.includes("skill") || route.includes("companion")) return openMainScreen("progression");
+      if (route.includes("loot") || route.includes("inventory") || route.includes("chest")) return openMainScreen("equipment");
+      if (route === "/boss/start") return openMainScreen("battle");
+      openMainScreen("home");
     }
 
     $("growthCenterOpen").addEventListener("click", async () => { $("growthCenterModal").classList.remove("hidden"); try { await refreshGrowthCenter(); } catch (error) { setMessage(`❌ ${error.message}`, true); } });
     $("growthCenterClose").addEventListener("click", () => $("growthCenterModal").classList.add("hidden"));
     $("growthCenterContent").addEventListener("click", event => { const button = event.target.closest("[data-growth-route]"); if (button) openGrowthTarget(button.dataset.growthRoute); });
+    $("homeScreen").addEventListener("click", event => { const button = event.target.closest("[data-growth-route]"); if (button) openGrowthTarget(button.dataset.growthRoute); });
     const compactNumber = new Intl.NumberFormat("ru-RU", { notation:"compact", maximumFractionDigits:1 });
     const fullNumber = new Intl.NumberFormat("ru-RU");
     function formatNumber(value) {
@@ -6834,9 +7038,10 @@ id="companionSummonChances"
         if (!response.ok) {
           throw new Error(data.detail || "Ошибка сервера");
         }
-
+        document.body.classList.remove("api-error");
         return data;
       } catch (error) {
+        document.body.classList.add("api-error");
         if (error?.name === "AbortError") {
           throw new Error("Сервер слишком долго отвечает");
         }
@@ -7140,7 +7345,7 @@ id="companionSummonChances"
       elements.stageProgress.textContent = player.stage_progress_label || `Этап ${player.stage} • ${player.wave}/10`;
       elements.bossButton.classList.toggle("hidden", !player.boss_button_visible);
       elements.gold.textContent = formatNumber(player.gold);
-      elements.gems.textContent = formatNumber(player.gems || 0);
+      elements.gems.textContent = formatNumber(player?.progression_resources?.premium_crystals ?? player.gems ?? 0);
       elements.bm.textContent = formatNumber(player.power);
       const xp = levelProgress(player);
       elements.level.textContent = player.level;
@@ -7190,11 +7395,27 @@ id="companionSummonChances"
       elements.skillsAutoButton.textContent = skillsAutoEnabled ? "AUTO: ВКЛ" : "AUTO";
       renderSkills();
       renderEquipment(); renderHeroStats(); renderChestModal();
+      frontendState.lastPlayerPayload = player;
+      setText("headerPlayerName", `${player.first_name || "Игрок"}${player.telegram_id || player.id ? ` · #${player.telegram_id || player.id}` : ""}`);
+      setText("headerStage", player.stage_progress_label || `Этап ${player.stage || 1}`);
+      setNavBadge("equipment", player.pending_loot ? 1 : 0);
+      setNavBadge("battle", player.boss_button_visible ? 1 : 0);
+      if (frontendState.activeScreen === "equipment") renderEquipmentHub();
       scheduleAutoOpen();
     }
 
     function setMessage(text, isError = false) {
       elements.message.classList.toggle("error", isError); elements.message.textContent = text;
+      const log = $("combatLog");
+      if (log && text) {
+        const event = document.createElement("div");
+        const normalized = String(text).toLowerCase();
+        const tone = normalized.includes("крит") ? "crit" : normalized.includes("леч") || normalized.includes("hp") ? "heal" : normalized.includes("яд") ? "poison" : normalized.includes("награ") || normalized.includes("+") ? "reward" : normalized.includes("блок") || normalized.includes("щит") ? "blocked" : "damage";
+        event.className = `combat-event ${tone}`;
+        event.textContent = text;
+        log.prepend(event);
+        while (log.children.length > 8) log.lastElementChild.remove();
+      }
     }
     function showDamage(amount, critical = false) {
       elements.damageNumber.textContent = critical ? `КРИТ -${formatNumber(amount)}` : `-${formatNumber(amount)}`;
@@ -7488,8 +7709,9 @@ id="companionSummonChances"
       catch (error) { setMessage(`❌ ${error.message}`, true); }
       finally { renderChestModal(); }
     }
-    async function salvageCurrentLoot() {
+    async function salvageCurrentLoot(confirmed = false) {
       const item = player?.pending_loot; if (!item) return;
+      if (!confirmed) return confirmAction("Разобрать предмет?", `${item.name || "Предмет"} будет необратимо превращён в ресурсы.`, () => salvageCurrentLoot(true));
       try { const result = await apiRequest("/inventory/salvage", "POST", {item_id:item.item_id || item.id, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); modalHide("lootOverlay"); setMessage(`♻️ +${result.dust_gained} пыли, +${result.ore_gained ?? result.crystals_gained} руды улучшения.`); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
@@ -7498,15 +7720,16 @@ id="companionSummonChances"
       try { await apiRequest("/inventory/item-lock", "POST", {item_id:item.item_id || item.id, locked:!item.locked, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); showLootModal(); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
-    async function rerollCurrentLoot() {
+    async function rerollCurrentLoot(confirmed = false) {
       const item = player?.pending_loot; const statKey = $("rerollStatSelect").value; if (!item || !statKey) return;
+      if (!confirmed) return confirmAction("Переработать характеристику?", "Будут списаны показанные сервером ресурсы. Результат определяется сервером.", () => rerollCurrentLoot(true));
       try { await apiRequest("/inventory/reroll-secondary", "POST", {item_id:item.item_id || item.id, stat_key:statKey, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); showLootModal(); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
-    async function bulkSalvage() {
+    async function bulkSalvage(confirmed = false) {
       const threshold = $("bulkSalvageRarity").value;
       const count = (player?.inventory || []).filter((item) => !item.locked && !item.comparison?.is_improvement).length;
-      if (!confirm(`Разобрать подходящие предметы (до ${count})?`)) return;
+      if (!confirmed) return confirmAction("Массовый разбор?", `Разобрать подходящие незаблокированные предметы (до ${count})?`, () => bulkSalvage(true));
       try { const result = await apiRequest("/inventory/salvage-bulk", "POST", {max_rarity:threshold, exclude_locked:true, exclude_build_upgrades:true}); player = await apiRequest("/player"); renderPlayer(); renderChestModal(); setMessage(`♻️ Разобрано: ${result.salvaged_count}, пыль: +${result.total_dust}`); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
@@ -8788,15 +9011,17 @@ id="companionSummonChances"
       container.querySelectorAll("[data-rank-entity]").forEach(button => button.addEventListener("click", () => rankProgression(button.dataset.rankEntity, button.dataset.rankId, Number(button.dataset.rankSteps))));
       container.querySelectorAll("[data-awaken-entity]").forEach(button => button.addEventListener("click", () => awakenProgression(button.dataset.awakenEntity, button.dataset.awakenId)));
     }
-    async function rankProgression(kind, id, steps) {
+    async function rankProgression(kind, id, steps, confirmed = false) {
       const entry = kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id];
+      if (steps > 1 && !confirmed) return confirmAction("Повысить несколько рангов?", "Будут списаны показанные сервером фрагменты.", () => rankProgression(kind, id, steps, true));
       try {
         await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/rank-up${steps > 1 ? "-bulk" : ""}`, "POST", {entity_id:id, steps, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
         player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); setMessage("Ранг повышен");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
-    async function awakenProgression(kind, id) {
+    async function awakenProgression(kind, id, confirmed = false) {
       const entry = kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id];
+      if (!confirmed) return confirmAction("Пробудить сущность?", "Пробуждение потратит показанные сервером ресурсы.", () => awakenProgression(kind, id, true));
       try {
         await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/awaken`, "POST", {entity_id:id, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
         player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); setMessage("Пробуждение повышено");
@@ -9920,6 +10145,7 @@ id="companionSummonChances"
     $("rerollLootButton").addEventListener("click", rerollCurrentLoot);
     $("bulkSalvageButton").addEventListener("click", bulkSalvage);
     elements.autoToggle.addEventListener("click", toggleAuto);
+    $("normalAttackButton").addEventListener("click", () => performAttack());
     elements.skillsAutoButton.addEventListener("click", toggleSkillsAuto);
     elements.skillButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -10015,6 +10241,34 @@ id="companionSummonChances"
       }
     }, 1000);
 
+    document.querySelectorAll("[data-open-screen]").forEach(button => button.addEventListener("click", () => openMainScreen(button.dataset.openScreen)));
+    document.querySelectorAll("[data-quick-action]").forEach(button => button.addEventListener("click", () => {
+      const action = button.dataset.quickAction;
+      if (action === "offline") $("offlineOpen").click();
+      if (action === "summon") $("summonOpen").click();
+      if (action === "quests") elements.questsBattleButton.click();
+      if (action === "chest") $("lootButton").click();
+    }));
+    document.querySelectorAll("[data-progression-tab]").forEach(button => button.addEventListener("click", () => {
+      frontendState.activeSubtab.progression = button.dataset.progressionTab;
+      document.querySelectorAll("[data-progression-tab]").forEach(tab => tab.classList.toggle("active", tab === button));
+      renderProgressionSummary();
+    }));
+    $("progressionDetailOpen").addEventListener("click", () => frontendState.activeSubtab.progression === "chest" ? $("lootButton").click() : openEnhancementsScreen());
+    $("resourceDrawerOpen").addEventListener("click", () => { renderResourceDrawer(); $("resourceDrawer").hidden = false; frontendState.modal = "resources"; $("resourceDrawerClose").focus(); });
+    $("resourceDrawerClose").addEventListener("click", () => { $("resourceDrawer").hidden = true; frontendState.modal = null; });
+    $("resourceDrawer").addEventListener("click", event => { if (event.target === $("resourceDrawer")) $("resourceDrawerClose").click(); });
+    $("settingsButton").addEventListener("click", () => showToast("Настройки Telegram и звук появятся здесь", "info"));
+    $("confirmCancel").addEventListener("click", () => closeConfirm(false));
+    $("confirmAccept").addEventListener("click", () => closeConfirm(true));
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      if (!$("confirmDialog").hidden) closeConfirm(false);
+      else if (!$("resourceDrawer").hidden) $("resourceDrawerClose").click();
+      else document.querySelectorAll(".game-modal:not(.hidden),.loot-overlay:not(.hidden)").forEach(modal => modal.classList.add("hidden"));
+    });
+    document.body.dataset.activeScreen = "home";
+    openMainScreen("home");
     startGame();
 
 
@@ -10743,14 +10997,23 @@ id="companionSummonChances"
     });
     $("summonSkillTab").addEventListener("click", async () => { summonBanner = "skill_standard"; await refreshSummonPanel(); });
     $("summonCompanionTab").addEventListener("click", async () => { summonBanner = "companion_standard"; await refreshSummonPanel(); });
-    document.querySelectorAll("[data-summon-count]").forEach(button => button.addEventListener("click", async () => {
+    document.querySelectorAll("[data-summon-count]").forEach(button => button.addEventListener("click", () => {
+      const executeSummon = async () => {
       const status = summonPublicStatus[summonBanner];
       const result = await apiRequest(summonBanner === "skill_standard" ? "/summon/skill" : "/summon/companion", "POST", {
         count: Number(button.dataset.summonCount), payment_type: button.dataset.summonPayment,
         client_action_id: crypto.randomUUID(), expected_pity_version: status.pity_version
       });
-      $("summonResults").innerHTML = result.results.map(item => `<div><b>${item.rarity}</b> · ${item.entity_id} · ${item.newly_unlocked ? "новая сущность" : `дубликат, +${item.fragments_gained} fragments (${item.fragments_before}→${item.fragments_after})`}${item.rank_up_available ? " · ⭐ доступен rank-up" : ""}${item.awakening_available ? " · ✨ доступно пробуждение" : ""}${item.guarantee_triggered ? ` · ${item.guarantee_type} guarantee` : ""}</div>`).join("");
+      $("summonResults").className = result.results.length === 10 ? "summon-result-grid summon-result-x10" : "summon-result-grid";
+      $("summonResults").innerHTML = result.results.map(item => `<div class="rarity-frame rarity-${escapeHtml(item.rarity)}"><b>${escapeHtml(RARITY_NAMES[item.rarity] || item.rarity)}</b> · ${escapeHtml(item.entity_id)} · ${item.newly_unlocked ? "<span>NEW</span>" : `<span>Дубликат · +${item.fragments_gained} фрагм.</span>`}${item.guarantee_triggered ? " · Гарантия" : ""}</div>`).join("");
       await refreshSummonPanel();
+      };
+      if (button.dataset.summonPayment === "premium_crystals") {
+        const cost = Number(button.dataset.summonCount) === 10 ? 900 : 100;
+        confirmAction("Потратить кристаллы?", `Призыв ×${button.dataset.summonCount} за ${cost} премиальных кристаллов.`, executeSummon);
+      } else {
+        executeSummon();
+      }
     }));
 
 </script>
