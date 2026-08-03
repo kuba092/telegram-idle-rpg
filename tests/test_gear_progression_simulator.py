@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from gear_progression_simulator import (  # noqa: E402
     GearProgressionSimulator,
+    Item,
     load_config,
     pity_comparison,
     simulate_all,
@@ -83,6 +84,127 @@ class GearProgressionSimulatorTest(unittest.TestCase):
         result = pity_comparison(self.config, days=7)
         self.assertIn("with_pity", result["f2p"])
         self.assertIn("without_pity", result["f2p"])
+
+    def combat_simulator(self, *, hero_level=50, day=365, profile="f2p"):
+        simulator = GearProgressionSimulator(copy.deepcopy(self.config), profile, seed=123)
+        simulator.state.day = day
+        simulator.state.hero_level = hero_level
+        simulator.state.max_stage = 500
+        equipment = {}
+        for index, (slot, focus) in enumerate(simulator.config["item"]["slots"].items()):
+            power = 1000 + index * 10
+            damage = 500 if focus == "attack" else 250 if focus == "mixed" else 0
+            hp = 3800 if focus == "defense" else 1900 if focus == "mixed" else 0
+            equipment[slot] = Item(slot, "epic", 4, power, damage, hp, hero_level, 400, 20, 1.0, 100)
+        simulator.state.equipment = equipment
+        return simulator
+
+    def add_build(self, simulator, name, skills, companions):
+        simulator.config["builds"][name] = {
+            "skills": skills,
+            "companions": companions,
+        }
+
+    def test_locked_skill_slots_do_not_apply(self):
+        simulator = self.combat_simulator(hero_level=10)
+        active = simulator.active_build("balanced")
+        self.assertEqual([entry["id"] for entry in active["skills"]], ["spore_strike"])
+
+    def test_locked_companion_slots_do_not_apply(self):
+        simulator = self.combat_simulator(hero_level=10)
+        active = simulator.active_build("balanced")
+        self.assertEqual([entry["id"] for entry in active["companions"]], ["forest_sprite"])
+        simulator.state.hero_level = 9
+        self.assertEqual(simulator.active_build("balanced")["companions"], [])
+
+    def test_forest_sprite_increases_attacks_and_skills(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "plain", ["spore_strike"], [])
+        self.add_build(simulator, "forest", ["spore_strike"], ["forest_sprite"])
+        plain = simulator.simulate_battle(500, "plain", boss=True)
+        forest = simulator.simulate_battle(500, "forest", boss=True)
+        self.assertGreater(forest["normal_attack_damage"], plain["normal_attack_damage"])
+        self.assertGreater(forest["damage_by_source"]["spore_strike"], plain["damage_by_source"]["spore_strike"])
+
+    def test_spore_beetle_increases_only_normal_attack(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "plain", ["spore_strike"], [])
+        self.add_build(simulator, "beetle", ["spore_strike"], ["spore_beetle"])
+        plain = simulator.simulate_battle(500, "plain", boss=True)
+        beetle = simulator.simulate_battle(500, "beetle", boss=True)
+        self.assertGreater(beetle["normal_attack_damage"], plain["normal_attack_damage"])
+        # Compare the first cast rather than total battle damage (battle lengths differ).
+        level = beetle["active_skills"]["spore_strike"]
+        expected_cast = simulator.combat_stats(build_name="beetle")["raw_damage"] * 2 * (1 + (level - 1) * 0.05)
+        self.assertAlmostEqual(beetle["damage_by_source"]["spore_strike"] / beetle["skill_uses"]["spore_strike"], expected_cast * beetle["expected_crit_multiplier"], places=5)
+
+    def test_mushroom_owl_reduces_real_skill_intervals_and_caps_at_30_percent(self):
+        simulator = self.combat_simulator(profile="whale")
+        self.add_build(simulator, "owl", ["spore_strike", "poison_cloud"], ["mushroom_owl"])
+        battle = simulator.simulate_battle(700, "owl", boss=True)
+        owl_level = battle["active_companions"]["mushroom_owl"]
+        expected_reduction = min(0.30, owl_level * 0.02)
+        self.assertAlmostEqual(battle["skill_intervals"]["spore_strike"], 8 * (1 - expected_reduction))
+        simulator.profile["companion_level_day_365"] = 20
+        capped = simulator.simulate_battle(700, "owl", boss=True)
+        self.assertAlmostEqual(capped["skill_intervals"]["spore_strike"], 5.6)
+
+    def test_thorn_wolf_increases_expected_critical_dps(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "plain", ["spore_strike"], [])
+        self.add_build(simulator, "wolf", ["spore_strike"], ["thorn_wolf"])
+        plain = simulator.simulate_battle(700, "plain", boss=True)
+        wolf = simulator.simulate_battle(700, "wolf", boss=True)
+        self.assertGreater(wolf["expected_crit_multiplier"], plain["expected_crit_multiplier"])
+        self.assertGreater(wolf["total_dps"], plain["total_dps"])
+
+    def test_baby_slime_increases_hp(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "plain", [], [])
+        self.add_build(simulator, "slime", [], ["baby_slime"])
+        self.assertGreater(
+            simulator.combat_stats(build_name="slime")["hp"],
+            simulator.combat_stats(build_name="plain")["hp"],
+        )
+
+    def test_mushroom_shield_increases_effective_hp(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "plain", [], [])
+        self.add_build(simulator, "shield", ["mushroom_shield"], [])
+        plain = simulator.simulate_battle(1000, "plain", boss=True)
+        shield = simulator.simulate_battle(1000, "shield", boss=True)
+        self.assertGreater(shield["effective_hp"], plain["effective_hp"])
+
+    def test_ancient_entling_heals_only_after_victory(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "ent", [], ["ancient_entling"])
+        battle = simulator.simulate_battle(400, "ent", boss=False)
+        self.assertTrue(battle["won"])
+        self.assertGreater(battle["post_victory_healing"], 0)
+        self.assertLess(battle["hero_hp_after_battle"], battle["max_hp"])
+        self.assertLessEqual(battle["post_victory_healing"], battle["max_hp"] - battle["hero_hp_after_battle"])
+        losing = simulator.simulate_battle(1000, "ent", boss=True)
+        if not losing["won"]:
+            self.assertEqual(losing["post_victory_healing"], 0)
+
+    def test_poison_cloud_does_not_land_all_ticks_in_short_fight(self):
+        simulator = self.combat_simulator()
+        self.add_build(simulator, "poison", ["poison_cloud"], [])
+        battle = simulator.simulate_battle(1, "poison", boss=False)
+        self.assertLess(battle["poison_ticks_landed"], 5)
+
+    def test_builds_differ_and_tank_outlives_burst_while_burst_has_more_dps(self):
+        simulator = self.combat_simulator(profile="mid_spender")
+        burst = simulator.simulate_battle(700, "burst", boss=True)
+        tank = simulator.simulate_battle(700, "tank", boss=True)
+        self.assertGreater(tank["effective_hp"], burst["effective_hp"])
+        self.assertGreater(burst["total_dps"], tank["total_dps"])
+        self.assertNotEqual(burst["skill_uses"], tank["skill_uses"])
+
+    def test_combat_monte_carlo_same_seed_is_deterministic(self):
+        first = self.combat_simulator().monte_carlo_battle(500, "balanced", boss=True, trials=20)
+        second = self.combat_simulator().monte_carlo_battle(500, "balanced", boss=True, trials=20)
+        self.assertEqual(first, second)
 
 
 if __name__ == "__main__":

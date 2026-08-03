@@ -8,7 +8,10 @@
     "significant_upgrade_ratio": 0.01,
     "daily_combat_first_pass_ratio": 0.65,
     "external_system_growth_curve": 0.62,
-    "external_system_growth_days": 365
+    "external_system_growth_days": 365,
+    "combat_monte_carlo_trials": 160,
+    "combat_max_seconds": 600,
+    "combat_time_step": 0.01
   },
   "hero": {
     "max_level": 100,
@@ -104,6 +107,100 @@
     "guaranteed_upgrade_after": 120,
     "forced_upgrade_power_ratio": 0.035
   },
+  "skills": {
+    "slot_unlock_levels": [5, 15, 30],
+    "max_level": 20,
+    "power_per_level": 0.05,
+    "spore_strike": {
+      "type": "instant_damage",
+      "damage_multiplier": 2.0,
+      "cooldown_seconds": 8.0
+    },
+    "mushroom_shield": {
+      "type": "shield",
+      "max_hp_ratio": 0.35,
+      "cooldown_seconds": 15.0,
+      "auto_hp_ratio": 0.6
+    },
+    "poison_cloud": {
+      "type": "damage_over_time",
+      "tick_damage_multiplier": 0.5,
+      "ticks": 5,
+      "tick_interval_seconds": 1.0,
+      "cooldown_seconds": 20.0
+    }
+  },
+  "companions": {
+    "system_unlock_level": 10,
+    "slot_unlock_levels": [10, 25, 50],
+    "max_level": 20,
+    "forest_sprite": {"effect": "final_damage", "per_level": 0.03},
+    "baby_slime": {"effect": "max_hp", "per_level": 0.05},
+    "spore_beetle": {"effect": "normal_attack_extra", "per_level": 0.02},
+    "mushroom_owl": {
+      "effect": "skill_cooldown_reduction",
+      "per_level": 0.02,
+      "maximum_reduction": 0.3
+    },
+    "thorn_wolf": {
+      "effect": "critical_chance",
+      "percentage_points_per_level": 0.5,
+      "maximum_total_chance": 100.0
+    },
+    "ancient_entling": {
+      "effect": "post_victory_healing",
+      "normal_ratio_per_level": 0.01,
+      "boss_multiplier": 2.0
+    }
+  },
+  "builds": {
+    "basic_f2p": {
+      "skills": ["spore_strike", "mushroom_shield"],
+      "companions": ["forest_sprite", "baby_slime"],
+      "skill_level_cap": 5,
+      "companion_level_cap": 4
+    },
+    "burst": {
+      "skills": ["spore_strike", "poison_cloud"],
+      "companions": ["forest_sprite", "mushroom_owl", "thorn_wolf"]
+    },
+    "basic_attack": {
+      "skills": ["spore_strike"],
+      "companions": ["forest_sprite", "spore_beetle", "thorn_wolf"]
+    },
+    "skill_spam": {
+      "skills": ["spore_strike", "poison_cloud"],
+      "companions": ["mushroom_owl", "forest_sprite", "thorn_wolf"]
+    },
+    "tank": {
+      "skills": ["mushroom_shield"],
+      "companions": ["baby_slime", "ancient_entling", "forest_sprite"]
+    },
+    "sustain": {
+      "skills": ["mushroom_shield"],
+      "companions": ["baby_slime", "ancient_entling", "mushroom_owl"]
+    },
+    "balanced": {
+      "skills": ["spore_strike", "mushroom_shield", "poison_cloud"],
+      "companions": ["forest_sprite", "baby_slime", "mushroom_owl"]
+    }
+  },
+  "build_simulation": {
+    "stages": [10, 25, 50, 100, 300, 500, 700, 1000],
+    "report_days": {
+      "f2p": [30, 90, 365],
+      "low_spender": [30, 365],
+      "mid_spender": [30, 365],
+      "whale": [30, 365]
+    },
+    "default_progression_build": "balanced",
+    "base_crit_chance_percent": 5.0,
+    "base_crit_damage_percent": 150.0,
+    "crit_damage_percent_per_10_hero_levels": 5.0,
+    "universal_score_dps_weight": 0.55,
+    "universal_score_survival_weight": 0.45,
+    "short_fight_seconds": 4.0
+  },
   "profiles": {
     "f2p": {
       "daily_quest_chests": 10,
@@ -111,9 +208,10 @@
       "pass_chests": 0,
       "paid_chests_daily_limit": 0,
       "active_combat_seconds": 1800,
-      "skill_damage_bonus_day_365": 0.22,
-      "companion_damage_bonus_day_365": 0.16,
-      "companion_hp_bonus_day_365": 0.2
+      "skill_level_day_1": 1,
+      "skill_level_day_365": 9,
+      "companion_level_day_1": 1,
+      "companion_level_day_365": 8
     },
     "low_spender": {
       "daily_quest_chests": 10,
@@ -121,9 +219,10 @@
       "pass_chests": 8,
       "paid_chests_daily_limit": 5,
       "active_combat_seconds": 2100,
-      "skill_damage_bonus_day_365": 0.3,
-      "companion_damage_bonus_day_365": 0.22,
-      "companion_hp_bonus_day_365": 0.28
+      "skill_level_day_1": 1,
+      "skill_level_day_365": 12,
+      "companion_level_day_1": 1,
+      "companion_level_day_365": 11
     },
     "mid_spender": {
       "daily_quest_chests": 10,
@@ -131,9 +230,10 @@
       "pass_chests": 15,
       "paid_chests_daily_limit": 18,
       "active_combat_seconds": 2400,
-      "skill_damage_bonus_day_365": 0.4,
-      "companion_damage_bonus_day_365": 0.3,
-      "companion_hp_bonus_day_365": 0.38
+      "skill_level_day_1": 1,
+      "skill_level_day_365": 15,
+      "companion_level_day_1": 1,
+      "companion_level_day_365": 14
     },
     "whale": {
       "daily_quest_chests": 10,
@@ -141,9 +241,10 @@
       "pass_chests": 25,
       "paid_chests_daily_limit": 45,
       "active_combat_seconds": 2700,
-      "skill_damage_bonus_day_365": 0.55,
-      "companion_damage_bonus_day_365": 0.42,
-      "companion_hp_bonus_day_365": 0.52
+      "skill_level_day_1": 2,
+      "skill_level_day_365": 18,
+      "companion_level_day_1": 2,
+      "companion_level_day_365": 17
     }
   }
 }

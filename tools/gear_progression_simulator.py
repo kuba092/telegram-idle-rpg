@@ -12,6 +12,7 @@ import copy
 import json
 import math
 import random
+import statistics
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -57,7 +58,11 @@ class PlayerState:
 def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
     with Path(path).open(encoding="utf-8") as handle:
         config = json.load(handle)
-    required = {"simulation", "hero", "combat", "chest", "item", "rarities", "rarity_weights", "pity", "profiles"}
+    required = {
+        "simulation", "hero", "combat", "chest", "item", "rarities",
+        "rarity_weights", "pity", "skills", "companions", "builds",
+        "build_simulation", "profiles",
+    }
     missing = required.difference(config)
     if missing:
         raise ValueError(f"Missing config sections: {sorted(missing)}")
@@ -206,29 +211,79 @@ class GearProgressionSimulator:
             state.gold -= cost
             state.chest_level += 1
 
-    def combat_stats(self, day: int | None = None) -> dict[str, float]:
+    def system_level(self, system: str, day: int | None = None) -> int:
+        """Return a profile/day driven skill or companion level."""
+        if system not in {"skill", "companion"}:
+            raise ValueError(f"Unknown progression system: {system}")
+        day = self.state.day if day is None else day
+        simulation = self.config["simulation"]
+        growth_days = max(1, int(simulation["external_system_growth_days"]))
+        progress = min(1.0, max(0.0, (day - 1) / max(1, growth_days - 1))) ** float(
+            simulation["external_system_growth_curve"]
+        )
+        start = int(self.profile[f"{system}_level_day_1"])
+        end = int(self.profile[f"{system}_level_day_365"])
+        maximum = int(self.config[f"{system}s"]["max_level"])
+        return max(1, min(maximum, round(start + (end - start) * progress)))
+
+    def active_build(self, build_name: str, day: int | None = None) -> dict[str, Any]:
+        if build_name not in self.config["builds"]:
+            raise ValueError(f"Unknown build: {build_name}")
+        definition = self.config["builds"][build_name]
+        hero_level = self.state.hero_level
+        skill_slots = sum(hero_level >= level for level in self.config["skills"]["slot_unlock_levels"])
+        companion_slots = (
+            sum(hero_level >= level for level in self.config["companions"]["slot_unlock_levels"])
+            if hero_level >= int(self.config["companions"]["system_unlock_level"])
+            else 0
+        )
+        skill_level = min(
+            self.system_level("skill", day),
+            int(definition.get("skill_level_cap", self.config["skills"]["max_level"])),
+        )
+        companion_level = min(
+            self.system_level("companion", day),
+            int(definition.get("companion_level_cap", self.config["companions"]["max_level"])),
+        )
+        return {
+            "name": build_name,
+            "skills": [
+                {"id": skill_id, "level": skill_level}
+                for skill_id in definition["skills"][:skill_slots]
+            ],
+            "companions": [
+                {"id": companion_id, "level": companion_level}
+                for companion_id in definition["companions"][:companion_slots]
+            ],
+            "skill_slots": skill_slots,
+            "companion_slots": companion_slots,
+        }
+
+    def combat_stats(self, day: int | None = None, build_name: str | None = None) -> dict[str, float]:
         state = self.state
         day = state.day if day is None else day
         hero = self.config["hero"]
-        profile = self.profile
-        simulation = self.config["simulation"]
-        growth_days = max(1, int(simulation["external_system_growth_days"]))
-        progress = min(1.0, max(0.0, day / growth_days)) ** float(
-            simulation["external_system_growth_curve"]
-        )
-        skill_bonus = float(profile["skill_damage_bonus_day_365"]) * progress
-        companion_damage = float(profile["companion_damage_bonus_day_365"]) * progress
-        companion_hp = float(profile["companion_hp_bonus_day_365"]) * progress
+        build_name = build_name or str(self.config["build_simulation"]["default_progression_build"])
+        build = self.active_build(build_name, day)
+        companion_levels = {entry["id"]: entry["level"] for entry in build["companions"]}
+        companion_cfg = self.config["companions"]
+        forest_bonus = companion_levels.get("forest_sprite", 0) * float(companion_cfg["forest_sprite"]["per_level"])
+        slime_bonus = companion_levels.get("baby_slime", 0) * float(companion_cfg["baby_slime"]["per_level"])
         base_damage = float(hero["base_damage"]) + (state.hero_level - 1) * float(hero["damage_per_level"])
         base_hp = float(hero["base_hp"]) + (state.hero_level - 1) * float(hero["hp_per_level"])
         gear_damage = sum(item.damage for item in state.equipment.values())
         gear_hp = sum(item.hp for item in state.equipment.values())
-        total_damage = (base_damage + gear_damage) * (1 + skill_bonus) * (1 + companion_damage)
-        total_hp = (base_hp + gear_hp) * (1 + companion_hp)
+        total_damage = (base_damage + gear_damage) * (1 + forest_bonus)
+        total_hp = (base_hp + gear_hp) * (1 + slime_bonus)
         equipment_power = sum(item.power for item in state.equipment.values())
         base_power = base_damage + base_hp / 4
         share = equipment_power / (equipment_power + base_power) if equipment_power else 0.0
-        return {"base_damage": base_damage, "gear_damage": gear_damage, "damage": total_damage, "hp": total_hp, "equipment_power": equipment_power, "equipment_share": share}
+        return {
+            "base_damage": base_damage, "gear_damage": gear_damage,
+            "raw_damage": base_damage + gear_damage, "damage": total_damage,
+            "raw_hp": base_hp + gear_hp, "hp": total_hp,
+            "equipment_power": equipment_power, "equipment_share": share,
+        }
 
     def enemy_stats(self, stage: int, boss: bool = False) -> tuple[int, int]:
         combat = self.config["combat"]
@@ -240,18 +295,240 @@ class GearProgressionSimulator:
             damage *= float(combat["milestone_boss_damage_multiplier"] if milestone else combat["boss_damage_multiplier"])
         return max(1, round(hp)), max(1, round(damage))
 
-    def kill_time(self, stage: int, boss: bool = False) -> float:
-        hp, _ = self.enemy_stats(stage, boss)
-        dps = self.combat_stats()["damage"] * float(self.config["combat"]["hero_attacks_per_second"])
-        return hp / max(1.0, dps)
+    def _critical_multiplier(self, critical: bool, expected: bool, chance: float, crit_multiplier: float, rng: random.Random) -> float:
+        if expected:
+            return 1.0 + chance * (crit_multiplier - 1.0)
+        return crit_multiplier if critical or rng.random() < chance else 1.0
+
+    def simulate_battle(
+        self,
+        stage: int,
+        build_name: str,
+        *,
+        boss: bool = False,
+        day: int | None = None,
+        rng: random.Random | None = None,
+        expected_crits: bool = True,
+        excluded_companion: str | None = None,
+    ) -> dict[str, Any]:
+        """Simulate attacks, cooldowns, poison ticks, shields and death."""
+        day = self.state.day if day is None else day
+        rng = self.rng if rng is None else rng
+        cfg = self.config
+        combat = cfg["combat"]
+        skills_cfg = cfg["skills"]
+        companions_cfg = cfg["companions"]
+        build = self.active_build(build_name, day)
+        skill_levels = {entry["id"]: entry["level"] for entry in build["skills"]}
+        companion_levels = {entry["id"]: entry["level"] for entry in build["companions"]}
+        if excluded_companion:
+            companion_levels.pop(excluded_companion, None)
+        stats = self.combat_stats(day, build_name)
+        forest_multiplier = 1 + companion_levels.get("forest_sprite", 0) * float(companions_cfg["forest_sprite"]["per_level"])
+        beetle_extra = stats["raw_damage"] * companion_levels.get("spore_beetle", 0) * float(companions_cfg["spore_beetle"]["per_level"])
+        owl_reduction = min(
+            float(companions_cfg["mushroom_owl"]["maximum_reduction"]),
+            companion_levels.get("mushroom_owl", 0) * float(companions_cfg["mushroom_owl"]["per_level"]),
+        )
+        cooldown_multiplier = 1 - owl_reduction
+        crit_chance_percent = float(cfg["build_simulation"]["base_crit_chance_percent"]) + companion_levels.get("thorn_wolf", 0) * float(companions_cfg["thorn_wolf"]["percentage_points_per_level"])
+        crit_chance = min(float(companions_cfg["thorn_wolf"]["maximum_total_chance"]), crit_chance_percent) / 100
+        crit_damage = (
+            float(cfg["build_simulation"]["base_crit_damage_percent"])
+            + (self.state.hero_level // 10) * float(cfg["build_simulation"]["crit_damage_percent_per_10_hero_levels"])
+        ) / 100
+        enemy_hp, enemy_damage = self.enemy_stats(stage, boss)
+        max_hp = stats["hp"]
+        hero_hp = max_hp
+        shield = 0.0
+        time_now = 0.0
+        attack_interval = 1 / float(combat["hero_attacks_per_second"])
+        next_attack = 0.0
+        next_enemy_attack = float(combat["enemy_attack_interval_seconds"])
+        next_skill = {skill_id: 0.0 for skill_id in skill_levels if skill_id != "mushroom_shield"}
+        shield_ready_at = 0.0
+        poison_ticks: list[float] = []
+        damage_by_source = {"normal_attack": 0.0, "spore_strike": 0.0, "poison_cloud": 0.0}
+        uses = {skill_id: 0 for skill_id in skill_levels}
+        shield_generated = 0.0
+        shield_absorbed = 0.0
+        enemy_attacks = 0
+        max_seconds = float(cfg["simulation"]["combat_max_seconds"])
+        epsilon = float(cfg["simulation"]["combat_time_step"])
+
+        def apply_damage(source: str, raw: float, can_crit: bool = True) -> None:
+            nonlocal enemy_hp
+            multiplier = self._critical_multiplier(False, expected_crits, crit_chance, crit_damage, rng) if can_crit else 1.0
+            dealt = max(0.0, raw * multiplier)
+            enemy_hp -= dealt
+            damage_by_source[source] += dealt
+
+        while enemy_hp > 0 and hero_hp > 0 and time_now <= max_seconds:
+            candidates = [next_attack, next_enemy_attack]
+            candidates.extend(next_skill.values())
+            candidates.extend(poison_ticks)
+            time_now = min(value for value in candidates if value >= time_now - epsilon)
+
+            if next_attack <= time_now + epsilon:
+                apply_damage("normal_attack", stats["raw_damage"] * forest_multiplier)
+                if beetle_extra:
+                    apply_damage("normal_attack", beetle_extra, can_crit=False)
+                next_attack += attack_interval
+                if enemy_hp <= 0:
+                    break
+
+            for skill_id in list(next_skill):
+                if next_skill[skill_id] > time_now + epsilon:
+                    continue
+                level = skill_levels[skill_id]
+                power = 1 + (level - 1) * float(skills_cfg["power_per_level"])
+                skill_cfg = skills_cfg[skill_id]
+                uses[skill_id] += 1
+                if skill_id == "spore_strike":
+                    apply_damage(skill_id, stats["raw_damage"] * float(skill_cfg["damage_multiplier"]) * power * forest_multiplier)
+                elif skill_id == "poison_cloud":
+                    poison_ticks.extend(
+                        time_now + float(skill_cfg["tick_interval_seconds"]) * tick
+                        for tick in range(1, int(skill_cfg["ticks"]) + 1)
+                    )
+                next_skill[skill_id] += float(skill_cfg["cooldown_seconds"]) * cooldown_multiplier
+                if enemy_hp <= 0:
+                    break
+            if enemy_hp <= 0:
+                break
+
+            due_ticks = [tick for tick in poison_ticks if tick <= time_now + epsilon]
+            if due_ticks:
+                level = skill_levels.get("poison_cloud", 1)
+                power = 1 + (level - 1) * float(skills_cfg["power_per_level"])
+                tick_cfg = skills_cfg["poison_cloud"]
+                for _ in due_ticks:
+                    apply_damage("poison_cloud", stats["raw_damage"] * float(tick_cfg["tick_damage_multiplier"]) * power * forest_multiplier)
+                poison_ticks = [tick for tick in poison_ticks if tick > time_now + epsilon]
+                if enemy_hp <= 0:
+                    break
+
+            if next_enemy_attack <= time_now + epsilon:
+                if "mushroom_shield" in skill_levels and hero_hp / max_hp <= float(skills_cfg["mushroom_shield"]["auto_hp_ratio"]) and time_now >= shield_ready_at - epsilon:
+                    level = skill_levels["mushroom_shield"]
+                    power = 1 + (level - 1) * float(skills_cfg["power_per_level"])
+                    shield = max_hp * float(skills_cfg["mushroom_shield"]["max_hp_ratio"]) * power
+                    shield_generated += shield
+                    uses["mushroom_shield"] += 1
+                    shield_ready_at = time_now + float(skills_cfg["mushroom_shield"]["cooldown_seconds"]) * cooldown_multiplier
+                absorbed = min(shield, enemy_damage)
+                shield -= absorbed
+                shield_absorbed += absorbed
+                hero_hp -= max(0.0, enemy_damage - absorbed)
+                enemy_attacks += 1
+                next_enemy_attack += float(combat["enemy_attack_interval_seconds"])
+
+        won = enemy_hp <= 0
+        duration = max(epsilon, time_now)
+        entling_ratio = companion_levels.get("ancient_entling", 0) * float(companions_cfg["ancient_entling"]["normal_ratio_per_level"])
+        if boss:
+            entling_ratio *= float(companions_cfg["ancient_entling"]["boss_multiplier"])
+        post_victory_healing = min(max_hp - max(0.0, hero_hp), max_hp * entling_ratio) if won else 0.0
+        skill_dps = {skill: damage / duration for skill, damage in damage_by_source.items() if skill != "normal_attack"}
+        return {
+            "build": build_name, "stage": stage, "boss": boss,
+            "won": won, "survived": hero_hp > 0, "duration": duration,
+            "normal_attack_damage": stats["raw_damage"] * forest_multiplier + beetle_extra,
+            "crit_chance": crit_chance, "expected_crit_multiplier": 1 + crit_chance * (crit_damage - 1),
+            "expected_critical_attack_damage": stats["raw_damage"] * forest_multiplier * crit_damage + beetle_extra,
+            "damage_by_source": damage_by_source, "skill_dps": skill_dps,
+            "total_dps": sum(damage_by_source.values()) / duration,
+            "max_hp": max_hp, "effective_hp": max_hp + shield_generated,
+            "hero_hp_after_battle": max(0.0, hero_hp), "shield_generated": shield_generated,
+            "shield_absorbed": shield_absorbed, "post_victory_healing": post_victory_healing,
+            "skill_uses": uses,
+            "skill_frequency_per_second": {
+                skill_id: count / duration for skill_id, count in uses.items()
+            },
+            "skill_intervals": {
+                skill_id: float(skills_cfg[skill_id]["cooldown_seconds"]) * cooldown_multiplier
+                for skill_id in skill_levels if "cooldown_seconds" in skills_cfg[skill_id]
+            },
+            "poison_ticks_landed": round(
+                damage_by_source["poison_cloud"]
+                / max(epsilon, stats["raw_damage"] * float(skills_cfg["poison_cloud"]["tick_damage_multiplier"]) * (1 + (skill_levels.get("poison_cloud", 1) - 1) * float(skills_cfg["power_per_level"])) * forest_multiplier * (1 + crit_chance * (crit_damage - 1)))
+            ) if "poison_cloud" in skill_levels else 0,
+            "enemy_attacks": enemy_attacks,
+            "active_skills": skill_levels, "active_companions": companion_levels,
+        }
+
+    def monte_carlo_battle(self, stage: int, build_name: str, *, boss: bool, day: int | None = None, trials: int | None = None) -> dict[str, Any]:
+        trials = int(trials or self.config["simulation"]["combat_monte_carlo_trials"])
+        seed = int(self.config["simulation"]["seed"]) + stage * 104729 + self.state.day * 1009 + list(self.config["builds"]).index(build_name) * 9176 + int(boss)
+        results = [
+            self.simulate_battle(stage, build_name, boss=boss, day=day, rng=random.Random(seed + trial), expected_crits=False)
+            for trial in range(trials)
+        ]
+        return {
+            "win_probability": sum(result["won"] for result in results) / trials,
+            "survival_probability": sum(result["survived"] for result in results) / trials,
+            "mean_duration": statistics.fmean(result["duration"] for result in results),
+            "mean_dps": statistics.fmean(result["total_dps"] for result in results),
+        }
+
+    def monte_carlo_random_builds(self, stage: int, *, day: int | None = None, trials: int | None = None) -> dict[str, Any]:
+        """Sample random valid skill/companion combinations with deterministic RNG."""
+        day = self.state.day if day is None else day
+        trials = int(trials or self.config["simulation"]["combat_monte_carlo_trials"])
+        seed = int(self.config["simulation"]["seed"]) + stage * 65537 + day * 8191 + list(self.config["profiles"]).index(self.profile_name) * 131071
+        rng = random.Random(seed)
+        skill_ids = [key for key in self.config["skills"] if key not in {"slot_unlock_levels", "max_level", "power_per_level"}]
+        companion_ids = [key for key in self.config["companions"] if isinstance(self.config["companions"][key], dict)]
+        skill_slots = sum(self.state.hero_level >= level for level in self.config["skills"]["slot_unlock_levels"])
+        companion_slots = sum(self.state.hero_level >= level for level in self.config["companions"]["slot_unlock_levels"])
+        temporary_name = "__monte_carlo_random_build__"
+        results = []
+        best = None
+        try:
+            for trial in range(trials):
+                skills = rng.sample(skill_ids, k=min(skill_slots, len(skill_ids)))
+                companions = rng.sample(companion_ids, k=min(companion_slots, len(companion_ids)))
+                self.config["builds"][temporary_name] = {"skills": skills, "companions": companions}
+                result = self.simulate_battle(
+                    stage, temporary_name, boss=True, day=day,
+                    rng=random.Random(seed + trial + 1), expected_crits=False,
+                )
+                record = {
+                    "skills": skills, "companions": companions,
+                    "won": result["won"], "dps": result["total_dps"],
+                    "duration": result["duration"],
+                }
+                results.append(record)
+                if best is None or (record["won"], record["dps"]) > (best["won"], best["dps"]):
+                    best = record
+        finally:
+            self.config["builds"].pop(temporary_name, None)
+        return {
+            "trials": trials,
+            "win_probability": sum(record["won"] for record in results) / trials,
+            "mean_dps": statistics.fmean(record["dps"] for record in results),
+            "best_sample": best,
+        }
+
+    def kill_time(self, stage: int, boss: bool = False, build_name: str | None = None) -> float:
+        build_name = build_name or str(self.config["build_simulation"]["default_progression_build"])
+        battle = self.simulate_battle(stage, build_name, boss=boss)
+        return battle["duration"] if battle["won"] else float(self.config["simulation"]["combat_max_seconds"])
 
     def _can_beat_boss(self, stage: int) -> bool:
         combat = self.config["combat"]
-        seconds = self.kill_time(stage, True)
-        _, damage = self.enemy_stats(stage, True)
-        attacks_received = max(0, math.floor(seconds / float(combat["enemy_attack_interval_seconds"])))
-        survivable = self.combat_stats()["hp"] / damage
-        return seconds <= float(combat["maximum_boss_kill_seconds"]) and survivable >= max(int(combat["minimum_boss_hits_survived"]), attacks_received)
+        battle = self.simulate_battle(
+            stage,
+            str(self.config["build_simulation"]["default_progression_build"]),
+            boss=True,
+        )
+        _, boss_damage = self.enemy_stats(stage, True)
+        minimum_hits_possible = battle["max_hp"] / max(1, boss_damage)
+        return (
+            battle["won"]
+            and battle["duration"] <= float(combat["maximum_boss_kill_seconds"])
+            and minimum_hits_possible >= int(combat["minimum_boss_hits_survived"])
+        )
 
     def _progress_combat(self, seconds_budget: float) -> int:
         combat = self.config["combat"]
@@ -358,6 +635,88 @@ class GearProgressionSimulator:
             "significant_upgrades": state.significant_upgrades,
         }
 
+    def compare_builds(self, stage: int, *, day: int | None = None, monte_carlo: bool = True) -> dict[str, Any]:
+        """Compare configured builds using the current gear and hero state."""
+        day = self.state.day if day is None else day
+        rows = []
+        for build_name in self.config["builds"]:
+            normal = self.simulate_battle(stage, build_name, boss=False, day=day)
+            boss = self.simulate_battle(stage, build_name, boss=True, day=day)
+            companion_contributions = {}
+            for companion_id in boss["active_companions"]:
+                without = self.simulate_battle(
+                    stage, build_name, boss=True, day=day,
+                    excluded_companion=companion_id,
+                )
+                companion_contributions[companion_id] = {
+                    "dps_delta": round(boss["total_dps"] - without["total_dps"], 3),
+                    "max_hp_delta": round(boss["max_hp"] - without["max_hp"], 3),
+                    "healing_delta": round(boss["post_victory_healing"] - without["post_victory_healing"], 3),
+                    "boss_time_delta": round(without["duration"] - boss["duration"], 3),
+                }
+            skill_contributions = {
+                skill_id: {
+                    "damage": round(boss["damage_by_source"].get(skill_id, 0.0), 3),
+                    "dps": round(boss["skill_dps"].get(skill_id, 0.0), 3),
+                    "uses": boss["skill_uses"].get(skill_id, 0),
+                }
+                for skill_id in boss["active_skills"]
+            }
+            row = {
+                "build": build_name,
+                "active_skills": boss["active_skills"],
+                "active_companions": boss["active_companions"],
+                "normal_kill_seconds": round(normal["duration"], 3),
+                "boss_kill_seconds": round(boss["duration"], 3),
+                "boss_won": boss["won"],
+                "boss_survived": boss["survived"],
+                "total_dps": round(boss["total_dps"], 3),
+                "normal_attack_damage": round(boss["normal_attack_damage"], 3),
+                "expected_crit_multiplier": round(boss["expected_crit_multiplier"], 4),
+                "max_hp": round(boss["max_hp"]),
+                "effective_hp": round(boss["effective_hp"]),
+                "post_victory_healing": round(boss["post_victory_healing"]),
+                "poison_ticks_landed": boss["poison_ticks_landed"],
+                "skill_intervals": {key: round(value, 3) for key, value in boss["skill_intervals"].items()},
+                "skill_contributions": skill_contributions,
+                "companion_contributions": companion_contributions,
+            }
+            if monte_carlo:
+                row["monte_carlo"] = self.monte_carlo_battle(stage, build_name, boss=True, day=day)
+            rows.append(row)
+
+        best_dps = max(rows, key=lambda row: row["total_dps"])
+        best_survival = max(rows, key=lambda row: (row["boss_survived"], row["effective_hp"] + row["post_victory_healing"]))
+        max_dps = max(1.0, max(row["total_dps"] for row in rows))
+        max_survival = max(1.0, max(row["effective_hp"] + row["post_victory_healing"] for row in rows))
+        dps_weight = float(self.config["build_simulation"]["universal_score_dps_weight"])
+        survival_weight = float(self.config["build_simulation"]["universal_score_survival_weight"])
+        for row in rows:
+            row["universal_score"] = round(
+                dps_weight * row["total_dps"] / max_dps
+                + survival_weight * (row["effective_hp"] + row["post_victory_healing"]) / max_survival,
+                4,
+            )
+        best_universal = max(rows, key=lambda row: row["universal_score"])
+        winning_times = [row["boss_kill_seconds"] for row in rows if row["boss_won"]]
+        return {
+            "profile": self.profile_name,
+            "day": day,
+            "hero_level": self.state.hero_level,
+            "max_stage_reached": self.state.max_stage,
+            "stage": stage,
+            "best_dps": best_dps["build"],
+            "best_survival": best_survival["build"],
+            "best_universal": best_universal["build"],
+            "boss_kill_time_spread": round(max(winning_times) - min(winning_times), 3) if winning_times else None,
+            "cannot_survive_boss": [row["build"] for row in rows if not row["boss_survived"]],
+            "random_combination_monte_carlo": (
+                self.monte_carlo_random_builds(stage, day=day)
+                if monte_carlo else None
+            ),
+            "builds": rows,
+        }
+
     def run(self, days: int | None = None) -> dict[str, Any]:
         days = int(self.config["simulation"]["days"] if days is None else days)
         checkpoints = set(int(day) for day in self.config["simulation"]["checkpoints"] if int(day) <= days)
@@ -394,6 +753,42 @@ def pity_comparison(config: dict[str, Any], *, days: int | None = None) -> dict[
     return comparison
 
 
+def build_comparison_reports(config: dict[str, Any], *, monte_carlo: bool = True) -> dict[str, Any]:
+    """Generate configured profile/day/stage reports without touching game data."""
+    reports: dict[str, Any] = {}
+    progression_impact: dict[str, Any] = {}
+    stages = [int(stage) for stage in config["build_simulation"]["stages"]]
+    for profile, days in config["build_simulation"]["report_days"].items():
+        simulator = GearProgressionSimulator(config, profile, pity=True)
+        requested = {int(day) for day in days}
+        profile_reports = {}
+        for _ in range(max(requested)):
+            simulator.run_day()
+            if simulator.state.day in requested:
+                profile_reports[str(simulator.state.day)] = [
+                    simulator.compare_builds(stage, day=simulator.state.day, monte_carlo=monte_carlo)
+                    for stage in stages
+                ]
+        reports[profile] = profile_reports
+        profile_impact = {}
+        for build_name in config["builds"]:
+            build_config = copy.deepcopy(config)
+            build_config["build_simulation"]["default_progression_build"] = build_name
+            build_simulator = GearProgressionSimulator(build_config, profile, pity=True)
+            build_days = {}
+            for _ in range(max(requested)):
+                build_simulator.run_day()
+                if build_simulator.state.day in requested:
+                    build_days[str(build_simulator.state.day)] = {
+                        "max_stage": build_simulator.state.max_stage,
+                        "soft_wall_days_total": build_simulator.state.soft_wall_days,
+                        "longest_soft_wall_days": build_simulator.state.longest_wall_days,
+                    }
+            profile_impact[build_name] = build_days
+        progression_impact[profile] = profile_impact
+    return {"comparisons": reports, "progression_impact": progression_impact}
+
+
 def print_report(results: dict[str, Any]) -> None:
     columns = ("day", "hero_level", "max_stage", "chest_level", "opened_chests", "average_equipped_rarity", "total_damage", "total_hp", "equipment_power_share", "expected_chests_per_significant_upgrade", "normal_enemy_kill_seconds", "boss_kill_seconds")
     for profile, result in results.items():
@@ -410,16 +805,23 @@ def main() -> None:
     parser.add_argument("--profile", choices=("all", "f2p", "low_spender", "mid_spender", "whale"), default="all")
     parser.add_argument("--no-pity", action="store_true")
     parser.add_argument("--compare-pity", action="store_true")
+    parser.add_argument("--compare-builds", action="store_true")
+    parser.add_argument("--no-combat-monte-carlo", action="store_true")
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
     config = load_config(args.config)
-    if args.compare_pity:
+    if args.compare_builds:
+        result = build_comparison_reports(
+            config,
+            monte_carlo=not args.no_combat_monte_carlo,
+        )
+    elif args.compare_pity:
         result = pity_comparison(config, days=args.days)
     elif args.profile == "all":
         result = simulate_all(config, days=args.days, pity=not args.no_pity)
     else:
         result = {args.profile: GearProgressionSimulator(config, args.profile, pity=not args.no_pity).run(args.days)}
-    if args.as_json or args.compare_pity:
+    if args.as_json or args.compare_pity or args.compare_builds:
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     else:
         print_report(result)
