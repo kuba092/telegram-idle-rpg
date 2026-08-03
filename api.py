@@ -13,6 +13,15 @@ from urllib.parse import parse_qsl
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from combat_effects import (
+    SKILL_EFFECTS,
+    CombatContext,
+    CombatEffectEngine,
+    CombatEvent,
+    active_companion_sources,
+    public_active_effects,
+)
+
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_PATH = os.getenv(
@@ -32,17 +41,19 @@ MAX_STAGE = 1000
 MAX_HERO_LEVEL = 100
 MIN_ATTACK_INTERVAL = 0.1
 SPORE_STRIKE_UNLOCK_LEVEL = 5
-SPORE_STRIKE_DAMAGE_MULTIPLIER = 2.0
-SPORE_STRIKE_COOLDOWN_SECONDS = 8.0
+SPORE_STRIKE_DAMAGE_MULTIPLIER = SKILL_EFFECTS["spore_strike"]["damage_multiplier"]
+SPORE_STRIKE_COOLDOWN_SECONDS = SKILL_EFFECTS["spore_strike"]["cooldown_seconds"]
 MUSHROOM_SHIELD_UNLOCK_LEVEL = 20
-MUSHROOM_SHIELD_HP_RATIO = 0.30
-MUSHROOM_SHIELD_COOLDOWN_SECONDS = 15.0
+MUSHROOM_SHIELD_HP_RATIO = SKILL_EFFECTS["mushroom_shield"]["hp_ratio"]
+MUSHROOM_SHIELD_COOLDOWN_SECONDS = SKILL_EFFECTS["mushroom_shield"]["cooldown_seconds"]
 MUSHROOM_SHIELD_AUTO_HP_RATIO = 0.60
 POISON_CLOUD_UNLOCK_LEVEL = 40
-POISON_CLOUD_DAMAGE_MULTIPLIER = 0.45
-POISON_CLOUD_DURATION_SECONDS = 5.0
-POISON_CLOUD_TICK_SECONDS = 1.0
-POISON_CLOUD_COOLDOWN_SECONDS = 20.0
+POISON_CLOUD_DAMAGE_MULTIPLIER = SKILL_EFFECTS["poison_cloud"]["damage_multiplier"]
+POISON_CLOUD_DURATION_SECONDS = SKILL_EFFECTS["poison_cloud"]["duration_seconds"]
+POISON_CLOUD_TICK_SECONDS = SKILL_EFFECTS["poison_cloud"]["tick_seconds"]
+POISON_CLOUD_COOLDOWN_SECONDS = SKILL_EFFECTS["poison_cloud"]["cooldown_seconds"]
+
+COMBAT_EFFECT_ENGINE = CombatEffectEngine()
 
 # COMPANION_SYSTEM_CONSTANTS_V1
 COMPANION_SYSTEM_UNLOCK_LEVEL = 10
@@ -1226,91 +1237,27 @@ def calculate_companion_effects(player: dict) -> dict:
         level >= unlock_level
         for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
     )
-    bonuses = {
-        "damage": 0.0,
-        "hp": 0.0,
-        "extra_attack": 0.0,
-        "skill_cooldown_reduction": 0.0,
-        "crit_chance": 0.0,
-        "crit_damage": 0.0,
-        "healing": 0.0,
-    }
-    active_effects = []
-    definitions = {
-        "forest_sprite": (
-            "damage", COMPANION_DAMAGE_PER_LEVEL,
-            "Увеличивает итоговый урон героя на 1,3% за уровень.",
-        ),
-        "baby_slime": (
-            "hp", COMPANION_HP_PER_LEVEL,
-            "Увеличивает максимальный HP героя на 1,5% за уровень.",
-        ),
-        "spore_beetle": (
-            "extra_attack", COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL,
-            "Добавляет к обычной атаке 2,8% базового урона героя за уровень.",
-        ),
-        "mushroom_owl": (
-            "skill_cooldown_reduction",
-            COMPANION_SKILL_COOLDOWN_REDUCTION_PER_LEVEL,
-            "Снижает время перезарядки всех навыков на 1,5% за уровень (до 30%).",
-        ),
-        "ancient_entling": (
-            "healing", COMPANION_HEALING_PER_LEVEL,
-            "Восстанавливает 0,6% максимального HP за уровень после победы и вдвое больше после босса.",
-        ),
-    }
-    for companion_id in slots[:unlocked_count]:
-        if companion_id == "thorn_wolf":
-            companion_level = int(collection[companion_id]["level"])
-            bonuses["crit_chance"] += (
-                COMPANION_CRIT_CHANCE_PER_LEVEL * companion_level
-            )
-            bonuses["crit_damage"] += (
-                COMPANION_CRIT_DAMAGE_PER_LEVEL * companion_level
-            )
-            active_effects.append({
-                "companion_id": companion_id,
-                "name": COMPANION_CATALOG[companion_id]["name"],
-                "level": companion_level,
-                "description": "Даёт +0,75 п.п. к шансу крита и +1% к критическому урону за уровень.",
-                "crit_damage_bonus": round(
-                    COMPANION_CRIT_DAMAGE_PER_LEVEL * companion_level, 4
-                ),
-            })
-            continue
-        definition = definitions.get(companion_id)
-        if definition is None:
-            continue
-        companion_level = int(collection[companion_id]["level"])
-        effect_type, per_level, description = definition
-        bonuses[effect_type] += per_level * companion_level
-        active_effects.append({
-            "companion_id": companion_id,
-            "name": COMPANION_CATALOG[companion_id]["name"],
-            "level": companion_level,
-            "description": description,
-        })
+    sources = active_companion_sources(slots, collection, unlocked_count)
+    stats, custom = CombatEffectEngine.combine(sources)
     base_damage = max(1, int(player.get("damage", 1)))
+    extra_attack_ratio = custom.get("extra_attack_ratio", 0.0)
     extra_attack_damage = (
-        max(1, round(base_damage * bonuses["extra_attack"]))
-        if bonuses["extra_attack"] > 0
+        max(1, round(base_damage * extra_attack_ratio))
+        if extra_attack_ratio > 0
         else 0
     )
     return {
-        "damage_multiplier": round(1.0 + bonuses["damage"], 4),
-        "hp_multiplier": round(1.0 + bonuses["hp"], 4),
+        "damage_multiplier": round(stats.damage_multiplier, 4),
+        "hp_multiplier": round(stats.max_hp_multiplier, 4),
         "extra_attack_damage": extra_attack_damage,
-        "skill_cooldown_multiplier": round(
-            1.0 - min(
-                COMPANION_SKILL_COOLDOWN_MAX_REDUCTION,
-                bonuses["skill_cooldown_reduction"],
-            ),
-            4,
+        "skill_cooldown_multiplier": round(stats.cooldown_multiplier, 4),
+        "crit_chance_bonus": round(stats.crit_chance_bonus, 4),
+        "crit_damage_bonus": round(stats.crit_damage_bonus, 4),
+        "victory_healing_ratio": round(custom.get("victory_healing_ratio", 0.0), 4),
+        "active_effects": public_active_effects(
+            sources,
+            {key: value["name"] for key, value in COMPANION_CATALOG.items()},
         ),
-        "crit_chance_bonus": round(bonuses["crit_chance"], 4),
-        "crit_damage_bonus": round(bonuses["crit_damage"], 4),
-        "victory_healing_ratio": round(bonuses["healing"], 4),
-        "active_effects": active_effects,
     }
 
 
@@ -3637,7 +3584,12 @@ def attack(
                 message="Атака ещё не готова",
             )
         requested_skill = str(skill or "").strip().lower()
-        if requested_skill and requested_skill != "spore_strike":
+        attack_skill_ids = {
+            effect_id
+            for effect_id, definition in SKILL_EFFECTS.items()
+            if definition["event"].value == "before_skill"
+        }
+        if requested_skill and requested_skill not in attack_skill_ids:
             raise HTTPException(status_code=400, detail="Неизвестный навык")
 
         level = int(current.get("level", 1))
@@ -3696,7 +3648,7 @@ def attack(
 
         use_spore_strike = manual_spore or auto_spore
         damage_multiplier = (
-            SPORE_STRIKE_DAMAGE_MULTIPLIER
+            float(SKILL_EFFECTS["spore_strike"]["damage_multiplier"])
             * skill_power_multiplier(spore_state["level"])
             if use_spore_strike
             else 1.0
@@ -3784,10 +3736,28 @@ def attack(
 
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
+        combat_context = CombatContext(
+            current_hp=int(current["hero_hp"]),
+            max_hp=int(current["hero_max_hp"]),
+            enemy_hp=int(current["enemy_hp"]),
+            enemy_type="boss" if boss_active else "normal",
+            elapsed_time=max(0.0, elapsed),
+            active_shield=int(current.get("mushroom_shield_amount", 0)),
+            cooldowns={
+                "spore_strike": max(0.0, spore_cooldown_seconds - spore_elapsed),
+                "poison_cloud": max(0.0, poison_cooldown_seconds - (now - poison_last_used_at)),
+            },
+        )
+        attack_payload = {"damage_multiplier": damage_multiplier}
+        COMBAT_EFFECT_ENGINE.dispatch(
+            CombatEvent.BEFORE_SKILL if use_spore_strike else CombatEvent.BEFORE_NORMAL_ATTACK,
+            combat_context,
+            attack_payload,
+        )
         dealt_damage, critical = calculate_hero_attack_damage(
             current,
             damage_multiplier=(
-                damage_multiplier
+                float(attack_payload["damage_multiplier"])
                 * companion_effects["damage_multiplier"]
             ),
         )
@@ -3813,6 +3783,14 @@ def attack(
                 ),
             )
         dealt_damage += poison_damage + companion_damage
+        damage_payload = {"damage": dealt_damage, "critical": critical}
+        COMBAT_EFFECT_ENGINE.dispatch(
+            CombatEvent.AFTER_SKILL if use_spore_strike else CombatEvent.AFTER_NORMAL_ATTACK,
+            combat_context,
+            damage_payload,
+        )
+        dealt_damage = max(0, round(float(damage_payload["damage"])))
+        combat_context.damage_breakdown["total"] = dealt_damage
         enemy_hp = int(current["enemy_hp"]) - dealt_damage
         enemy_max_hp = int(current["enemy_max_hp"])
         enemy_defeated = enemy_hp <= 0
@@ -3831,6 +3809,11 @@ def attack(
         last_enemy_attack_at = float(current["last_enemy_attack_at"])
         companion_healing = 0
         if enemy_defeated:
+            COMBAT_EFFECT_ENGINE.dispatch(
+                CombatEvent.BOSS_KILLED if boss_active else CombatEvent.ENEMY_KILLED,
+                combat_context,
+                {"damage": dealt_damage},
+            )
             hp_multiplier = float(companion_effects["hp_multiplier"])
             effective_max_hp = max(
                 1, round(int(current["hero_max_hp"]) * hp_multiplier)
