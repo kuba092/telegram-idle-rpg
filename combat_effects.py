@@ -13,6 +13,7 @@ import copy
 import time
 import uuid
 from typing import Any, Callable, Iterable
+from progression_systems import companion_milestone_multiplier
 
 
 class CombatEvent(str, Enum):
@@ -382,14 +383,19 @@ def active_companion_sources(equipped: Iterable[str | None], collection: dict[st
         entry = collection.get(companion_id or "", {})
         definition = COMPANION_EFFECTS.get(companion_id or "")
         if definition is not None and bool(entry.get("owned")):
-            sources.append((definition, max(1, int(entry.get("level", 1)))))
+            level = max(1, int(entry.get("level", 1)))
+            sources.append((definition, level * companion_milestone_multiplier(level)))
     return sources
 
 
 def public_active_effects(sources: Iterable[tuple[EffectDefinition, int]], names: dict[str, str]) -> list[dict[str, Any]]:
     result = []
     for definition, level in sources:
-        item = {"companion_id": definition.effect_id, "name": names.get(definition.effect_id, definition.effect_id), "level": level, "description": definition.description}
+        actual_level = next((candidate for candidate in range(1, 51)
+                             if abs(candidate * companion_milestone_multiplier(candidate) - level) < .0001),
+                            round(level))
+        item = {"companion_id": definition.effect_id, "name": names.get(definition.effect_id, definition.effect_id),
+                "level": actual_level, "effective_level": round(level, 3), "description": definition.description}
         if definition.public_extra:
             item.update(definition.public_extra(level))
         result.append(item)

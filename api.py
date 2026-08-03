@@ -38,6 +38,12 @@ from damage_types import (
     incoming_damage_breakdown, normalize_resistances, resistance_breakdown,
 )
 from status_effects import StatusEffectStore, status_effect
+from progression_systems import (
+    MAX_PROGRESSION_LEVEL, companion_gold_cost, companion_milestone_multiplier,
+    companion_public, companion_upgrade_cost, progression_entry, skill_cooldown_multiplier,
+    skill_effective_multiplier, skill_gold_cost, skill_public, skill_upgrade_cost,
+    victory_progression_reward,
+)
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -189,7 +195,7 @@ def dot_snapshot(player: dict, skill_id: str, level: int, base_multiplier: float
     companions = calculate_companion_effects(player)
     boss = bool(int(player.get("boss_active", 0)))
     growth = float(SKILL_EFFECTS[skill_id].get("growth", 0.0))
-    level_multiplier = 1 + growth * (max(1, int(level)) - 1)
+    level_multiplier = (1 + growth * (max(1, int(level)) - 1)) * skill_effective_multiplier(level)
     raw = max(1, round(
         int(player.get("damage", 0)) * base_multiplier * level_multiplier
         * equipment["skill_damage_multiplier"] * companions["damage_multiplier"]
@@ -377,7 +383,7 @@ def stage_sequence_state(player: dict, **overrides) -> dict:
 # COMPANION_SYSTEM_CONSTANTS_V1
 COMPANION_SYSTEM_UNLOCK_LEVEL = 10
 COMPANION_SLOT_UNLOCK_LEVELS = (10, 25, 50)
-COMPANION_MAX_LEVEL = 20
+COMPANION_MAX_LEVEL = MAX_PROGRESSION_LEVEL
 COMPANION_SUMMON_MAX_LEVEL = 10
 COMPANION_SUMMON_COST = 1
 
@@ -545,7 +551,7 @@ STARTER_SKILL_IDS = (
 )
 STARTER_SKILL_SCROLLS = 0
 SKILL_POWER_PER_LEVEL = 0.05
-SKILL_MAX_LEVEL = 20
+SKILL_MAX_LEVEL = MAX_PROGRESSION_LEVEL
 SKILL_SUMMON_MAX_LEVEL = 10
 SKILL_SUMMON_COST = 1
 
@@ -1562,18 +1568,7 @@ def normalize_companion_collection(value) -> dict:
 
         entry = raw_entry if isinstance(raw_entry, dict) else {}
 
-        normalized[companion_id] = {
-            "owned": bool(entry.get("owned", True)),
-            "level": clamp_int(
-                entry.get("level", 1),
-                1,
-                COMPANION_MAX_LEVEL,
-            ),
-            "fragments": max(
-                0,
-                int(entry.get("fragments", 0)),
-            ),
-        }
+        normalized[companion_id] = progression_entry(entry)
 
     return normalized
 
@@ -1661,6 +1656,16 @@ def companion_skill_cooldown(player: dict, base_seconds: float) -> float:
     )
 
 
+def effective_skill_cooldown(player: dict, skill_id: str, base_seconds: float) -> float:
+    level = get_player_skill_state(player, skill_id)["level"]
+    companion_reduction = 1.0 - float(
+        calculate_companion_effects(player)["skill_cooldown_multiplier"]
+    )
+    milestone_reduction = 1.0 - skill_cooldown_multiplier(level)
+    total_reduction = min(.30, companion_reduction + milestone_reduction)
+    return float(base_seconds) * (1.0 - total_reduction)
+
+
 def default_skill_collection() -> dict:
     return {}
 
@@ -1677,11 +1682,7 @@ def normalize_skill_collection(value) -> dict:
         if not isinstance(skill_id, str):
             continue
         entry = raw_entry if isinstance(raw_entry, dict) else {}
-        normalized[skill_id] = {
-            "owned": bool(entry.get("owned", True)),
-            "level": clamp_int(entry.get("level", 1), 1, 20),
-            "fragments": max(0, int(entry.get("fragments", 0))),
-        }
+        normalized[skill_id] = progression_entry(entry)
 
     for skill_id, starter_entry in default_skill_collection().items():
         if skill_id not in normalized:
@@ -2187,7 +2188,7 @@ def get_player_skill_state(
 
     entry = collection.get(skill_id, {})
     owned = bool(entry.get("owned", False))
-    skill_level = clamp_int(entry.get("level", 1), 1, 20)
+    skill_level = clamp_int(entry.get("level", 1), 1, SKILL_MAX_LEVEL)
 
     slot_index = next(
         (
@@ -2218,11 +2219,11 @@ def get_player_skill_state(
 
 
 def skill_power_multiplier(skill_level: int) -> float:
-    skill_level = clamp_int(skill_level, 1, 20)
-    return 1.0 + (
+    skill_level = clamp_int(skill_level, 1, SKILL_MAX_LEVEL)
+    return (1.0 + (
         (skill_level - 1)
         * SKILL_POWER_PER_LEVEL
-    )
+    )) * skill_effective_multiplier(skill_level)
 
 
 def unavailable_skill_message(
@@ -3039,9 +3040,7 @@ def build_player_response(player: dict, **extra) -> dict:
     spore_last_used_at = float(
         player.get("spore_strike_last_used_at", 0)
     )
-    spore_cooldown_seconds = companion_skill_cooldown(
-        player, SPORE_STRIKE_COOLDOWN_SECONDS
-    )
+    spore_cooldown_seconds = effective_skill_cooldown(player, "spore_strike", SPORE_STRIKE_COOLDOWN_SECONDS)
     spore_elapsed = time.time() - spore_last_used_at
     spore_cooldown_remaining = (
         0.0
@@ -3054,9 +3053,7 @@ def build_player_response(player: dict, **extra) -> dict:
     shield_last_used_at = float(
         player.get("mushroom_shield_last_used_at", 0)
     )
-    shield_cooldown_seconds = companion_skill_cooldown(
-        player, MUSHROOM_SHIELD_COOLDOWN_SECONDS
-    )
+    shield_cooldown_seconds = effective_skill_cooldown(player, "mushroom_shield", MUSHROOM_SHIELD_COOLDOWN_SECONDS)
     shield_elapsed = time.time() - shield_last_used_at
     shield_cooldown_remaining = (
         0.0
@@ -3101,9 +3098,7 @@ def build_player_response(player: dict, **extra) -> dict:
     poison_last_used_at = float(
         player.get("poison_cloud_last_used_at", 0)
     )
-    poison_cooldown_seconds = companion_skill_cooldown(
-        player, POISON_CLOUD_COOLDOWN_SECONDS
-    )
+    poison_cooldown_seconds = effective_skill_cooldown(player, "poison_cloud", POISON_CLOUD_COOLDOWN_SECONDS)
     poison_until = float(player.get("poison_cloud_until", 0))
     poison_next_tick_at = float(
         player.get("poison_cloud_next_tick_at", 0)
@@ -3129,6 +3124,8 @@ def build_player_response(player: dict, **extra) -> dict:
     companion_collection = normalize_companion_collection(
         player.get("companions_collection_json")
     )
+    for companion_id, entry in companion_collection.items():
+        entry.update(companion_public(entry["level"]))
     companion_summon_exp = max(
         0,
         int(player.get("companion_summon_exp", 0)),
@@ -3213,6 +3210,14 @@ def build_player_response(player: dict, **extra) -> dict:
     }
     response = {
         **public_player,
+        "refinement_crystal": max(0, int(player.get("refinement_ore", 0))),
+        "refinement_crystal_deprecated": True,
+        "progression_resources": {
+            "skill_tomes": max(0, int(player.get("skill_tomes", 0))),
+            "companion_essence": max(0, int(player.get("companion_essence", 0))),
+            "refinement_ore": max(0, int(player.get("refinement_ore", 0))),
+            "premium_crystals": max(0, int(player.get("premium_crystals", 0))),
+        },
         "equipment": {slot: (public_loot_item(item, player, equipped=True) if item else None)
                       for slot, item in equipment.items()},
         "inventory": [public_loot_item(item, player) for item in inventory],
@@ -3263,6 +3268,7 @@ def build_player_response(player: dict, **extra) -> dict:
             "collection": {
                 skill_id: {
                     **entry,
+                    **skill_public(int(entry.get("level", 1))),
                     "fragments_required": (
                         skill_fragments_required(
                             int(entry.get("level", 1))
@@ -3474,7 +3480,7 @@ def build_player_response(player: dict, **extra) -> dict:
         ("null_bloom", NULL_BLOOM_COOLDOWN_SECONDS),
     ):
         skill_state = get_player_skill_state(player, skill_id)
-        cooldown = companion_skill_cooldown(player, base_cooldown)
+        cooldown = effective_skill_cooldown(player, skill_id, base_cooldown)
         last_used = float(player.get(f"{skill_id}_last_used_at", 0))
         remaining = 0.0 if last_used <= 0 else max(0.0, cooldown - (current_time - last_used))
         response["skills"][skill_id] = {
@@ -3486,6 +3492,22 @@ def build_player_response(player: dict, **extra) -> dict:
             "cooldown_remaining": remaining,
             "ready": skill_state["available"] and remaining <= 0,
         }
+    for skill_id, state in response["skills"].items():
+        base_cooldown = float(SKILL_EFFECTS.get(skill_id, {}).get("cooldown_seconds", state.get("cooldown_seconds", 0)))
+        state.update(skill_public(state.get("level", 1), companion_skill_cooldown(player, base_cooldown)))
+        # The route-level cooldown combines skill and companion reductions under
+        # one global cap; expose that same value in the progression block.
+        state["effective_cooldown"] = round(float(state.get("cooldown_seconds", 0)), 3)
+    total_skill_levels = sum(int(entry.get("level", 1)) for entry in skill_collection.values() if entry.get("owned"))
+    total_companion_levels = sum(int(entry.get("level", 1)) for entry in companion_collection.values() if entry.get("owned"))
+    tomes, essence, gold = (int(player.get("skill_tomes", 0)), int(player.get("companion_essence", 0)), int(player.get("gold", 0)))
+    response["progression_summary"] = {
+        "total_skill_levels": total_skill_levels, "total_companion_levels": total_companion_levels,
+        "mastered_skills": sum(entry.get("level", 1) >= 50 for entry in skill_collection.values() if entry.get("owned")),
+        "mastered_companions": sum(entry.get("level", 1) >= 50 for entry in companion_collection.values() if entry.get("owned")),
+        "next_affordable_skill_upgrade": next((sid for sid, entry in skill_collection.items() if entry.get("owned") and entry["level"] < 50 and tomes >= skill_upgrade_cost(entry["level"]) and gold >= skill_gold_cost(entry["level"])), None),
+        "next_affordable_companion_upgrade": next((cid for cid, entry in companion_collection.items() if entry.get("owned") and entry["level"] < 50 and essence >= companion_upgrade_cost(entry["level"]) and gold >= companion_gold_cost(entry["level"])), None),
+    }
     response["battle_breakdown"] = {
         "normal_attack_damage": response["normal_attack_damage"],
         "combo_damage": response["combo_damage"],
@@ -3582,6 +3604,10 @@ def create_database() -> None:
         ("inventory_json", "TEXT NOT NULL DEFAULT '[]'"),
         ("salvage_dust", "INTEGER NOT NULL DEFAULT 0"),
         ("refinement_crystal", "INTEGER NOT NULL DEFAULT 0"),
+        ("refinement_ore", "INTEGER NOT NULL DEFAULT 0"),
+        ("premium_crystals", "INTEGER NOT NULL DEFAULT 0"),
+        ("skill_tomes", "INTEGER NOT NULL DEFAULT 0"),
+        ("companion_essence", "INTEGER NOT NULL DEFAULT 0"),
         ("chest_xp", "INTEGER NOT NULL DEFAULT 0"),
         ("auto_salvage_enabled", "INTEGER NOT NULL DEFAULT 0"),
         ("auto_salvage_max_rarity", "TEXT NOT NULL DEFAULT 'off'"),
@@ -3757,8 +3783,14 @@ def create_database() -> None:
             "INTEGER NOT NULL DEFAULT 0",
         ),
     )
+    columns_before = {row["name"] for row in connection.execute("PRAGMA table_info(players)")}
+    migrate_refinement_ore = "refinement_ore" not in columns_before
     for column_name, definition in columns:
         add_column_if_missing(connection, column_name, definition)
+    if migrate_refinement_ore and "refinement_crystal" in columns_before:
+        # The new column did not exist before this transaction, so this copy can
+        # happen exactly once even when startup is repeated.
+        connection.execute("UPDATE players SET refinement_ore = refinement_crystal")
     now = int(time.time())
     connection.execute(
         """
@@ -4149,9 +4181,8 @@ def _legacy_attack(
         spore_elapsed = now - spore_last_used_at
         companion_effects = calculate_companion_effects(current)
         battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
-        spore_cooldown_seconds = (
-            SPORE_STRIKE_COOLDOWN_SECONDS
-            * companion_effects["skill_cooldown_multiplier"]
+        spore_cooldown_seconds = effective_skill_cooldown(
+            current, "spore_strike", SPORE_STRIKE_COOLDOWN_SECONDS
         )
         spore_ready = (
             spore_last_used_at <= 0
@@ -4220,9 +4251,8 @@ def _legacy_attack(
             poison_until > now
             and poison_next_tick_at > 0
         )
-        poison_cooldown_seconds = (
-            POISON_CLOUD_COOLDOWN_SECONDS
-            * companion_effects["skill_cooldown_multiplier"]
+        poison_cooldown_seconds = effective_skill_cooldown(
+            current, "poison_cloud", POISON_CLOUD_COOLDOWN_SECONDS
         )
         poison_ready = (
             poison_last_used_at <= 0
@@ -4652,6 +4682,13 @@ def _resolve_victory(connection, current, was_boss, context):
     now = float(getattr(context, "resolved_at", time.time()))
     STATUS_EFFECTS.reset(int(current["telegram_id"]))
     stage = clamp_int(current["stage"], 1, MAX_STAGE)
+    defeated_identity = public_battle_identity(current)
+    defeated_elite = elite_profile(current)["elite"]
+    progression_reward = victory_progression_reward(
+        defeated_identity, stage, boss=bool(was_boss), elite=defeated_elite,
+    )
+    skill_tomes = int(current.get("skill_tomes", 0)) + progression_reward["skill_tomes_gained"]
+    companion_essence = int(current.get("companion_essence", 0)) + progression_reward["companion_essence_gained"]
     kills = int(current["kills_in_stage"])
     total_kills = int(current["total_kills"]) + 1
     total_bosses = int(current.get("total_bosses", 0))
@@ -4730,11 +4767,12 @@ def _resolve_victory(connection, current, was_boss, context):
           poison_cloud_next_tick_at=0, thorn_burst_last_used_at=0,
           arcane_echo_last_used_at=0, venom_spores_last_used_at=0,
           binding_roots_last_used_at=0, null_bloom_last_used_at=0,
-          updated_at=? WHERE telegram_id=?
+          skill_tomes=?, companion_essence=?, updated_at=? WHERE telegram_id=?
         """,
         (enemy_hp, enemy_max_hp, int(current["hero_hp"]), stage, kills,
          total_kills, total_bosses, chests, highest_stage, int(boss_active),
-         game_completed, progress_reached_at, last_enemy_attack_at, int(now),
+         game_completed, progress_reached_at, last_enemy_attack_at, skill_tomes,
+         companion_essence, int(now),
          int(current["telegram_id"])),
     )
     connection.execute(
@@ -4768,6 +4806,8 @@ def _resolve_victory(connection, current, was_boss, context):
         "boss_defeated": boss_defeated,
         "next_battle_identity": public_battle_identity({**current, **player_update}),
         "temporary_effects_cleared": True,
+        "progression_rewards": {**progression_reward, "new_skill_tomes": skill_tomes,
+                                "new_companion_essence": companion_essence},
     }
 
 
@@ -4827,7 +4867,7 @@ def attack(
         cooldowns = {"spore_strike": SPORE_STRIKE_COOLDOWN_SECONDS, "thorn_burst": THORN_BURST_COOLDOWN_SECONDS, "arcane_echo": ARCANE_ECHO_COOLDOWN_SECONDS, "venom_spores": VENOM_SPORES_COOLDOWN_SECONDS, "binding_roots": BINDING_ROOTS_COOLDOWN_SECONDS, "null_bloom": NULL_BLOOM_COOLDOWN_SECONDS}
         cooldown_field = f"{selected_skill}_last_used_at"
         spore_last = float(current.get(cooldown_field, 0))
-        spore_cd = companion_skill_cooldown(current, cooldowns[selected_skill])
+        spore_cd = effective_skill_cooldown(current, selected_skill, cooldowns[selected_skill])
         spore_ready = spore_last <= 0 or now-spore_last >= spore_cd
         if manual_skill and not spore_ready:
             connection.commit()
@@ -4842,7 +4882,7 @@ def attack(
         poison_next = float(current.get("poison_cloud_next_tick_at", 0))
         poison_last = float(current.get("poison_cloud_last_used_at", 0))
         poison_state = get_player_skill_state(current, "poison_cloud")
-        poison_cd = companion_skill_cooldown(current, POISON_CLOUD_COOLDOWN_SECONDS)
+        poison_cd = effective_skill_cooldown(current, "poison_cloud", POISON_CLOUD_COOLDOWN_SECONDS)
         poison_auto_used = (
             not requested and bool(int(current.get("skills_auto_enabled", 0)))
             and poison_state["available"] and poison_next <= 0
@@ -5021,6 +5061,7 @@ def attack(
         chest_reward=(boss_reward_chests(int(current["stage"])) if lethal and boss else (3 if lethal and lethal.boss_started else 2 if lethal else 0)),
         experience_reward=0, reward=0, companion_healing=healing,
         healing_overflow=transition.get("healing_overflow", 0), stage_sequence=sequence,
+        progression_rewards=transition.get("progression_rewards"),
         combat_resolution=public_resolution, owl_repeat_stacks=owl_stacks,
         elite_healing=elite_healing,
         status_effects=public_status_block(
@@ -5078,9 +5119,7 @@ def use_poison_cloud(
             current.get("poison_cloud_last_used_at", 0)
         )
         elapsed = now - last_used_at
-        cooldown_seconds = companion_skill_cooldown(
-            current, POISON_CLOUD_COOLDOWN_SECONDS
-        )
+        cooldown_seconds = effective_skill_cooldown(current, "poison_cloud", POISON_CLOUD_COOLDOWN_SECONDS)
 
         if (
             last_used_at > 0
@@ -5201,9 +5240,7 @@ def use_mushroom_shield(
             current.get("mushroom_shield_last_used_at", 0)
         )
         elapsed = now - last_used_at
-        cooldown_seconds = companion_skill_cooldown(
-            current, MUSHROOM_SHIELD_COOLDOWN_SECONDS
-        )
+        cooldown_seconds = effective_skill_cooldown(current, "mushroom_shield", MUSHROOM_SHIELD_COOLDOWN_SECONDS)
         if (
             last_used_at > 0
             and elapsed < cooldown_seconds
@@ -5404,9 +5441,7 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             current.get("mushroom_shield_last_used_at", 0)
         )
         shield_elapsed = now - shield_last_used_at
-        shield_cooldown_seconds = companion_skill_cooldown(
-            current, MUSHROOM_SHIELD_COOLDOWN_SECONDS
-        )
+        shield_cooldown_seconds = effective_skill_cooldown(current, "mushroom_shield", MUSHROOM_SHIELD_COOLDOWN_SECONDS)
         shield_ready = (
             shield_last_used_at <= 0
             or shield_elapsed >= shield_cooldown_seconds
@@ -5605,6 +5640,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         enemy_defeated=counter_lethal,
         boss_defeated=bool(counter_lethal and boss_active),
         combat_resolution=resolution.public(),
+        progression_rewards=(getattr(counter_context, "victory_transition", {}).get("progression_rewards")
+                             if counter_lethal else None),
         normal_attack_damage=0,
         skill_damage=0,
         poison_damage=0,
@@ -6717,7 +6754,9 @@ def salvage_inventory(payload: dict = Body(...), x_telegram_init_data: str = Hea
             connection.rollback()
             result = {"salvaged_item_id": target, "dust_gained": 0, "crystals_gained": 0,
                       "new_salvage_dust": int(current.get("salvage_dust", 0)),
-                      "new_refinement_crystal": int(current.get("refinement_crystal", 0)),
+                      "new_refinement_ore": int(current.get("refinement_ore", 0)),
+                      "new_refinement_crystal": int(current.get("refinement_ore", 0)),
+                      "refinement_crystal_deprecated": True,
                       "inventory_count": len(inventory), "duplicate_request": False,
                       "stale_item": True, "transaction_completed": False}
             remember_action(telegram_id, "salvage", action_id, result)
@@ -6734,17 +6773,19 @@ def salvage_inventory(payload: dict = Body(...), x_telegram_init_data: str = Hea
             raise HTTPException(status_code=409, detail="Заблокированный предмет нельзя разобрать")
         item, reward = _salvage_inventory_item(current, inventory, index)
         dust = int(current.get("salvage_dust", 0)) + reward["dust"]
-        crystals = int(current.get("refinement_crystal", 0)) + reward["crystals"]
+        ore = int(current.get("refinement_ore", 0)) + reward["ore"]
         pending = public_pending_loot(current)
         pending_json = "" if pending and item_identifier(pending) == target else current.get("pending_loot_json", "")
-        connection.execute("UPDATE players SET inventory_json=?, pending_loot_json=?, salvage_dust=?, refinement_crystal=?, chest_xp=chest_xp+?, updated_at=? WHERE telegram_id=?",
-                           (json.dumps(inventory, ensure_ascii=False), pending_json, dust, crystals, reward["chest_xp"],
+        connection.execute("UPDATE players SET inventory_json=?, pending_loot_json=?, salvage_dust=?, refinement_ore=?, chest_xp=chest_xp+?, updated_at=? WHERE telegram_id=?",
+                           (json.dumps(inventory, ensure_ascii=False), pending_json, dust, ore, reward["chest_xp"],
                             int(time.time()), telegram_id))
         connection.commit()
         result = {"salvaged_item_id": target, "rarity": reward["rarity"],
-                  "dust_gained": reward["dust"], "crystals_gained": reward["crystals"],
+                  "dust_gained": reward["dust"], "crystals_gained": reward["ore"],
                   "chest_xp_gained": reward["chest_xp"], "new_salvage_dust": dust,
-                  "new_refinement_crystal": crystals, "inventory_count": len(inventory),
+                  "ore_gained": reward["ore"], "new_refinement_ore": ore,
+                  "new_refinement_crystal": ore, "refinement_crystal_deprecated": True,
+                  "inventory_count": len(inventory),
                   "duplicate_request": False, "stale_item": False, "transaction_completed": True}
     except HTTPException:
         raise
@@ -6787,11 +6828,11 @@ def salvage_inventory_bulk(payload: dict = Body(...), x_telegram_init_data: str 
             item_id = item_identifier(item)
             if item_id not in selected: kept.append(item); continue
             reward = salvage_reward(item, current.get("chest_level", 1), current.get("highest_stage", 1))
-            total_dust += reward["dust"]; total_crystals += reward["crystals"]; total_xp += reward["chest_xp"]
+            total_dust += reward["dust"]; total_crystals += reward["ore"]; total_xp += reward["chest_xp"]
             results.append({"item_id": item_id, **reward})
         pending = public_pending_loot(current)
         pending_json = "" if pending and item_identifier(pending) in selected else current.get("pending_loot_json", "")
-        connection.execute("UPDATE players SET inventory_json=?,pending_loot_json=?,salvage_dust=salvage_dust+?,refinement_crystal=refinement_crystal+?,chest_xp=chest_xp+?,updated_at=? WHERE telegram_id=?",
+        connection.execute("UPDATE players SET inventory_json=?,pending_loot_json=?,salvage_dust=salvage_dust+?,refinement_ore=refinement_ore+?,chest_xp=chest_xp+?,updated_at=? WHERE telegram_id=?",
                            (json.dumps(kept, ensure_ascii=False), pending_json, total_dust, total_crystals, total_xp, int(time.time()), telegram_id))
         connection.commit()
     except Exception:
@@ -6862,7 +6903,7 @@ def reroll_inventory_secondary(payload: dict = Body(...), x_telegram_init_data: 
         if stat_key not in item.get("secondary_stats", {}): connection.rollback(); raise HTTPException(status_code=409, detail="Свойство не найдено")
         cost = reroll_cost(item.get("rarity"), item.get("reroll_count", 0))
         if not cost["available"]: connection.rollback(); raise HTTPException(status_code=409, detail="Этот предмет нельзя переработать")
-        if int(current.get("salvage_dust", 0)) < cost["dust"] or int(current.get("refinement_crystal", 0)) < cost["crystals"]:
+        if int(current.get("salvage_dust", 0)) < cost["dust"] or int(current.get("refinement_ore", 0)) < cost["ore"]:
             connection.rollback(); raise HTTPException(status_code=409, detail="Недостаточно материалов")
         old_value = item["secondary_stats"][stat_key]; old_raw = int(item.get("power", 0)); profile = str(current.get("comparison_profile", "balanced"))
         changed = reroll_secondary_stat(item, stat_key, int(current.get("chest_level", 1)), int(current.get("highest_stage", 1)))
@@ -6871,12 +6912,13 @@ def reroll_inventory_secondary(payload: dict = Body(...), x_telegram_init_data: 
         else: equipment[str(index)] = changed
         pending = public_pending_loot(current)
         pending_json = json.dumps(changed, ensure_ascii=False) if pending and item_identifier(pending) == target else current.get("pending_loot_json", "")
-        connection.execute("UPDATE players SET inventory_json=?,equipment_json=?,pending_loot_json=?,salvage_dust=salvage_dust-?,refinement_crystal=refinement_crystal-?,updated_at=? WHERE telegram_id=?",
-                           (json.dumps(inventory, ensure_ascii=False), json.dumps(equipment, ensure_ascii=False), pending_json, cost["dust"], cost["crystals"], int(time.time()), telegram_id))
+        connection.execute("UPDATE players SET inventory_json=?,equipment_json=?,pending_loot_json=?,salvage_dust=salvage_dust-?,refinement_ore=refinement_ore-?,updated_at=? WHERE telegram_id=?",
+                           (json.dumps(inventory, ensure_ascii=False), json.dumps(equipment, ensure_ascii=False), pending_json, cost["dust"], cost["ore"], int(time.time()), telegram_id))
         if location == "equipment": sync_player_stats(connection, telegram_id)
         connection.commit()
         result = {"item_id": target, "old_stat": stat_key, "new_stat": new_key, "old_value": old_value,
-                  "new_value": changed["secondary_stats"][new_key], "dust_spent": cost["dust"], "crystals_spent": cost["crystals"],
+                  "new_value": changed["secondary_stats"][new_key], "dust_spent": cost["dust"],
+                  "ore_spent": cost["ore"], "crystals_spent": cost["ore"],
                   "reroll_count": changed["reroll_count"], "item_version": changed["item_version"], "raw_power": old_raw,
                   "build_score": build_score(changed, profile), "comparison": compare_loot(current, changed),
                   "stale_item": False, "transaction_completed": True, "duplicate_request": False}
@@ -6982,9 +7024,9 @@ def open_loot_transaction(
         reward = salvage_reward(loot, current.get("chest_level", 1), current.get("highest_stage", 1))
         connection.execute(
             "UPDATE players SET chests=chests-1,daily_chests_opened=daily_chests_opened+1,"
-            "salvage_dust=salvage_dust+?,refinement_crystal=refinement_crystal+?,chest_xp=chest_xp+?,"
+            "salvage_dust=salvage_dust+?,refinement_ore=refinement_ore+?,chest_xp=chest_xp+?,"
             "experience=?,level=?,updated_at=? WHERE telegram_id=?",
-            (reward["dust"], reward["crystals"], 1 + reward["chest_xp"], total_exp, new_level, now, telegram_id))
+            (reward["dust"], reward["ore"], 1 + reward["chest_xp"], total_exp, new_level, now, telegram_id))
         sync_player_stats(connection, telegram_id); updated = load_player(connection, telegram_id)
         return updated, {"opened": True, "auto_salvaged": True, "auto_salvage_rewards": reward,
                          "item_kept": False, "loot": loot, "comparison": comparison,
@@ -7187,6 +7229,112 @@ def configure_auto_salvage(payload: dict = Body(...), x_telegram_init_data: str 
 
 
 # SKILL_SLOTS_API_V1
+def _upgrade_progression(payload: dict, init_data: str, *, kind: str, bulk: bool = False) -> dict:
+    user = validate_telegram_data(init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    object_id = str(payload.get("id") if bulk else payload.get(f"{kind}_id", ""))
+    operation = f"{kind}-upgrade" + ("-bulk" if bulk else "")
+    action_id = payload.get("client_action_id")
+    cached = cached_action(telegram_id, operation, action_id)
+    if cached:
+        return cached
+    is_skill = kind == "skill"
+    json_field = "skills_collection_json" if is_skill else "companions_collection_json"
+    resource_field = "skill_tomes" if is_skill else "companion_essence"
+    catalog = SKILL_CATALOG if is_skill else COMPANION_CATALOG
+    normalize = normalize_skill_collection if is_skill else normalize_companion_collection
+    resource_cost = skill_upgrade_cost if is_skill else companion_upgrade_cost
+    gold_cost = skill_gold_cost if is_skill else companion_gold_cost
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+        collection = normalize(current.get(json_field))
+        entry = collection.get(object_id)
+        if object_id not in catalog or not entry or not entry.get("owned"):
+            connection.rollback()
+            raise HTTPException(status_code=409, detail="Объект прогрессии не разблокирован")
+        old_level = int(entry["level"])
+        expected = payload.get("expected_level")
+        if not bulk and expected is not None and int(expected) != old_level:
+            connection.rollback()
+            result = {f"{kind}_id": object_id, "old_level": old_level, "new_level": old_level,
+                      "stale_level": True, "duplicate_request": False, "transaction_completed": False}
+            remember_action(telegram_id, operation, action_id, result)
+            return result
+        if old_level >= MAX_PROGRESSION_LEVEL:
+            connection.rollback()
+            raise HTTPException(status_code=409, detail="Достигнут максимальный уровень")
+        requested = (min(10, max(1, int(payload.get("levels", 10)))) if bulk else 1)
+        if bulk and payload.get("max_affordable"):
+            requested = 10
+        resources, gold = int(current.get(resource_field, 0)), int(current.get("gold", 0))
+        level = old_level
+        spent_resource = spent_gold = 0
+        steps = []
+        for _ in range(requested):
+            if level >= MAX_PROGRESSION_LEVEL:
+                break
+            step_resource, step_gold = resource_cost(level), gold_cost(level)
+            if resources - spent_resource < step_resource or gold - spent_gold < step_gold:
+                break
+            steps.append({"old_level": level, "new_level": level + 1,
+                          ("tomes_spent" if is_skill else "essence_spent"): step_resource,
+                          "gold_spent": step_gold})
+            spent_resource += step_resource
+            spent_gold += step_gold
+            level += 1
+        if not steps:
+            connection.rollback()
+            missing = "Томов навыков" if is_skill else "Эссенции спутников"
+            raise HTTPException(status_code=409, detail=f"Недостаточно: {missing} или золота")
+        entry["level"] = level
+        entry["upgrade_count"] = int(entry.get("upgrade_count", old_level - 1)) + len(steps)
+        collection[object_id] = entry
+        connection.execute(
+            f"UPDATE players SET {json_field}=?, {resource_field}={resource_field}-?, gold=gold-?, updated_at=? WHERE telegram_id=?",
+            (json.dumps(collection, ensure_ascii=False), spent_resource, spent_gold, int(time.time()), telegram_id),
+        )
+        connection.commit()
+        result = {f"{kind}_id": object_id, "old_level": old_level, "new_level": level,
+                  ("tomes_spent" if is_skill else "essence_spent"): spent_resource,
+                  "gold_spent": spent_gold, "steps": steps if bulk else steps[:1],
+                  ("next_tomes_cost" if is_skill else "next_essence_cost"): 0 if level >= 50 else resource_cost(level),
+                  "next_gold_cost": 0 if level >= 50 else gold_cost(level),
+                  "max_level_reached": level >= 50, "stale_level": False,
+                  "duplicate_request": False, "transaction_completed": True}
+    except HTTPException:
+        raise
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+    remember_action(telegram_id, operation, action_id, result)
+    return result
+
+
+@app.post("/skills/upgrade")
+def upgrade_skill(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _upgrade_progression(payload, x_telegram_init_data, kind="skill")
+
+
+@app.post("/companions/upgrade")
+def upgrade_companion(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _upgrade_progression(payload, x_telegram_init_data, kind="companion")
+
+
+@app.post("/skills/upgrade-bulk")
+def upgrade_skills_bulk(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _upgrade_progression(payload, x_telegram_init_data, kind="skill", bulk=True)
+
+
+@app.post("/companions/upgrade-bulk")
+def upgrade_companions_bulk(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _upgrade_progression(payload, x_telegram_init_data, kind="companion", bulk=True)
+
+
 @app.post("/skills/equip")
 def equip_skill(
     slot: int,

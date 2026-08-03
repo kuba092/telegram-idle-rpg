@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import api
+from progression_systems import companion_milestone_multiplier
 
 
 class StageSequenceTest(unittest.TestCase):
@@ -134,7 +135,8 @@ class StageSequenceTest(unittest.TestCase):
 
         self.assertEqual(response["stage_sequence"]["hp_before_healing"], 683)
         self.assertEqual(response["companion_healing"], 5)
-        self.assertEqual(response["healing_overflow"], 78)
+        healing = round(688 * .006 * 20 * companion_milestone_multiplier(20))
+        self.assertEqual(response["healing_overflow"], healing - 5)
         self.assertEqual(response["stage_sequence"]["hp_after_healing"], 688)
         self.assertEqual(read_again["hero_hp"], 688)
         self.assertEqual(read_again["stage_sequence"]["companion_healing"], 0)

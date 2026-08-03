@@ -71,7 +71,9 @@ def chest_progress(player: Mapping[str, Any]) -> dict:
     required = chest_xp_required(level) if level < CHEST_LEVEL_CAP else 0
     return {
         "salvage_dust": max(0, int(player.get("salvage_dust", 0) or 0)),
-        "refinement_crystal": max(0, int(player.get("refinement_crystal", 0) or 0)),
+        "refinement_ore": max(0, int(player.get("refinement_ore", 0) or 0)),
+        "refinement_crystal": max(0, int(player.get("refinement_ore", 0) or 0)),
+        "refinement_crystal_deprecated": True,
         "chest_xp": xp, "chest_level": level, "chest_xp_current": xp,
         "chest_xp_required": required,
         "chest_upgrade_ready": level < CHEST_LEVEL_CAP and xp >= required,
@@ -118,9 +120,10 @@ def salvage_reward(item: Mapping[str, Any], chest_level: int, effective_stage: i
     rarity = normalize_rarity(normalized.get("rarity"))
     rng = rng or deterministic_rng("salvage-v1", normalized.get("item_id"), rarity,
                                    chest_level, effective_stage)
+    ore = crystal_reward(rarity, rng)
     return {"rarity": rarity,
             "dust": salvage_dust_value(rarity, chest_level, effective_stage),
-            "crystals": crystal_reward(rarity, rng),
+            "ore": ore, "crystals": ore, "crystals_deprecated": True,
             "chest_xp": SALVAGE_CHEST_XP[rarity]}
 
 
@@ -128,9 +131,12 @@ def reroll_cost(rarity: Any, reroll_count: int) -> dict:
     rarity = normalize_rarity(rarity)
     base = BASE_REROLL_COST.get(rarity)
     if base is None:
-        return {"dust": 0, "crystals": 0, "available": False}
+        return {"dust": 0, "ore": 0, "crystals": 0,
+                "crystals_deprecated": True, "available": False}
+    ore = REROLL_CRYSTAL_COST[rarity]
     return {"dust": round(base * (1 + max(0, int(reroll_count)) * .35)),
-            "crystals": REROLL_CRYSTAL_COST[rarity], "available": True}
+            "ore": ore, "crystals": ore, "crystals_deprecated": True,
+            "available": True}
 
 
 def rarity_at_or_below(rarity: Any, maximum: Any) -> bool:

@@ -82,9 +82,40 @@ class LootMigrationTest(unittest.TestCase):
                 connection.close()
                 self.assertEqual(player["salvage_dust"], 0)
                 self.assertEqual(player["refinement_crystal"], 0)
+                self.assertEqual(player["refinement_ore"], 0)
                 self.assertEqual(player["chest_xp"], 0)
                 self.assertEqual(json.loads(player["inventory_json"]), [])
                 self.assertGreaterEqual(player["chest_level"], 1)
+            finally:
+                api.DATABASE_PATH = old_path
+
+    def test_legacy_crystal_moves_to_ore_exactly_once(self):
+        with tempfile.NamedTemporaryFile(suffix=".db") as database:
+            old_path = api.DATABASE_PATH
+            try:
+                api.DATABASE_PATH = database.name
+                connection = sqlite3.connect(database.name)
+                connection.execute(
+                    "CREATE TABLE players (telegram_id INTEGER PRIMARY KEY, username TEXT, "
+                    "first_name TEXT, level INTEGER NOT NULL DEFAULT 1, gold INTEGER NOT NULL DEFAULT 0, "
+                    "enemy_hp INTEGER NOT NULL DEFAULT 30, refinement_crystal INTEGER NOT NULL DEFAULT 0, "
+                    "updated_at INTEGER NOT NULL)"
+                )
+                connection.execute("INSERT INTO players VALUES (1,'old','Old',1,0,30,7,0)")
+                connection.commit()
+                connection.close()
+                api.create_database()
+                connection = sqlite3.connect(database.name)
+                connection.execute("UPDATE players SET refinement_ore=11 WHERE telegram_id=1")
+                connection.commit()
+                connection.close()
+                api.create_database()
+                connection = sqlite3.connect(database.name)
+                ore, legacy = connection.execute(
+                    "SELECT refinement_ore, refinement_crystal FROM players WHERE telegram_id=1"
+                ).fetchone()
+                connection.close()
+                self.assertEqual((ore, legacy), (11, 7))
             finally:
                 api.DATABASE_PATH = old_path
 

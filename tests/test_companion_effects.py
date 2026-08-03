@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import api
+from progression_systems import companion_milestone_multiplier
 
 
 class CompanionEffectsTest(unittest.TestCase):
@@ -102,20 +103,25 @@ class CompanionEffectsTest(unittest.TestCase):
                 skill=skill,
             )
 
+    @staticmethod
+    def effective_level(level):
+        return level * companion_milestone_multiplier(level)
+
     def test_forest_sprite_damage_bonus(self):
         collection = self.collection(forest_sprite=20)
         self.set_state(collection, ["forest_sprite", None, None])
 
         response = self.attack()
 
-        self.assertEqual(response["damage_dealt"], 126)
-        self.assertEqual(response["companion_effects"]["damage_multiplier"], 1.26)
+        multiplier = round(1 + .013 * self.effective_level(20), 4)
+        self.assertEqual(response["damage_dealt"], round(100 * multiplier))
+        self.assertEqual(response["companion_effects"]["damage_multiplier"], multiplier)
 
         self.set_state(collection, ["forest_sprite", None, None])
         skill_response = self.attack("spore_strike")
         self.assertEqual(
             skill_response["damage_dealt"],
-            round(100 * api.SPORE_STRIKE_DAMAGE_MULTIPLIER * 1.26),
+            round(100 * api.SPORE_STRIKE_DAMAGE_MULTIPLIER * multiplier),
         )
 
     def test_baby_slime_hp_bonus(self):
@@ -124,9 +130,10 @@ class CompanionEffectsTest(unittest.TestCase):
 
         response = api.build_player_response(self.player())
 
-        self.assertEqual(response["hero_max_hp"], 130)
-        self.assertEqual(response["hero_hp"], 65)
-        self.assertEqual(response["hero_stats"]["total"]["hero_max_hp"], 130)
+        expected_max_hp = round(100 * (1 + .015 * self.effective_level(20)))
+        self.assertEqual(response["hero_max_hp"], expected_max_hp)
+        self.assertEqual(response["hero_hp"], round(expected_max_hp * .5))
+        self.assertEqual(response["hero_stats"]["total"]["hero_max_hp"], expected_max_hp)
 
     def test_hp_ratio_is_preserved_when_equipping_and_unequipping(self):
         collection = self.collection(baby_slime=20)
@@ -135,7 +142,9 @@ class CompanionEffectsTest(unittest.TestCase):
         equipped = api.equip_companion(1, "baby_slime", "test")
         unequipped = api.unequip_companion(1, "test")
 
-        self.assertEqual((equipped["hero_hp"], equipped["hero_max_hp"]), (65, 130))
+        expected_max_hp = round(100 * (1 + .015 * self.effective_level(20)))
+        self.assertEqual((equipped["hero_hp"], equipped["hero_max_hp"]),
+                         (round(expected_max_hp * .5), expected_max_hp))
         self.assertEqual((unequipped["hero_hp"], unequipped["hero_max_hp"]), (50, 100))
 
     def test_spore_beetle_extra_attack_damage(self):
@@ -144,21 +153,24 @@ class CompanionEffectsTest(unittest.TestCase):
 
         response = self.attack()
 
-        self.assertEqual(response["companion_damage"], 56)
-        self.assertEqual(response["damage_dealt"], 156)
+        expected_extra = round(100 * .028 * self.effective_level(20))
+        self.assertEqual(response["companion_damage"], expected_extra)
+        self.assertEqual(response["damage_dealt"], 100 + expected_extra)
 
     def test_spore_beetle_attack_speed_levels_and_skill_cooldown(self):
         collection = self.collection(spore_beetle=20)
         self.set_state(collection, ["spore_beetle", None, None], attack_speed=1.0)
         response = api.build_player_response(self.player())
-        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"], 1.13)
-        self.assertAlmostEqual(response["attack_interval"], 1 / 1.13)
+        level_20_multiplier = round(1 + .0065 * self.effective_level(20), 4)
+        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"], level_20_multiplier)
+        self.assertAlmostEqual(response["attack_interval"], 1 / level_20_multiplier)
         self.assertEqual(response["skills"]["spore_strike"]["cooldown_seconds"], 8.0)
 
         collection = self.collection(spore_beetle=10)
         self.set_state(collection, ["spore_beetle", None, None], attack_speed=1.0)
         response = api.build_player_response(self.player())
-        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"], 1.065)
+        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"],
+                         round(1 + .0065 * self.effective_level(10), 4))
 
     def test_spore_beetle_speed_removed_or_in_closed_slot(self):
         collection = self.collection(spore_beetle=20)
@@ -208,9 +220,11 @@ class CompanionEffectsTest(unittest.TestCase):
 
         response = api.build_player_response(self.player())
 
-        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"], 0.85)
-        self.assertEqual(response["skills"]["spore_strike"]["cooldown_seconds"], 6.8)
-        self.assertLessEqual(response["skills"]["spore_strike"]["cooldown_remaining"], 6.8)
+        companion_multiplier = round(1 - .015 * self.effective_level(10), 4)
+        cooldown = api.SPORE_STRIKE_COOLDOWN_SECONDS * companion_multiplier
+        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"], companion_multiplier)
+        self.assertEqual(response["skills"]["spore_strike"]["cooldown_seconds"], cooldown)
+        self.assertLessEqual(response["skills"]["spore_strike"]["cooldown_remaining"], cooldown)
 
         self.set_state(
             collection,
@@ -233,9 +247,10 @@ class CompanionEffectsTest(unittest.TestCase):
         collection = self.collection(thorn_wolf=20)
         self.set_state(collection, ["thorn_wolf", None, None])
         effects = api.calculate_companion_effects(self.player())
-        self.assertEqual(effects["crit_chance_bonus"], 15.0)
-        self.assertEqual(effects["crit_damage_bonus"], 20.0)
-        self.assertEqual(effects["active_effects"][0]["crit_damage_bonus"], 20.0)
+        self.assertEqual(effects["crit_chance_bonus"], .75 * self.effective_level(20))
+        self.assertEqual(effects["crit_damage_bonus"], self.effective_level(20))
+        self.assertEqual(effects["active_effects"][0]["crit_damage_bonus"],
+                         self.effective_level(20))
 
         fake_stats = {"total": {"crit_chance": 99.0, "crit_damage": 200.0}}
         with (
@@ -245,7 +260,7 @@ class CompanionEffectsTest(unittest.TestCase):
             damage, critical = api.calculate_hero_attack_damage(self.player())
 
         self.assertTrue(critical)
-        self.assertEqual(damage, 220)
+        self.assertEqual(damage, round(100 * (200 + self.effective_level(20)) / 100))
 
     def test_thorn_wolf_critical_bonus_applies_to_attack_and_skill(self):
         collection = self.collection(thorn_wolf=10)
@@ -259,8 +274,17 @@ class CompanionEffectsTest(unittest.TestCase):
 
         self.assertTrue(normal_response["critical"])
         self.assertTrue(skill_response["critical"])
-        self.assertEqual(normal_response["damage_dealt"], 185)
-        self.assertEqual(skill_response["damage_dealt"], 370)
+        stats = api.calculate_equipment_stats({}, 50)["total"]
+        expected_normal = round(
+            100 * (stats["crit_damage"] + self.effective_level(10)) / 100
+        )
+        self.assertEqual(normal_response["damage_dealt"], expected_normal)
+        expected = round(
+            100 * api.SPORE_STRIKE_DAMAGE_MULTIPLIER
+            * stats["skill_damage_multiplier"]
+            * (stats["crit_damage"] + self.effective_level(10)) / 100
+        )
+        self.assertEqual(skill_response["damage_dealt"], expected)
 
     def test_ancient_entling_heals_after_normal_enemy(self):
         collection = self.collection(ancient_entling=20)
@@ -274,8 +298,9 @@ class CompanionEffectsTest(unittest.TestCase):
 
         response = self.attack()
 
-        self.assertEqual(response["companion_healing"], 83)
-        self.assertEqual(response["hero_hp"], 427)
+        healing = round(688 * .006 * self.effective_level(20))
+        self.assertEqual(response["companion_healing"], healing)
+        self.assertEqual(response["hero_hp"], 344 + healing)
 
     def test_ancient_entling_heals_twice_as_much_after_boss(self):
         collection = self.collection(ancient_entling=20)
@@ -291,8 +316,9 @@ class CompanionEffectsTest(unittest.TestCase):
         response = self.attack()
 
         self.assertTrue(response["boss_defeated"])
-        self.assertEqual(response["companion_healing"], 165)
-        self.assertEqual(response["hero_hp"], 509)
+        healing = round(688 * .012 * self.effective_level(20))
+        self.assertEqual(response["companion_healing"], healing)
+        self.assertEqual(response["hero_hp"], 344 + healing)
 
     def test_ancient_entling_healing_does_not_exceed_max_hp(self):
         collection = self.collection(ancient_entling=20)
@@ -320,7 +346,8 @@ class CompanionEffectsTest(unittest.TestCase):
 
         effects = api.calculate_companion_effects(self.player())
 
-        self.assertEqual(effects["skill_cooldown_multiplier"], 0.925)
+        self.assertEqual(effects["skill_cooldown_multiplier"],
+                         round(1 - .015 * self.effective_level(5), 4))
         self.assertEqual(effects["crit_chance_bonus"], 0.0)
 
     def test_multiple_new_effects_work_together(self):
@@ -337,7 +364,8 @@ class CompanionEffectsTest(unittest.TestCase):
 
         response = self.attack()
 
-        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"], 0.925)
+        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"],
+                         round(1 - .015 * self.effective_level(5), 4))
         self.assertEqual(response["companion_effects"]["crit_chance_bonus"], 3.0)
         self.assertEqual(response["companion_effects"]["crit_damage_bonus"], 4.0)
         self.assertEqual(response["companion_healing"], 21)

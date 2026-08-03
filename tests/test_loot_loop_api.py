@@ -78,7 +78,8 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
         return {
             "inventory": api.normalized_inventory(player),
             "equipment": api.parse_json_object(player["equipment_json"]),
-            "dust": player["salvage_dust"], "crystals": player["refinement_crystal"],
+            "dust": player["salvage_dust"], "ore": player["refinement_ore"],
+            "premium_crystals": player["premium_crystals"],
             "chest_xp": player["chest_xp"], "chests": player["chests"],
             "chest_level": player["chest_level"], "pending": player["pending_loot_json"],
         }
@@ -100,7 +101,8 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
         self.assertTrue(first["transaction_completed"])
         self.assertTrue(second["duplicate_request"])
         self.assertEqual(state["dust"], first["dust_gained"])
-        self.assertEqual(state["crystals"], first["crystals_gained"])
+        self.assertEqual(state["ore"], first["ore_gained"])
+        self.assertEqual(state["premium_crystals"], 0)
         self.assertEqual(state["chest_xp"], first["chest_xp_gained"])
         self.assertEqual(state["inventory"], [])
         for key in ("salvaged_item_id", "rarity", "dust_gained", "crystals_gained",
@@ -121,7 +123,7 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
     def test_salvage_stale_version_changes_nothing(self):
         item = self.item("stale", version=4)
         self.update_player(inventory_json=json.dumps([item]), salvage_dust=9,
-                           refinement_crystal=2, chest_xp=7)
+                           refinement_ore=2, premium_crystals=11, chest_xp=7)
         before = self.snapshot()
         result = self.call_salvage(item, "stale-action", version=3)
         self.assertTrue(result["stale_item"])
@@ -131,7 +133,7 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
     def test_salvage_rollback_restores_item_and_resources(self):
         item = self.item("rollback")
         self.update_player(inventory_json=json.dumps([item]), salvage_dust=9,
-                           refinement_crystal=2, chest_xp=7)
+                           refinement_ore=2, premium_crystals=11, chest_xp=7)
         before = self.snapshot()
         with patch.object(api, "salvage_reward", side_effect=RuntimeError("injected")):
             with self.assertRaises(RuntimeError):
@@ -153,7 +155,8 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
         self.assertEqual(result["total_crystals"], sum(row["crystals"] for row in result["results"]))
         state = self.snapshot()
         self.assertEqual(state["dust"], result["total_dust"])
-        self.assertEqual(state["crystals"], result["total_crystals"])
+        self.assertEqual(state["ore"], result["total_crystals"])
+        self.assertEqual(state["premium_crystals"], 0)
 
     def test_bulk_skips_equipped_locked_and_build_upgrade(self):
         equipped = self.item("equipped", power=100)
@@ -185,7 +188,7 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
     def test_reroll_updates_one_stat_score_version_count_and_history(self):
         item = self.item("reroll", rarity="rare", power=123)
         self.update_player(inventory_json=json.dumps([item]), salvage_dust=1000,
-                           refinement_crystal=100)
+                           refinement_ore=100, premium_crystals=17)
         old_score = build_score(item, "balanced")
         result = api.reroll_inventory_secondary({
             "item_id": "reroll", "stat_key": "crit_chance",
@@ -219,7 +222,7 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
     def test_reroll_stale_and_insufficient_resources_change_nothing(self):
         item = self.item("no-change", rarity="legendary", version=3)
         self.update_player(inventory_json=json.dumps([item]), salvage_dust=0,
-                           refinement_crystal=0)
+                           refinement_ore=0, premium_crystals=19)
         before = self.snapshot()
         stale = api.reroll_inventory_secondary({
             "item_id": "no-change", "stat_key": "crit_chance",
@@ -237,7 +240,7 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
     def test_reroll_rollback_restores_equipped_item_and_resources(self):
         item = self.item("equipped-reroll", rarity="legendary")
         self.update_player(equipment_json=json.dumps({"weapon": item}), salvage_dust=100,
-                           refinement_crystal=10)
+                           refinement_ore=10, premium_crystals=23)
         before = self.snapshot()
         with patch.object(api, "sync_player_stats", side_effect=RuntimeError("injected")):
             with self.assertRaises(RuntimeError):
@@ -414,6 +417,8 @@ class LegacyPlayerMigrationIntegrationTest(unittest.TestCase):
                 connection.close()
             self.assertEqual(player["salvage_dust"], 0)
             self.assertEqual(player["refinement_crystal"], 0)
+            self.assertEqual(player["refinement_ore"], 0)
+            self.assertEqual(player["premium_crystals"], 0)
             self.assertEqual(player["chest_xp"], 0)
             self.assertEqual(json.loads(player["inventory_json"]), [])
             self.assertEqual(player["auto_salvage_max_rarity"], "off")

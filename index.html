@@ -6465,7 +6465,9 @@ id="companionSummonChances"
 <div class="modal-title">🧰 Сундук</div>
 <div class="chest-summary-row">
 <div><span>УРОВЕНЬ</span><strong id="chestModalLevel">1 / 25</strong></div>
-<div><span>ПЫЛЬ / КРИСТАЛЛЫ</span><strong><span id="salvageDust">0</span> / <span id="refinementCrystals">0</span></strong></div>
+<div><span>ПЫЛЬ / РУДА УЛУЧШЕНИЯ</span><strong><span id="salvageDust">0</span> / <span id="refinementOre">0</span></strong></div>
+<div><span>ТОМА / ЭССЕНЦИЯ</span><strong><span id="skillTomes">0</span> / <span id="companionEssence">0</span></strong></div>
+<div><span>💎 КРИСТАЛЛЫ</span><strong id="premiumCrystals">0</strong></div>
 <div><span>ИНВЕНТАРЬ</span><strong id="inventoryCapacityText">0 / 50</strong></div>
 </div>
 <div class="upgrade-copy" id="chestUpgradeText">Опыт сундука 0 / 20</div>
@@ -6864,7 +6866,11 @@ id="companionSummonChances"
       setText("chestModalLevel", `${player.chest_level} / ${player.chest_max_level}`);
       const lootProgress = player.loot_progression || {};
       setText("salvageDust", formatNumber(lootProgress.salvage_dust || 0));
-      setText("refinementCrystals", formatNumber(lootProgress.refinement_crystal || 0));
+      const resources = player.progression_resources || {};
+      setText("refinementOre", formatNumber(resources.refinement_ore || 0));
+      setText("skillTomes", formatNumber(resources.skill_tomes || 0));
+      setText("companionEssence", formatNumber(resources.companion_essence || 0));
+      setText("premiumCrystals", formatNumber(resources.premium_crystals || 0));
       setText("inventoryCapacityText", `${lootProgress.inventory_count || 0} / ${lootProgress.inventory_capacity || 50}`);
       const required = Number(lootProgress.chest_xp_required || 0);
       const step = Number(lootProgress.chest_xp_current || 0);
@@ -7180,6 +7186,9 @@ id="companionSummonChances"
       if (sequence.boss_active) {
         parts.push(`Перед боссом: ${formatNumber(sequence.current_hp)} / ${formatNumber(sequence.max_hp)} HP`);
       }
+      const rewards = result?.progression_rewards;
+      if (Number(rewards?.skill_tomes_gained || 0) > 0) parts.push(`+${rewards.skill_tomes_gained} томов навыков`);
+      if (Number(rewards?.companion_essence_gained || 0) > 0) parts.push(`+${rewards.companion_essence_gained} эссенции спутников`);
       return parts.join(" · ");
     }
     function scheduleMonsterAttack(seconds) {
@@ -7354,7 +7363,7 @@ id="companionSummonChances"
         : "Вторичные характеристики: нет";
       const salvage = loot.salvage_value || {};
       const reroll = loot.reroll_cost || {};
-      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} • Разбор: ${formatNumber(salvage.dust || 0)} пыли • Переработок: ${Number(loot.reroll_count || 0)} • Цена: ${formatNumber(reroll.dust || 0)} пыли / ${formatNumber(reroll.crystals || 0)} крист.`);
+      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} • Разбор: ${formatNumber(salvage.dust || 0)} пыли • Переработок: ${Number(loot.reroll_count || 0)} • Цена: ${formatNumber(reroll.dust || 0)} пыли / ${formatNumber(reroll.ore ?? reroll.crystals ?? 0)} руды улучшения.`);
       $("sellLootButton").textContent = `ПРОДАТЬ +${formatNumber(loot.sell_price)}`;
       $("lockLootButton").textContent = loot.locked ? "🔒 РАЗБЛОКИРОВАТЬ" : "🔓 ЗАБЛОКИРОВАТЬ";
       $("salvageLootButton").disabled = Boolean(loot.locked);
@@ -7385,7 +7394,7 @@ id="companionSummonChances"
     }
     async function salvageCurrentLoot() {
       const item = player?.pending_loot; if (!item) return;
-      try { const result = await apiRequest("/inventory/salvage", "POST", {item_id:item.item_id || item.id, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); modalHide("lootOverlay"); setMessage(`♻️ +${result.dust_gained} пыли, +${result.crystals_gained} крист.`); }
+      try { const result = await apiRequest("/inventory/salvage", "POST", {item_id:item.item_id || item.id, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); modalHide("lootOverlay"); setMessage(`♻️ +${result.dust_gained} пыли, +${result.ore_gained ?? result.crystals_gained} руды улучшения.`); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
     async function lockCurrentLoot() {
@@ -8255,7 +8264,7 @@ id="companionSummonChances"
 
               <div class="collection-skill-progress">
                 ${owned
-                  ? `Уровень ${level} · ${fragments} фрагм.`
+                  ? `Уровень ${level}/50 · ${fragments} фрагм. · ${entry.next_milestone ? `следующая веха ${entry.next_milestone}` : "Мастерство"}<br>Цена: ${formatNumber(entry.upgrade_cost?.companion_essence || 0)} эссенции + ${formatNumber(entry.upgrade_cost?.gold || 0)} золота<br>Вехи: ${(entry.active_milestones || []).join(", ") || "—"}`
                   : "Не получен"}
               </div>
 
@@ -8266,6 +8275,8 @@ id="companionSummonChances"
                 : ""}
 
               <div class="collection-skill-actions">
+                <button class="collection-skill-equip" data-upgrade-companion="${escapeHtml(companion.id)}" data-levels="1" type="button" ${!owned || level >= 50 ? "disabled" : ""}>УЛУЧШИТЬ</button>
+                <button class="collection-skill-equip" data-upgrade-companion="${escapeHtml(companion.id)}" data-levels="10" type="button" ${!owned || level >= 50 ? "disabled" : ""}>УЛУЧШИТЬ ×10</button>
                 <button
                   class="collection-skill-equip"
                   ${active
@@ -8291,6 +8302,10 @@ id="companionSummonChances"
             );
           });
         });
+
+      collectionBox
+        .querySelectorAll("[data-upgrade-companion]")
+        .forEach((button) => button.addEventListener("click", () => upgradeProgression("companion", button.dataset.upgradeCompanion, Number(button.dataset.levels))));
 
       collectionBox
         .querySelectorAll("[data-equip-companion]")
@@ -8549,7 +8564,7 @@ id="companionSummonChances"
               </div>
 
               <div class="collection-skill-progress">
-                ${escapeHtml(progressText)}
+                ${escapeHtml(progressText)} · ${entry.next_milestone ? `следующая веха ${entry.next_milestone}` : "Мастерство"}<br>Цена: ${formatNumber(entry.upgrade_cost?.skill_tomes || 0)} томов + ${formatNumber(entry.upgrade_cost?.gold || 0)} золота<br>Вехи: ${(entry.active_milestones || []).join(", ") || "—"}
               </div>
 
               ${
@@ -8561,6 +8576,8 @@ id="companionSummonChances"
               }
 
               <div class="collection-skill-actions">
+                <button class="collection-skill-equip" data-upgrade-skill="${escapeHtml(skill.id)}" data-levels="1" type="button" ${!owned || skillLevel >= 50 ? "disabled" : ""}>УЛУЧШИТЬ</button>
+                <button class="collection-skill-equip" data-upgrade-skill="${escapeHtml(skill.id)}" data-levels="10" type="button" ${!owned || skillLevel >= 50 ? "disabled" : ""}>УЛУЧШИТЬ ×10</button>
                 <button
                   class="collection-skill-equip"
                   data-equip-skill="${escapeHtml(skill.id)}"
@@ -8586,6 +8603,10 @@ id="companionSummonChances"
         });
 
       collectionBox
+        .querySelectorAll("[data-upgrade-skill]")
+        .forEach((button) => button.addEventListener("click", () => upgradeProgression("skill", button.dataset.upgradeSkill, Number(button.dataset.levels))));
+
+      collectionBox
         .querySelectorAll("[data-equip-skill]")
         .forEach((button) => {
           button.addEventListener("click", () => {
@@ -8594,6 +8615,18 @@ id="companionSummonChances"
             );
           });
         });
+    }
+
+    async function upgradeProgression(kind, id, levels) {
+      const plural = kind === "skill" ? "skills" : "companions";
+      const body = levels > 1
+        ? {id, levels: Math.min(10, levels), client_action_id: crypto.randomUUID()}
+        : {[`${kind}_id`]: id, expected_level: Number((kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id])?.level || 1), client_action_id: crypto.randomUUID()};
+      try {
+        await apiRequest(`/${plural}/upgrade${levels > 1 ? "-bulk" : ""}`, "POST", body);
+        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout();
+        setMessage(levels > 1 ? "Прогрессия улучшена" : "Уровень повышен");
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
 
     async function equipSkillToAvailableSlot(skillId) {
