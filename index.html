@@ -7098,6 +7098,21 @@ id="companionSummonChances"
       }
       return parts.length ? ` · ${parts.join(" · ")}` : "";
     }
+    function stageSequenceMessage(result) {
+      const sequence = result?.stage_sequence;
+      if (!result?.enemy_defeated || !sequence) return result?.message || "Враг побеждён";
+      const parts = [
+        result?.message || "Враг побеждён",
+        `HP сохранено: ${formatNumber(sequence.hp_carried_to_next_battle)} / ${formatNumber(sequence.max_hp)}`
+      ];
+      if (Number(sequence.companion_healing || 0) > 0) {
+        parts.push(`Ancient Entling восстановил ${formatNumber(sequence.companion_healing)} HP`);
+      }
+      if (sequence.boss_active) {
+        parts.push(`Перед боссом: ${formatNumber(sequence.current_hp)} / ${formatNumber(sequence.max_hp)} HP`);
+      }
+      return parts.join(" · ");
+    }
     function scheduleMonsterAttack(seconds) {
     if (!battleRunning || !player?.can_attack || heroDefeated) return;
 
@@ -7128,9 +7143,12 @@ id="companionSummonChances"
       if (!battleRunning || !player?.can_attack || heroDefeated || requestInProgress || enemyDefeating || document.hidden) return;
       requestInProgress = true;
       try {
-        const attackPath = skillName
-          ? `/attack?skill=${encodeURIComponent(skillName)}`
-          : "/attack";
+        const attackParams = new URLSearchParams();
+        if (skillName) attackParams.set("skill", skillName);
+        const battleIdentity = player?.stage_sequence?.battle_identity;
+        if (battleIdentity) attackParams.set("battle_id", battleIdentity);
+        const attackQuery = attackParams.toString();
+        const attackPath = attackQuery ? `/attack?${attackQuery}` : "/attack";
         const result = await apiRequest(attackPath, "POST");
         if (!result.attacked) {
           player = result; renderPlayer();
@@ -7146,7 +7164,7 @@ id="companionSummonChances"
           || Number(player.damage || 0) + companionDamage;
         showDamage(displayedDamage, result.critical);
         if (result.enemy_defeated) {
-          setMessage((result.message || "Враг побеждён") + combatEffectSuffix(result));
+          setMessage(stageSequenceMessage(result) + combatEffectSuffix(result));
           await animateEnemyDefeat(result);
           try { telegram.HapticFeedback?.notificationOccurred("success"); } catch (_) {}
         } else {

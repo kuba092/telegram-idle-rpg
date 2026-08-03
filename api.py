@@ -68,6 +68,10 @@ def battle_identity(player: dict) -> tuple:
     )
 
 
+def public_battle_identity(player: dict) -> str:
+    return "|".join(str(int(value)) for value in battle_identity(player))
+
+
 def owl_is_active(player: dict) -> bool:
     return any(
         effect[0].effect_id == "mushroom_owl"
@@ -100,6 +104,37 @@ def public_battle_effects(player: dict, now: float | None = None) -> dict:
         "shield_mitigation_active": mitigation_remaining > 0,
         "shield_mitigation_remaining": round(mitigation_remaining, 3),
     }
+
+
+def stage_sequence_state(player: dict, **overrides) -> dict:
+    """Public, server-owned snapshot of HP and campaign-wave progression.
+
+    Skill cooldowns intentionally reset when a defeated enemy is replaced.  Only
+    persistent hero HP and permanent stats cross that boundary; shields, poison,
+    Owl repeats, poison completions and mitigation are battle-local.
+    """
+    effects = calculate_companion_effects(player)
+    max_hp = max(1, round(int(player.get("hero_max_hp", 1)) * effects["hp_multiplier"]))
+    current_hp = max(0, min(max_hp, round(int(player.get("hero_hp", 0)) * effects["hp_multiplier"])))
+    kills = clamp_int(player.get("kills_in_stage", 0), 0, ENEMIES_PER_STAGE)
+    state = {
+        "current_hp": current_hp,
+        "max_hp": max_hp,
+        "hp_percent": round(current_hp / max_hp * 100, 2),
+        "hp_before_healing": current_hp,
+        "hp_after_healing": current_hp,
+        "hp_carried_to_next_battle": current_hp,
+        "companion_healing": 0,
+        "healing_overflow": 0,
+        "kills_in_stage": kills,
+        "enemies_remaining_before_boss": max(0, ENEMIES_PER_STAGE - kills),
+        "boss_active": bool(int(player.get("boss_active", 0))),
+        "temporary_effects_cleared": False,
+        "cooldowns_reset_between_battles": False,
+        "battle_identity": public_battle_identity(player),
+    }
+    state.update(overrides)
+    return state
 
 # COMPANION_SYSTEM_CONSTANTS_V1
 COMPANION_SYSTEM_UNLOCK_LEVEL = 10
@@ -2934,6 +2969,7 @@ def build_player_response(player: dict, **extra) -> dict:
         },
         "companion_effects": companion_effects,
         "battle_effects": battle_effects,
+        "stage_sequence": stage_sequence_state(player),
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
         "crit_damage": stats["total"]["crit_damage"],
@@ -3600,6 +3636,7 @@ def claim_offline_reward(x_telegram_init_data: str = Header(...)) -> dict:
 def attack(
     x_telegram_init_data: str = Header(...),
     skill: str | None = None,
+    battle_id: str | None = None,
 ) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
@@ -3609,6 +3646,14 @@ def attack(
     try:
         connection.execute("BEGIN IMMEDIATE")
         current = load_player(connection, telegram_id)
+        if battle_id is not None and battle_id != public_battle_identity(current):
+            connection.commit()
+            return build_player_response(
+                current,
+                attacked=False,
+                stale_battle=True,
+                message="Этот бой уже завершён",
+            )
         if int(current["hero_hp"]) <= 0:
             connection.commit()
             return build_player_response(
@@ -3887,6 +3932,15 @@ def attack(
         old_progress = wave_progress(current)
         last_enemy_attack_at = float(current["last_enemy_attack_at"])
         companion_healing = 0
+        requested_healing = 0
+        healing_overflow = 0
+        hp_before_healing = max(
+            0,
+            min(
+                max(1, round(int(current["hero_max_hp"]) * float(companion_effects["hp_multiplier"]))),
+                round(int(current["hero_hp"]) * float(companion_effects["hp_multiplier"])),
+            ),
+        )
         if enemy_defeated:
             COMBAT_EFFECT_ENGINE.dispatch(
                 CombatEvent.BOSS_KILLED if boss_active else CombatEvent.ENEMY_KILLED,
@@ -3909,12 +3963,19 @@ def attack(
             companion_healing = max(
                 0, min(requested_healing, effective_max_hp - effective_hp)
             )
+            healing_overflow = max(0, requested_healing - companion_healing)
             if companion_healing:
                 healed_effective_hp = effective_hp + companion_healing
                 current["hero_hp"] = min(
                     int(current["hero_max_hp"]),
                     round(healed_effective_hp / hp_multiplier),
                 )
+                actual_effective_hp = min(
+                    effective_max_hp,
+                    max(0, round(int(current["hero_hp"]) * hp_multiplier)),
+                )
+                companion_healing = max(0, actual_effective_hp - effective_hp)
+                healing_overflow = max(0, requested_healing - companion_healing)
             total_kills += 1
             experience_reward = 0
             if boss_active:
@@ -4012,8 +4073,8 @@ def attack(
                     else spore_last_used_at
                 ),
                 poison_last_used_at,
-                poison_until,
-                poison_next_tick_at,
+                0.0 if enemy_defeated else poison_until,
+                0.0 if enemy_defeated else poison_next_tick_at,
                 int(now),
                 telegram_id,
             ),
@@ -4034,6 +4095,21 @@ def attack(
             )
 
         if enemy_defeated:
+            # A spawned enemy is a hard battle boundary. Cooldowns currently reset
+            # by design, together with every temporary/persisted combat effect.
+            connection.execute(
+                """
+                UPDATE players
+                SET mushroom_shield_amount = 0,
+                    mushroom_shield_last_used_at = 0,
+                    spore_strike_last_used_at = 0,
+                    poison_cloud_last_used_at = 0,
+                    poison_cloud_until = 0,
+                    poison_cloud_next_tick_at = 0
+                WHERE telegram_id = ?
+                """,
+                (telegram_id,),
+            )
             BATTLE_STATES.reset(telegram_id)
 
         sync_player_stats(connection, telegram_id)
@@ -4062,12 +4138,26 @@ def attack(
             message = f"👑 Босс побеждён! +{chest_reward} сундуков"
     if companion_healing:
         message += f" · 🌿 Лечение спутника: +{companion_healing} HP"
+    persisted_sequence = stage_sequence_state(updated)
+    hp_after_healing = persisted_sequence["current_hp"]
+    sequence = stage_sequence_state(
+        updated,
+        hp_before_healing=hp_before_healing,
+        hp_after_healing=hp_after_healing,
+        hp_carried_to_next_battle=hp_after_healing,
+        companion_healing=companion_healing,
+        healing_overflow=healing_overflow,
+        temporary_effects_cleared=enemy_defeated,
+        cooldowns_reset_between_battles=enemy_defeated,
+    )
     return build_player_response(
         updated,
         attacked=True,
         damage_dealt=dealt_damage,
         companion_damage=companion_damage,
         companion_healing=companion_healing,
+        healing_overflow=healing_overflow,
+        stage_sequence=sequence,
         critical=critical,
         skill_used=("spore_strike" if use_spore_strike else None),
         spore_strike_used=use_spore_strike,
@@ -4455,6 +4545,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
                 enemy_hp = ?, enemy_max_hp = ?,
                 mushroom_shield_amount = ?,
                 mushroom_shield_last_used_at = ?,
+                poison_cloud_until = ?,
+                poison_cloud_next_tick_at = ?,
                 last_enemy_attack_at = ?, updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -4465,8 +4557,10 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
                 boss_waiting,
                 enemy_hp,
                 enemy_max_hp,
-                shield_amount,
+                0 if hero_defeated else shield_amount,
                 shield_last_used_at,
+                0.0 if hero_defeated else float(current.get("poison_cloud_until", 0)),
+                0.0 if hero_defeated else float(current.get("poison_cloud_next_tick_at", 0)),
                 now,
                 int(now),
                 telegram_id,
