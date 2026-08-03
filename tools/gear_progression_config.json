@@ -1,7 +1,7 @@
 {
   "simulation": {
     "days": 365,
-    "checkpoints": [1, 3, 7, 14, 30, 60, 90, 180, 365],
+    "checkpoints": [1, 3, 7, 14, 30, 60, 90, 180, 300, 365],
     "seed": 20260803,
     "max_stage": 1000,
     "monte_carlo_samples": 1200,
@@ -41,6 +41,9 @@
     "enemy_attack_interval_seconds": 2.0,
     "maximum_boss_kill_seconds": 150.0,
     "minimum_boss_hits_survived": 3,
+    "late_game_scaling_start_stage": 700,
+    "late_game_enemy_hp_growth_per_stage": 0.0025,
+    "late_game_enemy_damage_growth_per_stage": 0.0013,
     "stage_transition_seconds": 2.0,
     "normal_enemy_transition_seconds": 0.35,
     "normal_chests_per_kill": 1,
@@ -104,7 +107,7 @@
     "enabled_by_default": true,
     "guaranteed_rarity_every": 50,
     "guaranteed_rarity_min_rank": 4,
-    "guaranteed_upgrade_after": 120,
+    "guaranteed_upgrade_after": 100,
     "forced_upgrade_power_ratio": 0.035
   },
   "skills": {
@@ -118,38 +121,55 @@
     },
     "mushroom_shield": {
       "type": "shield",
-      "max_hp_ratio": 0.35,
+      "max_hp_ratio": 0.30,
       "cooldown_seconds": 15.0,
-      "auto_hp_ratio": 0.6
+      "auto_hp_ratio": 0.6,
+      "break_damage_reduction": 0.10,
+      "break_reduction_seconds": 3.0
     },
     "poison_cloud": {
       "type": "damage_over_time",
-      "tick_damage_multiplier": 0.5,
+      "tick_damage_multiplier": 0.45,
       "ticks": 5,
       "tick_interval_seconds": 1.0,
-      "cooldown_seconds": 20.0
+      "cooldown_seconds": 20.0,
+      "completed_cloud_bonus": 0.10,
+      "maximum_completed_cloud_stacks": 3
     }
   },
   "companions": {
     "system_unlock_level": 10,
     "slot_unlock_levels": [10, 25, 50],
     "max_level": 20,
-    "forest_sprite": {"effect": "final_damage", "per_level": 0.03},
-    "baby_slime": {"effect": "max_hp", "per_level": 0.05},
-    "spore_beetle": {"effect": "normal_attack_extra", "per_level": 0.02},
+    "forest_sprite": {
+      "effect": "final_damage",
+      "per_level": 0.013,
+      "poison_cloud_effectiveness": 0.5
+    },
+    "baby_slime": {"effect": "max_hp", "per_level": 0.015},
+    "spore_beetle": {
+      "effect": "normal_attack_extra",
+      "per_level": 0.028,
+      "attack_speed_per_level": 0.0065,
+      "maximum_attack_speed_bonus": 0.13
+    },
     "mushroom_owl": {
       "effect": "skill_cooldown_reduction",
-      "per_level": 0.02,
-      "maximum_reduction": 0.3
+      "per_level": 0.015,
+      "maximum_reduction": 0.3,
+      "repeat_use_bonus": 0.10,
+      "maximum_repeat_stacks": 5
     },
     "thorn_wolf": {
       "effect": "critical_chance",
-      "percentage_points_per_level": 0.5,
+      "percentage_points_per_level": 0.75,
+      "critical_damage_percent_per_level": 1.0,
+      "spore_strike_critical_damage_synergy": 0.10,
       "maximum_total_chance": 100.0
     },
     "ancient_entling": {
       "effect": "post_victory_healing",
-      "normal_ratio_per_level": 0.01,
+      "normal_ratio_per_level": 0.006,
       "boss_multiplier": 2.0
     }
   },
@@ -162,33 +182,33 @@
     },
     "burst": {
       "skills": ["spore_strike", "poison_cloud"],
-      "companions": ["forest_sprite", "mushroom_owl", "thorn_wolf"]
+      "companions": ["forest_sprite", "thorn_wolf", "spore_beetle"]
     },
     "basic_attack": {
       "skills": ["spore_strike"],
-      "companions": ["forest_sprite", "spore_beetle", "thorn_wolf"]
+      "companions": ["spore_beetle", "thorn_wolf", "baby_slime"]
     },
     "skill_spam": {
-      "skills": ["spore_strike", "poison_cloud"],
+      "skills": ["spore_strike", "poison_cloud", "mushroom_shield"],
       "companions": ["mushroom_owl", "forest_sprite", "thorn_wolf"]
     },
     "tank": {
       "skills": ["mushroom_shield"],
-      "companions": ["baby_slime", "ancient_entling", "forest_sprite"]
+      "companions": ["baby_slime", "thorn_wolf", "mushroom_owl"]
     },
     "sustain": {
-      "skills": ["mushroom_shield"],
+      "skills": ["mushroom_shield", "poison_cloud"],
       "companions": ["baby_slime", "ancient_entling", "mushroom_owl"]
     },
     "balanced": {
       "skills": ["spore_strike", "mushroom_shield", "poison_cloud"],
-      "companions": ["forest_sprite", "baby_slime", "mushroom_owl"]
+      "companions": ["forest_sprite", "thorn_wolf", "ancient_entling"]
     }
   },
   "build_simulation": {
     "stages": [10, 25, 50, 100, 300, 500, 700, 1000],
     "report_days": {
-      "f2p": [30, 90, 365],
+      "f2p": [30, 90, 180, 300, 365],
       "low_spender": [30, 365],
       "mid_spender": [30, 365],
       "whale": [30, 365]
