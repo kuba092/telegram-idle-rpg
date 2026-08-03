@@ -14,7 +14,8 @@ from typing import Any, Mapping
 QUEST_VERSION = 1
 DAILY_PREMIUM_CAP = 15
 WEEKLY_PREMIUM_CAP = 40
-RESOURCE_FIELDS = {"premium_crystals", "skill_tomes", "companion_essence", "salvage_dust", "refinement_ore"}
+RESOURCE_FIELDS = {"premium_crystals", "skill_tomes", "companion_essence", "salvage_dust", "refinement_ore",
+                   "skill_summon_scrolls", "companion_summon_contracts"}
 
 def _q(qid, title, description, objective, target, reward):
     return {"quest_id": qid, "title": title, "description": description,
@@ -36,8 +37,8 @@ WEEKLY_CATALOG = (
     _q("weekly_skills_10", "Школа магии", "Улучшите навыки 10 раз", "upgrade_skills", 10, {"skill_tomes": 10}),
     _q("weekly_companions_10", "Верные друзья", "Улучшите спутников 10 раз", "upgrade_companions", 10, {"companion_essence": 10}),
 )
-DAILY_MILESTONES = {20: {"salvage_dust": 5}, 40: {"skill_tomes": 3, "companion_essence": 3}, 60: {"premium_crystals": 8}}
-WEEKLY_MILESTONES = {40: {"skill_tomes": 10}, 80: {"companion_essence": 10, "refinement_ore": 10}, 120: {"premium_crystals": 40}}
+DAILY_MILESTONES = {20: {"salvage_dust": 5}, 40: {"skill_tomes": 3, "companion_essence": 3, "skill_summon_scrolls": 1}, 60: {"premium_crystals": 8}}
+WEEKLY_MILESTONES = {40: {"skill_tomes": 10}, 80: {"companion_essence": 10, "refinement_ore": 10, "companion_summon_contracts": 2}, 120: {"premium_crystals": 40}}
 
 def _achievement_catalog():
     out = []
@@ -69,6 +70,9 @@ EVENT_OBJECTIVES = {
     "chest_level_reached": "reach_chest_level", "skill_tomes_gained": "collect_skill_tomes",
     "companion_essence_gained": "collect_companion_essence", "player_login": "login",
     "gold_spent": "spend_gold",
+    "skill_summoned": "perform_skill_summons",
+    "companion_summoned": "perform_companion_summons",
+    "offline_rewards_claimed": "claim_offline_rewards",
 }
 
 def utc_now(now=None):

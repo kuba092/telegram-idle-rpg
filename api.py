@@ -50,6 +50,13 @@ from quest_system import (
     ensure_state as ensure_quest_state, public_block as public_quest_block,
     reward_totals,
 )
+from offline_progression import make_snapshot, normalize_snapshot, public_status as public_offline_status, rewards as offline_rewards
+from summon_system import (
+    BANNERS as SUMMON_BANNERS, COSTS as SUMMON_COSTS, FRAGMENTS as SUMMON_FRAGMENTS,
+    advance as advance_summon_pity, choose_entity, guarantee as summon_guarantee,
+    normalize_fragments, normalize_state as normalize_summon_state,
+    public_banner, roll_rarity,
+)
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -2376,10 +2383,10 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             """
             INSERT OR IGNORE INTO players (
                 telegram_id, username, first_name,
-                updated_at, last_active_at, progress_reached_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                updated_at, last_active_at, offline_last_claim_at, progress_reached_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (telegram_id, username, first_name, now, now, now),
+            (telegram_id, username, first_name, now, now, now, now),
         )
         ensure_player_skill_data(connection, telegram_id)
         ensure_player_companion_data(connection, telegram_id)
@@ -2401,8 +2408,13 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
         player = load_player(connection, telegram_id)
         if inserted.rowcount:
             ensure_enemy_damage_profile(connection, player)
-        if accrue_offline:
-            apply_offline_accrual(connection, player, now)
+        # Persist the returning player's eligible period before activity time moves.
+        # Reading /player never credits a resource; a snapshot survives restarts.
+        if not normalize_snapshot(player.get("offline_unclaimed_json")):
+            snapshot = make_snapshot(player, now)
+            if snapshot:
+                connection.execute("UPDATE players SET offline_unclaimed_json=? WHERE telegram_id=?",
+                                   (json.dumps(snapshot, separators=(",", ":")), telegram_id))
         connection.execute(
             """
             UPDATE players
@@ -3201,6 +3213,8 @@ def build_player_response(player: dict, **extra) -> dict:
         "daily_quests_claimed_json",
         "daily_quests_json", "weekly_quests_json", "achievements_json",
         "quest_daily_reset_key", "quest_weekly_reset_key", "quest_claim_history_json",
+        "offline_unclaimed_json", "skill_summon_state_json", "companion_summon_state_json",
+        "skill_fragments_json", "companion_fragments_json", "durable_action_results_json",
     }
     public_player = {
         key: value
@@ -3521,6 +3535,33 @@ def build_player_response(player: dict, **extra) -> dict:
         "next_affordable_skill_upgrade": next((sid for sid, entry in skill_collection.items() if entry.get("owned") and entry["level"] < 50 and tomes >= skill_upgrade_cost(entry["level"]) and gold >= skill_gold_cost(entry["level"])), None),
         "next_affordable_companion_upgrade": next((cid for cid, entry in companion_collection.items() if entry.get("owned") and entry["level"] < 50 and essence >= companion_upgrade_cost(entry["level"]) and gold >= companion_gold_cost(entry["level"])), None),
     }
+    skill_fragments = normalize_fragments(player.get("skill_fragments_json"), set(SKILL_CATALOG))
+    companion_fragments = normalize_fragments(player.get("companion_fragments_json"), set(COMPANION_CATALOG))
+    offline_block = public_offline_status(player, int(current_time))
+    response["offline_progression"] = {
+        "claimable": offline_block["claimable"],
+        "offline_seconds_rewarded": offline_block["offline_seconds_rewarded"],
+        "cap_seconds": offline_block["offline_cap_seconds"],
+        "estimated_rewards": offline_block["estimated_rewards"],
+        "claim_version": offline_block["claim_version"],
+    }
+    response["summon_resources"] = {
+        "skill_summon_scrolls": max(0, int(player.get("skill_summon_scrolls", 0))),
+        "companion_summon_contracts": max(0, int(player.get("companion_summon_contracts", 0))),
+        "premium_crystals": max(0, int(player.get("premium_crystals", 0))),
+    }
+    response["summon_progress"] = _summon_status_for_player(player)
+    response["fragments"] = {"skills": skill_fragments, "companions": companion_fragments,
+        "total_skill_fragments": sum(skill_fragments.values()),
+        "total_companion_fragments": sum(companion_fragments.values())}
+    for entity_id, entry in response["skill_system"]["collection"].items():
+        entry.update({"rarity": SKILL_CATALOG.get(entity_id, {}).get("rarity", "common"),
+                      "fragments": skill_fragments.get(entity_id, 0), "unlocked": bool(entry.get("owned")),
+                      "summon_source_available": entity_id in SKILL_CATALOG})
+    for entity_id, entry in response["companion_system"]["collection"].items():
+        entry.update({"rarity": COMPANION_CATALOG.get(entity_id, {}).get("rarity", "common"),
+                      "fragments": companion_fragments.get(entity_id, 0), "unlocked": bool(entry.get("owned")),
+                      "summon_source_available": entity_id in COMPANION_CATALOG})
     response["battle_breakdown"] = {
         "normal_attack_damage": response["normal_attack_damage"],
         "combo_damage": response["combo_damage"],
@@ -3639,6 +3680,16 @@ def create_database() -> None:
         ("game_completed", "INTEGER NOT NULL DEFAULT 0"),
         ("total_bosses", "INTEGER NOT NULL DEFAULT 0"),
         ("last_active_at", "INTEGER NOT NULL DEFAULT 0"),
+        ("offline_last_claim_at", "INTEGER NOT NULL DEFAULT 0"),
+        ("offline_claim_version", "INTEGER NOT NULL DEFAULT 1"),
+        ("offline_unclaimed_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("skill_summon_scrolls", "INTEGER NOT NULL DEFAULT 0"),
+        ("companion_summon_contracts", "INTEGER NOT NULL DEFAULT 0"),
+        ("skill_summon_state_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("companion_summon_state_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("skill_fragments_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("companion_fragments_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("durable_action_results_json", "TEXT NOT NULL DEFAULT '{}'"),
         ("offline_pending_chests", "INTEGER NOT NULL DEFAULT 0"),
         ("offline_pending_exp", "INTEGER NOT NULL DEFAULT 0"),
         ("progress_reached_at", "INTEGER NOT NULL DEFAULT 0"),
@@ -3832,6 +3883,7 @@ def create_database() -> None:
                 ELSE kills_in_stage
             END,
             last_active_at = CASE WHEN last_active_at <= 0 THEN ? ELSE last_active_at END,
+            offline_last_claim_at = CASE WHEN offline_last_claim_at <= 0 THEN ? ELSE offline_last_claim_at END,
             progress_reached_at = CASE
                 WHEN progress_reached_at <= 0 THEN ? ELSE progress_reached_at END
         """,
@@ -3846,6 +3898,7 @@ def create_database() -> None:
             MAX_CHEST_LEVEL,
             ENEMIES_PER_STAGE,
             ENEMIES_PER_STAGE,
+            now,
             now,
             now,
         ),
@@ -3895,7 +3948,7 @@ def health() -> dict:
 @app.get("/player")
 def player(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
-    player_data = get_or_create_player(user, accrue_offline=True)
+    player_data = get_or_create_player(user)
     return build_player_response(player_data)
 
 
@@ -4161,8 +4214,160 @@ def claim_all_quests(payload: dict = Body(...), x_telegram_init_data: str = Head
     remember_action(telegram_id,"quest-claim-all",action_id,result);return result
 
 
+def _durable_actions(player: dict) -> dict:
+    return parse_json_object(player.get("durable_action_results_json"))
+
+
+def _store_durable_action(connection, telegram_id: int, key: str, result: dict, actions: dict) -> None:
+    actions[key] = result
+    if len(actions) > 500:
+        actions = dict(list(actions.items())[-400:])
+    connection.execute("UPDATE players SET durable_action_results_json=? WHERE telegram_id=?",
+                       (json.dumps(actions, ensure_ascii=False, separators=(",", ":")), telegram_id))
+
+
+@app.get("/offline/status")
+def offline_status(x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    current = get_or_create_player(user)
+    return public_offline_status(current, int(time.time()))
+
+
 @app.post("/offline/claim")
+def claim_offline(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data); current = get_or_create_player(user)
+    telegram_id = int(current["telegram_id"]); action_id = str(payload.get("client_action_id") or "").strip()
+    if not action_id: raise HTTPException(status_code=422, detail="client_action_id обязателен")
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); current = load_player(connection, telegram_id)
+        actions = _durable_actions(current); action_key = f"offline:{action_id}"
+        if action_key in actions:
+            connection.rollback(); return {**actions[action_key], "duplicate_request": True}
+        version = max(1, int(current.get("offline_claim_version", 1)))
+        if int(payload.get("expected_claim_version", -1)) != version:
+            connection.rollback(); return {"offline_seconds_rewarded": 0, "rewards": {}, "new_balances": {},
+                "claim_version": version, "duplicate_request": False, "stale_version": True, "transaction_completed": False}
+        snapshot = normalize_snapshot(current.get("offline_unclaimed_json"))
+        rewarded_seconds = int(snapshot.get("rewarded_seconds", 0)); seed = f"{telegram_id}:{snapshot.get('started_at',0)}:{snapshot.get('ended_at',0)}"
+        reward = offline_rewards(snapshot.get("stage", current.get("stage", 1)), snapshot.get("chest_level", current.get("chest_level", 1)), rewarded_seconds, seed=seed)
+        fields = ("gold", "salvage_dust", "chest_xp", "skill_tomes", "companion_essence", "refinement_ore")
+        now = int(time.time())
+        if reward["reward_units"] > 0:
+            setters = ",".join(f"{field}={field}+?" for field in fields)
+            connection.execute(f"UPDATE players SET {setters},offline_unclaimed_json='{{}}',offline_last_claim_at=?,last_active_at=?,offline_claim_version=offline_claim_version+1,updated_at=? WHERE telegram_id=?",
+                               (*(reward[field] for field in fields), now, now, now, telegram_id))
+            QuestProgressTracker(connection, telegram_id, now).dispatch("offline_rewards_claimed", 1, client_action_id=action_id)
+        else:
+            connection.execute("UPDATE players SET offline_unclaimed_json='{}',offline_last_claim_at=?,last_active_at=?,offline_claim_version=offline_claim_version+1,updated_at=? WHERE telegram_id=?",
+                               (now, now, now, telegram_id))
+        updated = load_player(connection, telegram_id); new_version = int(updated["offline_claim_version"])
+        balances = {field: max(0, int(updated.get(field, 0))) for field in fields}
+        balances["premium_crystals"] = max(0, int(updated.get("premium_crystals", 0)))
+        result = {"offline_seconds_rewarded": rewarded_seconds, "rewards": reward, "new_balances": balances,
+                  "claim_version": new_version, "duplicate_request": False, "stale_version": False, "transaction_completed": True}
+        _store_durable_action(connection, telegram_id, action_key, result, actions); connection.commit()
+    except HTTPException: connection.rollback(); raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+    return result
+
+
+def _summon_status_for_player(player: dict) -> dict:
+    return {banner_id: public_banner(banner_id, normalize_summon_state(player.get(
+        "skill_summon_state_json" if banner_id == "skill_standard" else "companion_summon_state_json")), player)
+        for banner_id in SUMMON_BANNERS}
+
+
+@app.get("/summon/status")
+def summon_status(x_telegram_init_data: str = Header(...)) -> dict:
+    return _summon_status_for_player(get_or_create_player(validate_telegram_data(x_telegram_init_data)))
+
+
+@app.get("/summon/history")
+def summon_history(x_telegram_init_data: str = Header(...)) -> dict:
+    player = get_or_create_player(validate_telegram_data(x_telegram_init_data)); history = []
+    for banner_id, field in (("skill_standard", "skill_summon_state_json"), ("companion_standard", "companion_summon_state_json")):
+        history.extend(normalize_summon_state(player.get(field))["summon_history"])
+    history.sort(key=lambda item: item.get("timestamp", 0), reverse=True)
+    return {"history": history[:100]}
+
+
+def _perform_summon(banner_id: str, payload: dict, header: str) -> dict:
+    if banner_id not in SUMMON_BANNERS: raise HTTPException(status_code=404, detail="Неизвестный баннер")
+    try: count = int(payload.get("count"))
+    except (TypeError, ValueError): count = 0
+    payment = str(payload.get("payment_type", "")); action_id = str(payload.get("client_action_id") or "").strip()
+    if count not in (1, 10): raise HTTPException(status_code=422, detail="count должен быть 1 или 10")
+    if payment not in ("ticket", "premium_crystals"): raise HTTPException(status_code=422, detail="Некорректный payment_type")
+    if not action_id: raise HTTPException(status_code=422, detail="client_action_id обязателен")
+    player = get_or_create_player(validate_telegram_data(header)); telegram_id = int(player["telegram_id"])
+    config = SUMMON_BANNERS[banner_id]; is_skill = config["entity_type"] == "skill"
+    state_field = "skill_summon_state_json" if is_skill else "companion_summon_state_json"
+    collection_field = "skills_collection_json" if is_skill else "companions_collection_json"
+    fragment_field = "skill_fragments_json" if is_skill else "companion_fragments_json"
+    catalog = SKILL_CATALOG if is_skill else COMPANION_CATALOG
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); player = load_player(connection, telegram_id); actions = _durable_actions(player)
+        action_key = f"summon:{banner_id}:{action_id}"
+        if action_key in actions: connection.rollback(); return {**actions[action_key], "duplicate_request": True}
+        state = normalize_summon_state(player.get(state_field)); expected = int(payload.get("expected_pity_version", -1))
+        if expected != state["pity_version"]:
+            connection.rollback(); return {"banner_id": banner_id, "count": count, "results": [], "duplicate_request": False,
+                "stale_version": True, "transaction_completed": False, "pity_after": public_banner(banner_id, state, player)}
+        cost = SUMMON_COSTS[count][payment]; currency_field = config["ticket_field"] if payment == "ticket" else "premium_crystals"
+        if max(0, int(player.get(currency_field, 0))) < cost:
+            raise HTTPException(status_code=409, detail="Недостаточно ресурсов")
+        pity_before = public_banner(banner_id, state, player); collection = (normalize_skill_collection(player.get(collection_field)) if is_skill else normalize_companion_collection(player.get(collection_field)))
+        fragments = normalize_fragments(player.get(fragment_field), set(catalog)); results = []; new_ids = []; gained = {}
+        timestamp = int(time.time()); seed = f"{telegram_id}:{banner_id}:{action_id}:{state['total_summons']}:{state['pity_version']}"
+        for index in range(1, count + 1):
+            guaranteed = summon_guarantee(state); rarity = roll_rarity(seed, index, guaranteed)
+            entity_id, actual_rarity = choose_entity(catalog, rarity, seed, index); existing = bool(collection.get(entity_id, {}).get("owned"))
+            fragment_gain = 0
+            if existing:
+                fragment_gain = SUMMON_FRAGMENTS[actual_rarity]; fragments[entity_id] = fragments.get(entity_id, 0) + fragment_gain; gained[entity_id] = gained.get(entity_id, 0) + fragment_gain
+            else:
+                collection[entity_id] = progression_entry({"owned": True, "level": 1}); new_ids.append(entity_id)
+            advance_summon_pity(state, actual_rarity)
+            item = {"pull_index": index, "entity_id": entity_id, "entity_type": config["entity_type"], "rarity": actual_rarity,
+                    "newly_unlocked": not existing, "duplicate": existing, "fragments_gained": fragment_gain,
+                    "guarantee_triggered": guaranteed is not None, "guarantee_type": guaranteed}
+            results.append(item); state["summon_history"].append({"timestamp": timestamp, "banner_id": banner_id, "entity_id": entity_id,
+                "rarity": actual_rarity, "newly_unlocked": not existing, "guarantee_triggered": guaranteed is not None})
+        state["summon_history"] = state["summon_history"][-100:]; state["pity_version"] += 1
+        connection.execute(f"UPDATE players SET {currency_field}={currency_field}-?,{state_field}=?,{collection_field}=?,{fragment_field}=?,updated_at=? WHERE telegram_id=? AND {currency_field}>=?",
+            (cost, json.dumps(state, ensure_ascii=False), json.dumps(collection, ensure_ascii=False), json.dumps(fragments, ensure_ascii=False), timestamp, telegram_id, cost))
+        QuestProgressTracker(connection, telegram_id, timestamp).dispatch("skill_summoned" if is_skill else "companion_summoned", count, client_action_id=action_id)
+        updated = load_player(connection, telegram_id); pity_after = public_banner(banner_id, state, updated)
+        result = {"banner_id": banner_id, "count": count, "payment_type": payment, "currency_spent": cost,
+            "premium_crystals_spent": cost if payment == "premium_crystals" else 0, "results": results,
+            "newly_unlocked": new_ids, "fragments_gained": gained, "pity_before": pity_before, "pity_after": pity_after,
+            "duplicate_request": False, "stale_version": False, "transaction_completed": True}
+        _store_durable_action(connection, telegram_id, action_key, result, actions); connection.commit()
+    except HTTPException: connection.rollback(); raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+    return result
+
+
+@app.post("/summon/skill")
+def summon_skill(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _perform_summon("skill_standard", payload, x_telegram_init_data)
+
+
+@app.post("/summon/companion")
+def summon_companion(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _perform_summon("companion_standard", payload, x_telegram_init_data)
+
+
+@app.post("/offline/claim-legacy")
 def claim_offline_reward(x_telegram_init_data: str = Header(...)) -> dict:
+    # Compatibility pool only: new offline accrual never writes
+    # offline_pending_chests/offline_pending_exp, and this route never consumes
+    # offline_unclaimed_json. Thus one absence period cannot be claimed through
+    # both routes; only balances migrated from the retired mechanism live here.
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
@@ -4802,6 +5007,8 @@ def _resolve_victory(connection, current, was_boss, context):
     )
     skill_tomes = int(current.get("skill_tomes", 0)) + progression_reward["skill_tomes_gained"]
     companion_essence = int(current.get("companion_essence", 0)) + progression_reward["companion_essence_gained"]
+    summon_scrolls = int(current.get("skill_summon_scrolls", 0)) + int(progression_reward.get("skill_summon_scrolls_gained", 0))
+    summon_contracts = int(current.get("companion_summon_contracts", 0)) + int(progression_reward.get("companion_summon_contracts_gained", 0))
     kills = int(current["kills_in_stage"])
     total_kills = int(current["total_kills"]) + 1
     total_bosses = int(current.get("total_bosses", 0))
@@ -4880,12 +5087,13 @@ def _resolve_victory(connection, current, was_boss, context):
           poison_cloud_next_tick_at=0, thorn_burst_last_used_at=0,
           arcane_echo_last_used_at=0, venom_spores_last_used_at=0,
           binding_roots_last_used_at=0, null_bloom_last_used_at=0,
-          skill_tomes=?, companion_essence=?, updated_at=? WHERE telegram_id=?
+          skill_tomes=?, companion_essence=?, skill_summon_scrolls=?,
+          companion_summon_contracts=?, updated_at=? WHERE telegram_id=?
         """,
         (enemy_hp, enemy_max_hp, int(current["hero_hp"]), stage, kills,
          total_kills, total_bosses, chests, highest_stage, int(boss_active),
          game_completed, progress_reached_at, last_enemy_attack_at, skill_tomes,
-         companion_essence, int(now),
+         companion_essence, summon_scrolls, summon_contracts, int(now),
          int(current["telegram_id"])),
     )
     connection.execute(

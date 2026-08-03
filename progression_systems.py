@@ -106,7 +106,11 @@ def victory_progression_reward(identity: Any, stage: int, *, boss: bool, elite: 
     details = {"seed_version": "progression-reward-v1", "roll": int.from_bytes(digest[:8], "big") / 2**64}
     if boss:
         amount = min(8, 2 + max(0, int(stage) - 1) // 100)
+        # One exclusive deterministic 8% roll; never premium currency.
+        summon_roll = digest[10] % 100
         return {"skill_tomes_gained": amount, "companion_essence_gained": amount,
+                "skill_summon_scrolls_gained": int(summon_roll < 4),
+                "companion_summon_contracts_gained": int(4 <= summon_roll < 8),
                 "source": "boss", "roll_details": details}
     if elite:
         amount = 1 + digest[8] % 2

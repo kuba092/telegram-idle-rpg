@@ -6512,6 +6512,32 @@ id="companionSummonChances"
 </div>
 </section>
 </main>
+<div id="progressionLaunchers" style="position:fixed;right:12px;bottom:82px;z-index:80;display:grid;gap:8px">
+  <button id="offlineOpen" class="secondary-game-button" type="button">🌙 Offline</button>
+  <button id="summonOpen" class="primary-game-button" type="button">🔮 Призыв</button>
+</div>
+<div id="progressionModal" class="hidden" style="position:fixed;inset:0;z-index:200;background:#000b;display:grid;place-items:center;padding:16px">
+  <section style="width:min(560px,100%);max-height:88vh;overflow:auto;background:#172033;border:1px solid #ffffff26;border-radius:18px;padding:16px;color:#fff">
+    <button id="progressionClose" type="button" style="float:right">✕</button>
+    <div id="offlinePanel">
+      <h2>Награда за отсутствие</h2><p id="offlineTime">0 мин · предел 8 часов</p>
+      <div id="offlinePreview"></div><button id="offlineClaim" class="primary-game-button" type="button">Забрать</button>
+      <div id="offlineResult"></div>
+    </div>
+    <div id="summonPanel" class="hidden">
+      <h2>Призыв</h2>
+      <div><button id="summonSkillTab" type="button">Навыки</button> <button id="summonCompanionTab" type="button">Спутники</button></div>
+      <p id="summonBalances"></p><div id="summonRates"></div><p id="summonPity"></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button data-summon-count="1" data-summon-payment="ticket">x1 за ticket</button>
+        <button data-summon-count="10" data-summon-payment="ticket">x10 за tickets</button>
+        <button data-summon-count="1" data-summon-payment="premium_crystals">x1 за 100 💎</button>
+        <button data-summon-count="10" data-summon-payment="premium_crystals">x10 за 900 💎</button>
+      </div>
+      <div id="summonResults"></div><h3>Последние призывы</h3><div id="summonHistory"></div>
+    </div>
+  </section>
+</div>
 <script>
     const telegram = window.Telegram.WebApp;
     const API_URL = "https://ryzhikai.com/rpg-api";
@@ -10587,6 +10613,52 @@ id="companionSummonChances"
         renderGemBoss();
       }
     }, 1000);
+
+    // Offline/summon values are rendered exactly as returned by the server.
+    let summonBanner = "skill_standard";
+    let summonPublicStatus = null;
+    const rewardText = rewards => Object.entries(rewards || {}).filter(([key, value]) => key !== "reward_units" && value)
+      .map(([key, value]) => `${key}: +${value}`).join(" · ") || "Пока пусто";
+    const openProgression = panel => {
+      $("progressionModal").classList.remove("hidden");
+      $("progressionModal").style.display = "grid";
+      $("offlinePanel").classList.toggle("hidden", panel !== "offline");
+      $("summonPanel").classList.toggle("hidden", panel !== "summon");
+    };
+    async function refreshOfflinePanel() {
+      const status = await apiRequest("/offline/status");
+      $("offlineTime").textContent = `${Math.floor(status.offline_seconds_rewarded / 60)} мин · предел 8 часов${status.cap_reached ? " · CAP" : ""}`;
+      $("offlinePreview").textContent = rewardText(status.estimated_rewards);
+      $("offlineClaim").disabled = !status.claimable;
+      $("offlineClaim").dataset.version = status.claim_version;
+    }
+    async function refreshSummonPanel() {
+      summonPublicStatus = await apiRequest("/summon/status");
+      const status = summonPublicStatus[summonBanner];
+      $("summonRates").textContent = Object.entries(status.rates).map(([r, v]) => `${r}: ${v}%`).join(" · ");
+      $("summonBalances").textContent = `Tickets: ${status.available_tickets} · 💎 ${status.premium_crystals} · x1 100 / x10 900`;
+      $("summonPity").textContent = `До rare: ${status.pulls_until_rare_guarantee}; epic: ${status.pulls_until_epic_guarantee}; legendary: ${status.pulls_until_legendary_guarantee}`;
+      const history = await apiRequest("/summon/history");
+      $("summonHistory").innerHTML = history.history.slice(0, 20).map(item => `<div>${item.rarity} · ${item.entity_id}${item.guarantee_triggered ? " · гарантия" : ""}</div>`).join("");
+    }
+    $("offlineOpen").addEventListener("click", async () => { openProgression("offline"); await refreshOfflinePanel(); });
+    $("summonOpen").addEventListener("click", async () => { openProgression("summon"); await refreshSummonPanel(); });
+    $("progressionClose").addEventListener("click", () => { $("progressionModal").classList.add("hidden"); $("progressionModal").style.display = "none"; });
+    $("offlineClaim").addEventListener("click", async () => {
+      const result = await apiRequest("/offline/claim", "POST", {client_action_id: crypto.randomUUID(), expected_claim_version: Number($("offlineClaim").dataset.version)});
+      $("offlineResult").textContent = rewardText(result.rewards); await refreshOfflinePanel();
+    });
+    $("summonSkillTab").addEventListener("click", async () => { summonBanner = "skill_standard"; await refreshSummonPanel(); });
+    $("summonCompanionTab").addEventListener("click", async () => { summonBanner = "companion_standard"; await refreshSummonPanel(); });
+    document.querySelectorAll("[data-summon-count]").forEach(button => button.addEventListener("click", async () => {
+      const status = summonPublicStatus[summonBanner];
+      const result = await apiRequest(summonBanner === "skill_standard" ? "/summon/skill" : "/summon/companion", "POST", {
+        count: Number(button.dataset.summonCount), payment_type: button.dataset.summonPayment,
+        client_action_id: crypto.randomUUID(), expected_pity_version: status.pity_version
+      });
+      $("summonResults").innerHTML = result.results.map(item => `<div><b>${item.rarity}</b> · ${item.entity_id} · ${item.newly_unlocked ? "новая сущность" : `дубликат, +${item.fragments_gained} fragments`}${item.guarantee_triggered ? ` · ${item.guarantee_type} guarantee` : ""}</div>`).join("");
+      await refreshSummonPanel();
+    }));
 
 </script>
 </body>
