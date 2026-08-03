@@ -5377,6 +5377,8 @@
 <div class="hp-fill" id="enemyHpBar"></div>
 </div>
 <div id="enemyDamageProfile" style="margin-top:5px;font-size:9px;color:rgba(235,245,238,.72)"></div>
+<div id="eliteBadge" style="margin-top:4px;font-size:10px;color:#ffd36a"></div>
+<div id="enemyStatusEffects" style="margin-top:3px;font-size:9px;color:#b8efc8"></div>
 </div>
 
 <div class="enemy-toolbar">
@@ -5409,6 +5411,7 @@
 <img alt="Грибной воин" class="fighter-sprite hero-sprite" id="heroSprite" src="assets/hero.png?v=9"/>
 
 <div class="fighter-name" id="heroName">Герой</div>
+<div id="heroStatusEffects" style="font-size:9px;color:#b8efc8;text-align:center"></div>
 </div>
 <div class="fighter-slot enemy-slot">
 <div class="fighter-shadow"></div>
@@ -6561,6 +6564,8 @@ id="companionSummonChances"
       enemyNameplate: $("enemyNameplate"), enemyHp: $("enemyHp"), enemyMaxHp: $("enemyMaxHp"),
       enemyHpBar: $("enemyHpBar"), heroHp: $("heroHp"), heroMaxHp: $("heroMaxHp"),
       enemyDamageProfile: $("enemyDamageProfile"),
+      eliteBadge: $("eliteBadge"), enemyStatusEffects: $("enemyStatusEffects"),
+      heroStatusEffects: $("heroStatusEffects"),
       heroHpBar: $("heroHpBar"), heroName: $("heroName"), heroSprite: $("heroSprite"),
       enemySprite: $("enemySprite"), slashEffect: $("slashEffect"), hitEffect: $("hitEffect"),
       sporeEffect: $("sporeEffect"), damageNumber: $("damageNumber"), heroHitFlash: $("heroHitFlash"),
@@ -7045,6 +7050,18 @@ id="companionSummonChances"
       ).join(" · ");
       const weakType = player.weakness?.damage_type;
       elements.enemyDamageProfile.textContent = `${player.enemy_archetype || "guardian"} · атака: ${player.enemy_attack_type || "physical"} · ${resistanceText}${weakType ? ` · слабость: ${resistanceNames[weakType] || weakType}` : ""}`;
+      elements.eliteBadge.textContent = player.elite
+        ? `★ ${player.elite_modifier}: ${player.elite_description}${player.elite_silenced ? " · подавлено" : ""}`
+        : "";
+      const statusNames = {root:"корни", silence:"тишина", slow:"замедление", resistance_debuff:"снижение природы", damage_over_time:"яд"};
+      const renderStatuses = (target) => (player.status_effects?.active || [])
+        .filter((effect) => effect.target === target)
+        .map((effect) => {
+          const ticks = effect.ticks_remaining ? ` · ${effect.ticks_remaining} тиков` : "";
+          return `${statusNames[effect.effect_type] || effect.effect_type} ${Number(effect.remaining_seconds || 0).toFixed(1)}с${ticks}`;
+        }).join(" · ");
+      elements.enemyStatusEffects.textContent = renderStatuses("enemy");
+      elements.heroStatusEffects.textContent = renderStatuses("hero");
       elements.chestCount.textContent = formatNumber(player.chests);
       elements.chestLevelBadge.textContent = `УР. ${player.chest_level}`;
       const autoEnabled = Boolean(Number(player.auto_open_enabled));
@@ -7120,6 +7137,14 @@ id="companionSummonChances"
       if (effects.shield_mitigation_active) {
         parts.push(`🛡️ защита: ${Number(effects.shield_mitigation_remaining || 0).toFixed(1)}с`);
       }
+      const statuses = result?.status_effects || {};
+      const active = statuses.active || [];
+      if (active.some(effect => effect.effect_type === "root" && effect.target === "enemy")) parts.push("Враг обездвижен");
+      if (active.some(effect => effect.effect_type === "silence" && effect.target === "enemy")) parts.push("Особая способность врага подавлена");
+      if (active.some(effect => effect.effect_type === "resistance_debuff" && effect.damage_type === "nature")) parts.push("Сопротивление природе снижено");
+      (statuses.tick_events || []).filter(event => event.damage_type === "poison" && event.target !== "hero").forEach(
+        event => parts.push(`Яд наносит ${Number(event.final_damage || 0)} урона`)
+      );
       return parts.length ? ` · ${parts.join(" · ")}` : "";
     }
     function stageSequenceMessage(result) {

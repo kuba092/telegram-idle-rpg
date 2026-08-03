@@ -28,9 +28,10 @@ from equipment_stats import (
 )
 from combat_resolver import CombatResolution, CombatResolver
 from damage_types import (
-    ENEMY_ATTACK_TYPES, enemy_profile, generate_enemy_profile,
+    ENEMY_ATTACK_TYPES, enemy_profile, fortified_resistances, generate_enemy_profile,
     incoming_damage_breakdown, normalize_resistances, resistance_breakdown,
 )
+from status_effects import StatusEffectStore, status_effect
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -64,9 +65,13 @@ POISON_CLOUD_TICK_SECONDS = SKILL_EFFECTS["poison_cloud"]["tick_seconds"]
 POISON_CLOUD_COOLDOWN_SECONDS = SKILL_EFFECTS["poison_cloud"]["cooldown_seconds"]
 THORN_BURST_COOLDOWN_SECONDS = SKILL_EFFECTS["thorn_burst"]["cooldown_seconds"]
 ARCANE_ECHO_COOLDOWN_SECONDS = SKILL_EFFECTS["arcane_echo"]["cooldown_seconds"]
+VENOM_SPORES_COOLDOWN_SECONDS = SKILL_EFFECTS["venom_spores"]["cooldown_seconds"]
+BINDING_ROOTS_COOLDOWN_SECONDS = SKILL_EFFECTS["binding_roots"]["cooldown_seconds"]
+NULL_BLOOM_COOLDOWN_SECONDS = SKILL_EFFECTS["null_bloom"]["cooldown_seconds"]
 
 COMBAT_EFFECT_ENGINE = CombatEffectEngine()
 BATTLE_STATES = BattleStateStore()
+STATUS_EFFECTS = StatusEffectStore()
 
 
 def battle_identity(player: dict) -> tuple:
@@ -81,6 +86,199 @@ def battle_identity(player: dict) -> tuple:
 
 def public_battle_identity(player: dict) -> str:
     return "|".join(str(int(value)) for value in battle_identity(player))
+
+
+ELITE_MODIFIERS = {
+    "frenzy": "Скорость атак повышена; ниже 50% HP включается вторая фаза.",
+    "fortified": "Сопротивления повышены, но одна слабость сохраняется.",
+    "regenerating": "После действия героя восстанавливает 2% максимального HP.",
+    "venomous": "Обычная атака накладывает яд на героя.",
+}
+
+
+def elite_profile(player: dict) -> dict:
+    """Stable elite roll from the spawned-enemy identity; bosses are excluded."""
+    stage = int(player.get("stage", 1))
+    boss = bool(int(player.get("boss_active", 0)))
+    chance = 0.0 if stage < 15 else .08 if stage < 50 else .12 if stage < 150 else .16
+    identity = public_battle_identity(player)
+    seed = f"elite-v1:{identity}"
+    digest = hashlib.sha256(seed.encode()).digest()
+    roll = int.from_bytes(digest[:8], "big") / 2**64
+    elite = not boss and roll < chance
+    modifier = tuple(ELITE_MODIFIERS)[digest[8] % len(ELITE_MODIFIERS)] if elite else None
+    return {"elite": elite, "elite_modifier": modifier,
+            "elite_description": ELITE_MODIFIERS.get(modifier, "")}
+
+
+def active_statuses(player: dict, now: float | None = None):
+    now = time.time() if now is None else float(now)
+    player_id, identity = int(player.get("telegram_id", 0)), public_battle_identity(player)
+    STATUS_EFFECTS.synchronize_identity(player_id, identity, now)
+    return STATUS_EFFECTS.list(player_id, identity, now)
+
+
+def has_status(player: dict, effect_type: str, target: str = "enemy", now: float | None = None) -> bool:
+    return any(e.effect_type == effect_type and e.target == target for e in active_statuses(player, now))
+
+
+def temporary_resistance_modifier(player: dict, damage_type: str, now: float | None = None) -> float:
+    return sum(e.potency * e.stack_count for e in active_statuses(player, now)
+               if e.target == "enemy" and e.effect_type == "resistance_debuff"
+               and e.damage_type == damage_type)
+
+
+def current_slow(player: dict, now: float | None = None, target: str = "enemy") -> float:
+    return min(.40, max(0.0, sum(e.potency * e.stack_count for e in active_statuses(player, now)
+                                  if e.target == target and e.effect_type == "slow")))
+
+
+def apply_status(player: dict, *, effect_type: str, source_id: str, now: float,
+                 duration: float, target: str = "enemy", stack_rule: str = "refresh",
+                 potency: float = 0.0, damage_type: str | None = None,
+                 max_ticks: int = 0, tick_interval: float = 0.0,
+                 max_stacks: int = 1, snapshot: dict | None = None,
+                 dispellable: bool = True, source_kind: str = "skill",
+                 control_flags: dict | None = None):
+    player_id = int(player["telegram_id"])
+    effect = status_effect(
+        effect_id=STATUS_EFFECTS.next_id(player_id, source_id, now),
+        effect_type=effect_type, source_id=source_id,
+        battle_identity=public_battle_identity(player), now=now,
+        duration_seconds=duration, target=target, source_kind=source_kind,
+        stack_rule=stack_rule, potency=potency, damage_type=damage_type,
+        max_ticks=max_ticks, tick_interval_seconds=tick_interval,
+        next_tick_at=(now + tick_interval if tick_interval else 0.0),
+        max_stacks=max_stacks, snapshot=dict(snapshot or {}),
+        dispellable=dispellable, control_flags=dict(control_flags or {}),
+    )
+    return STATUS_EFFECTS.apply(player_id, effect, now)
+
+
+def owl_slow_potency(player: dict) -> float:
+    collection = normalize_companion_collection(player.get("companions_collection_json"))
+    slots = normalize_companion_slots(player.get("companion_slots_json"), collection)
+    if "mushroom_owl" not in slots:
+        return 0.0
+    entry = collection.get("mushroom_owl", {})
+    if not entry.get("owned"):
+        return 0.0
+    return min(.10, max(0, int(entry.get("level", 1))) * .005)
+
+
+def apply_owl_slow(player: dict, now: float):
+    potency = owl_slow_potency(player)
+    if potency:
+        return apply_status(player, effect_type="slow", source_id="mushroom_owl",
+                            now=now, duration=3.0, potency=potency,
+                            control_flags={"slows_enemy_attack": True})
+    return None
+
+
+def dot_snapshot(player: dict, skill_id: str, level: int, base_multiplier: float,
+                 *, owl_bonus: float = 0.0, completion_bonus: float = 0.0) -> dict:
+    equipment = calculate_equipment_stats(
+        parse_json_object(player.get("equipment_json")), int(player.get("level", 1))
+    )["total"]
+    companions = calculate_companion_effects(player)
+    boss = bool(int(player.get("boss_active", 0)))
+    growth = float(SKILL_EFFECTS[skill_id].get("growth", 0.0))
+    level_multiplier = 1 + growth * (max(1, int(level)) - 1)
+    raw = max(1, round(
+        int(player.get("damage", 0)) * base_multiplier * level_multiplier
+        * equipment["skill_damage_multiplier"] * companions["damage_multiplier"]
+        * (equipment["boss_damage_multiplier"] if boss else 1.0)
+        * (1 + owl_bonus) * (1 + completion_bonus)
+    ))
+    return {
+        "base_damage": int(player.get("damage", 0)),
+        "base_multiplier": base_multiplier, "skill_level": int(level),
+        "skill_level_multiplier": level_multiplier,
+        "skill_damage": equipment["skill_damage_multiplier"],
+        "boss_damage": equipment["boss_damage_multiplier"] if boss else 1.0,
+        "poison_penetration": damage_penetration(equipment, "poison"),
+        "owl_bonus": owl_bonus, "poison_completion_bonus": completion_bonus,
+        "forest_sprite_bonus": companions["damage_multiplier"],
+        "raw_damage_per_tick": raw, "boss": boss,
+    }
+
+
+def create_poison_cloud_effect(player: dict, now: float, state, level: int):
+    snapshot = dot_snapshot(
+        player, "poison_cloud", level, POISON_CLOUD_DAMAGE_MULTIPLIER,
+        owl_bonus=state.poison_owl_bonus, completion_bonus=state.poison_stack_bonus,
+    )
+    return apply_status(
+        player, effect_type="damage_over_time", source_id="poison_cloud", now=now,
+        duration=POISON_CLOUD_DURATION_SECONDS + .001, stack_rule="replace", damage_type="poison",
+        max_ticks=5, tick_interval=POISON_CLOUD_TICK_SECONDS, snapshot=snapshot,
+        control_flags={"completion_stack_on_full_ticks": True},
+    )
+
+
+def public_status_block(player: dict, now: float | None = None, **changes) -> dict:
+    now = time.time() if now is None else float(now)
+    effects = active_statuses(player, now)
+    next_times = [e.next_tick_at for e in effects if e.next_tick_at > now and e.ticks_remaining]
+    return {
+        "active": [effect.public(now) for effect in effects],
+        "applied": changes.get("applied", []), "refreshed": changes.get("refreshed", []),
+        "removed": changes.get("removed", []), "expired": changes.get("expired", []),
+        "cleansed": changes.get("cleansed", []),
+        "ticks_processed": int(changes.get("ticks_processed", 0)),
+        "tick_events": changes.get("tick_events", []),
+        "next_effect_at": min(next_times) if next_times else None,
+    }
+
+
+def process_due_hero_dots(connection, player: dict, now: float, limit: int = 32) -> tuple[int, list[dict]]:
+    """Apply claimed hero DoTs with the established resistance/reduction order."""
+    player_id, identity = int(player["telegram_id"]), public_battle_identity(player)
+    companions = calculate_companion_effects(player)
+    equipment = calculate_equipment_stats(
+        parse_json_object(player.get("equipment_json")), int(player.get("level", 1))
+    )["total"]
+    hp_multiplier = float(companions["hp_multiplier"])
+    maximum = max(1, round(int(player["hero_max_hp"]) * hp_multiplier))
+    effective_hp = max(0, min(maximum, round(int(player["hero_hp"]) * hp_multiplier)))
+    resistances = {"physical": 0.0, "arcane": 0.0,
+                   "nature": companions["moss_turtle_nature_resistance"],
+                   "poison": companions["moss_turtle_poison_resistance"]}
+    total, events = 0, []
+    for effect, tick_index, due_at in STATUS_EFFECTS.due_ticks(player_id, identity, now, limit, target="hero"):
+        if effect.target != "hero" or effect.effect_type != "damage_over_time":
+            continue
+        raw = max(0, round(effect.snapshot.get("raw_damage_per_tick", effect.potency)))
+        breakdown = incoming_damage_breakdown(
+            raw, effect.damage_type or "poison", resistances,
+            equipment["incoming_damage_multiplier"],
+        )
+        damage = min(effective_hp, breakdown["damage_after_reduction"])
+        effective_hp -= damage; total += damage
+        events.append({"effect_id": effect.effect_id, "tick_index": tick_index,
+                       "damage_source": effect.source_id, "target": "hero",
+                       "raw_damage": raw, "final_damage": damage,
+                       "damage_type": effect.damage_type, **breakdown})
+        if effective_hp <= 0: break
+    base_hp = 0 if effective_hp <= 0 else min(int(player["hero_max_hp"]), round(effective_hp / hp_multiplier))
+    if base_hp != int(player["hero_hp"]):
+        player["hero_hp"] = base_hp
+        connection.execute("UPDATE players SET hero_hp=? WHERE telegram_id=?", (base_hp, player_id))
+    return total, events
+
+
+def apply_elite_regeneration(connection, player: dict, now: float) -> int:
+    if (elite_profile(player)["elite_modifier"] != "regenerating"
+            or has_status(player, "silence", "enemy", now)
+            or int(player.get("enemy_hp", 0)) <= 0):
+        return 0
+    before = int(player["enemy_hp"])
+    after = min(int(player["enemy_max_hp"]), before + max(1, round(int(player["enemy_max_hp"]) * .02)))
+    player["enemy_hp"] = after
+    if after != before:
+        connection.execute("UPDATE players SET enemy_hp=? WHERE telegram_id=?",
+                           (after, int(player["telegram_id"])))
+    return after - before
 
 
 def ensure_enemy_damage_profile(connection: sqlite3.Connection, player: dict) -> dict:
@@ -498,6 +696,18 @@ SKILL_CATALOG = {
         "name": "Arcane Echo", "icon": "🔮", "rarity": "rare",
         "implemented": True,
         "description": "Два независимых arcane-удара в одном действии.",
+    },
+    "venom_spores": {
+        "name": "Venom Spores", "icon": "🟢", "rarity": "rare",
+        "implemented": True, "description": "Два независимых poison DoT одновременно.",
+    },
+    "binding_roots": {
+        "name": "Binding Roots", "icon": "🌿", "rarity": "rare",
+        "implemented": True, "description": "Nature-удар и обездвиживание врага.",
+    },
+    "null_bloom": {
+        "name": "Null Bloom", "icon": "🪻", "rarity": "rare",
+        "implemented": True, "description": "Arcane-удар, подавляющий особую способность элиты.",
     },
     "phantom_clone": {
         "name": "Phantom Clone",
@@ -2927,6 +3137,25 @@ def build_player_response(player: dict, **extra) -> dict:
         for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
     )
     battle_effects = public_battle_effects(player)
+    elite_state = elite_profile(player)
+    if elite_state["elite_modifier"] == "fortified":
+        profile["resistances"] = fortified_resistances(profile["resistances"])
+        weak_kind = min(profile["resistances"], key=profile["resistances"].get)
+        strong_kind = max(profile["resistances"], key=profile["resistances"].get)
+        profile["weakness"] = {"damage_type": weak_kind, "resistance": profile["resistances"][weak_kind]}
+        profile["strongest_resistance"] = {"damage_type": strong_kind, "resistance": profile["resistances"][strong_kind]}
+    elite_silenced = has_status(player, "silence", "enemy", current_time)
+    elite_phase_active = bool(
+        elite_state["elite_modifier"] == "frenzy"
+        and int(player.get("enemy_hp", 0)) * 2 <= max(1, int(player.get("enemy_max_hp", 1)))
+        and not elite_silenced
+    )
+    enemy_interval = max(MIN_ENEMY_ATTACK_INTERVAL, 1 / ENEMY_ATTACK_SPEED)
+    if elite_state["elite_modifier"] == "frenzy":
+        enemy_interval /= 1.20
+        if elite_phase_active:
+            enemy_interval /= 1.15
+    enemy_interval *= 1 + current_slow(player, current_time)
     hp_multiplier = float(companion_effects["hp_multiplier"])
     effective_hero_max_hp = max(
         1,
@@ -3084,6 +3313,10 @@ def build_player_response(player: dict, **extra) -> dict:
         "penetrations": stats["total"]["penetrations"],
         "hero_resistances": stats["total"]["hero_resistances"],
         "battle_effects": battle_effects,
+        "status_effects": extra.get("status_effects", public_status_block(player, current_time)),
+        **elite_state,
+        "elite_silenced": elite_silenced,
+        "elite_phase_active": elite_phase_active,
         "stage_sequence": stage_sequence_state(player),
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
@@ -3164,10 +3397,10 @@ def build_player_response(player: dict, **extra) -> dict:
         },
         "enemy_damage": calculate_enemy_damage(stage, boss=boss_active),
         "enemy_attack_speed": ENEMY_ATTACK_SPEED,
-        "enemy_attack_interval": max(
-            MIN_ENEMY_ATTACK_INTERVAL,
-            1 / ENEMY_ATTACK_SPEED,
-        ),
+        "enemy_attack_interval": enemy_interval,
+        "enemy_next_attack_at": float(player.get("last_enemy_attack_at", 0)) + enemy_interval,
+        "enemy_action_blocked": has_status(player, "root", "enemy", current_time),
+        "enemy_action_block_reason": ("root" if has_status(player, "root", "enemy", current_time) else None),
         "enemy_is_boss": boss_active,
         "boss_active": boss_active,
         "boss_waiting": boss_waiting,
@@ -3217,6 +3450,9 @@ def build_player_response(player: dict, **extra) -> dict:
     for skill_id, base_cooldown in (
         ("thorn_burst", THORN_BURST_COOLDOWN_SECONDS),
         ("arcane_echo", ARCANE_ECHO_COOLDOWN_SECONDS),
+        ("venom_spores", VENOM_SPORES_COOLDOWN_SECONDS),
+        ("binding_roots", BINDING_ROOTS_COOLDOWN_SECONDS),
+        ("null_bloom", NULL_BLOOM_COOLDOWN_SECONDS),
     ):
         skill_state = get_player_skill_state(player, skill_id)
         cooldown = companion_skill_cooldown(player, base_cooldown)
@@ -3225,7 +3461,8 @@ def build_player_response(player: dict, **extra) -> dict:
         response["skills"][skill_id] = {
             **skill_state,
             "unlocked": skill_state["available"],
-            "damage_type": "nature" if skill_id == "thorn_burst" else "arcane",
+            "damage_type": ("poison" if skill_id == "venom_spores" else
+                            "nature" if skill_id in {"thorn_burst", "binding_roots"} else "arcane"),
             "cooldown_seconds": cooldown,
             "cooldown_remaining": remaining,
             "ready": skill_state["available"] and remaining <= 0,
@@ -3345,6 +3582,9 @@ def create_database() -> None:
         ("poison_cloud_next_tick_at", "REAL NOT NULL DEFAULT 0"),
         ("thorn_burst_last_used_at", "REAL NOT NULL DEFAULT 0"),
         ("arcane_echo_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("venom_spores_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("binding_roots_last_used_at", "REAL NOT NULL DEFAULT 0"),
+        ("null_bloom_last_used_at", "REAL NOT NULL DEFAULT 0"),
         ("enemy_archetype", "TEXT NOT NULL DEFAULT ''"),
         ("enemy_resistances_json", "TEXT NOT NULL DEFAULT ''"),
         (
@@ -4385,6 +4625,7 @@ def _legacy_attack(
 def _resolve_victory(connection, current, was_boss, context):
     """Award the defeated enemy and spawn its successor in the same transaction."""
     now = float(getattr(context, "resolved_at", time.time()))
+    STATUS_EFFECTS.reset(int(current["telegram_id"]))
     stage = clamp_int(current["stage"], 1, MAX_STAGE)
     kills = int(current["kills_in_stage"])
     total_kills = int(current["total_kills"]) + 1
@@ -4462,7 +4703,9 @@ def _resolve_victory(connection, current, was_boss, context):
           mushroom_shield_last_used_at=0, spore_strike_last_used_at=0,
           poison_cloud_last_used_at=0, poison_cloud_until=0,
           poison_cloud_next_tick_at=0, thorn_burst_last_used_at=0,
-          arcane_echo_last_used_at=0, updated_at=? WHERE telegram_id=?
+          arcane_echo_last_used_at=0, venom_spores_last_used_at=0,
+          binding_roots_last_used_at=0, null_bloom_last_used_at=0,
+          updated_at=? WHERE telegram_id=?
         """,
         (enemy_hp, enemy_max_hp, int(current["hero_hp"]), stage, kills,
          total_kills, total_bosses, chests, highest_stage, int(boss_active),
@@ -4517,10 +4760,14 @@ def attack(
     connection = get_database()
     reset_battle = False
     battle_snapshot = BATTLE_STATES.snapshot(telegram_id)
+    status_snapshot = STATUS_EFFECTS.snapshot(telegram_id)
     try:
         connection.execute("BEGIN IMMEDIATE")
         current = load_player(connection, telegram_id)
         current_profile = enemy_profile(current, generate_missing=False)
+        if elite_profile(current)["elite_modifier"] == "fortified":
+            current_profile["resistances"] = fortified_resistances(current_profile["resistances"])
+            current["enemy_resistances_json"] = json.dumps(current_profile["resistances"])
         identity = public_battle_identity(current)
         if battle_id is not None and battle_id != identity:
             connection.commit()
@@ -4542,17 +4789,17 @@ def attack(
             connection.commit()
             return build_player_response(current, attacked=False, retry_after=attack_interval-elapsed, combat_resolution=CombatResolution().public(), message="Атака ещё не готова")
         requested = str(skill or "").strip().lower().replace("-", "_")
-        attack_skills = {"spore_strike", "thorn_burst", "arcane_echo"}
+        attack_skills = {"spore_strike", "thorn_burst", "arcane_echo", "venom_spores", "binding_roots", "null_bloom"}
         manual_skill = requested in attack_skills
         if requested and requested not in attack_skills:
             raise HTTPException(status_code=400, detail="Неизвестный навык")
         selected_skill = requested if manual_skill else "spore_strike"
         spore_state = get_player_skill_state(current, selected_skill)
-        skill_names = {"spore_strike": "Spore Strike", "thorn_burst": "Thorn Burst", "arcane_echo": "Arcane Echo"}
+        skill_names = {skill_id: SKILL_CATALOG[skill_id]["name"] for skill_id in attack_skills}
         if manual_skill and not spore_state["available"]:
             connection.commit()
             return build_player_response(current, attacked=False, combat_resolution=CombatResolution().public(), message=unavailable_skill_message(spore_state, skill_names[selected_skill]))
-        cooldowns = {"spore_strike": SPORE_STRIKE_COOLDOWN_SECONDS, "thorn_burst": THORN_BURST_COOLDOWN_SECONDS, "arcane_echo": ARCANE_ECHO_COOLDOWN_SECONDS}
+        cooldowns = {"spore_strike": SPORE_STRIKE_COOLDOWN_SECONDS, "thorn_burst": THORN_BURST_COOLDOWN_SECONDS, "arcane_echo": ARCANE_ECHO_COOLDOWN_SECONDS, "venom_spores": VENOM_SPORES_COOLDOWN_SECONDS, "binding_roots": BINDING_ROOTS_COOLDOWN_SECONDS, "null_bloom": NULL_BLOOM_COOLDOWN_SECONDS}
         cooldown_field = f"{selected_skill}_last_used_at"
         spore_last = float(current.get(cooldown_field, 0))
         spore_cd = companion_skill_cooldown(current, cooldowns[selected_skill])
@@ -4576,14 +4823,21 @@ def attack(
             and poison_state["available"] and poison_next <= 0
             and (poison_last <= 0 or now-poison_last >= poison_cd)
         )
+        auto_status_mutations = []
         if poison_auto_used:
             poison_last = now
             poison_until = now + POISON_CLOUD_DURATION_SECONDS
             poison_next = now + POISON_CLOUD_TICK_SECONDS
             BATTLE_STATES.begin_poison(state, owl_is_active(current))
+            auto_status_mutations.append(create_poison_cloud_effect(current, now, state, poison_state["level"]))
+            auto_slow = apply_owl_slow(current, now)
+            if auto_slow: auto_status_mutations.append(auto_slow)
         poison_due = 0
         if poison_next > 0 and min(now, poison_until) >= poison_next:
             poison_due = min(5, int((min(now, poison_until) - poison_next) // POISON_CLOUD_TICK_SECONDS) + 1)
+        if any(e.source_id == "poison_cloud" and e.effect_type == "damage_over_time"
+               for e in STATUS_EFFECTS.list(telegram_id, identity, now, include_expired=True)):
+            poison_due = 0
         if poison_due and state.poison_instance_id is None:
             # Reconstruct a stable logical instance after a process restart.
             state.poison_instance_id = f"{identity}:{float(current.get('poison_cloud_last_used_at', 0)):.6f}"
@@ -4597,21 +4851,62 @@ def attack(
                 multiplier = 1.25 * (1 + .06 * (spore_state["level"] - 1)) * (1 + owl_bonus)
                 if current_profile["resistances"]["physical"] - current_profile["resistances"]["nature"] >= .15:
                     multiplier *= 1.20
-            else:
+            elif selected_skill == "arcane_echo":
                 multiplier = .80 * (1 + .05 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+            elif selected_skill == "venom_spores":
+                multiplier = 0.0
+            elif selected_skill == "binding_roots":
+                multiplier = .70 * (1 + .04 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+            elif selected_skill == "null_bloom":
+                multiplier = .65 * (1 + .04 * (spore_state["level"] - 1)) * (1 + owl_bonus)
         context = CombatContext(int(current["hero_hp"]), int(current["hero_max_hp"]), int(current["enemy_hp"]), "boss" if boss else "normal")
         context.resolved_at = now
         hp_before_healing = stage_sequence_state(current)["current_hp"]
         resolution = CombatResolution()
         resolver = CombatResolver(connection, current, identity, public_battle_identity, _resolve_victory, resolution)
+        status_expired = STATUS_EFFECTS.expire(telegram_id, identity, now)
+        status_tick_events = []
+        status_ticks_processed = 0
+        for effect, tick_index, due_at in STATUS_EFFECTS.due_ticks(telegram_id, identity, now, 32, target="enemy"):
+            if effect.target != "enemy" or effect.effect_type != "damage_over_time":
+                continue
+            snapshot = effect.snapshot
+            tick = resolver.resolve(
+                damage_source=effect.source_id, raw_damage=int(snapshot.get("raw_damage_per_tick", effect.potency)),
+                attack_source="poison" if effect.damage_type == "poison" else "status",
+                crit_metadata={"critical": False, "effect_id": effect.effect_id, "tick_index": tick_index},
+                boss=boss, context=context, damage_type=effect.damage_type or "poison",
+                penetration=float(snapshot.get("poison_penetration", 0.0)),
+                temporary_resistance_modifier=temporary_resistance_modifier(current, effect.damage_type or "poison", now),
+                effect_id=effect.effect_id, tick_index=tick_index,
+            )
+            status_ticks_processed += 1
+            status_tick_events.append(tick.public())
+            if effect.source_id == "poison_cloud" and tick_index == effect.max_ticks and not tick.lethal:
+                BATTLE_STATES.record_poison_ticks(state, effect.max_ticks)
+            if tick.lethal:
+                break
         main_damage, critical = calculate_hero_attack_damage(current, multiplier * companions["damage_multiplier"], "skill" if use_skill else "normal", boss)
         main_source = "skill" if use_skill else "normal"
-        main_type = ({"spore_strike": "nature", "thorn_burst": "nature", "arcane_echo": "arcane"}.get(selected_skill) if use_skill else "physical")
-        main_event = resolver.resolve(damage_source=selected_skill if use_skill else main_source, raw_damage=main_damage, attack_source=main_source, crit_metadata={"critical": critical}, boss=boss, context=context, damage_type=main_type, penetration=damage_penetration(equipment, main_type))
+        main_type = ({"spore_strike": "nature", "thorn_burst": "nature", "arcane_echo": "arcane", "venom_spores": "poison", "binding_roots": "nature", "null_bloom": "arcane"}.get(selected_skill) if use_skill else "physical")
+        main_event = resolver.resolve(damage_source=selected_skill if use_skill else main_source, raw_damage=main_damage, attack_source=main_source, crit_metadata={"critical": critical}, boss=boss, context=context, damage_type=main_type, penetration=damage_penetration(equipment, main_type), temporary_resistance_modifier=temporary_resistance_modifier(current, main_type, now))
         if use_skill and selected_skill == "arcane_echo":
             echo_multiplier = .55 * (1 + .05 * (spore_state["level"] - 1)) * (1 + owl_bonus)
             echo_damage, echo_critical = calculate_hero_attack_damage(current, echo_multiplier * companions["damage_multiplier"], "skill", boss)
             resolver.resolve(damage_source="arcane_echo_hit_2", raw_damage=echo_damage, attack_source="skill", crit_metadata={"critical": echo_critical, "hit": 2}, boss=boss, context=context, damage_type="arcane", penetration=damage_penetration(equipment, "arcane"))
+        status_mutations = list(auto_status_mutations)
+        if use_skill and not resolution.killed:
+            owl_mutation = apply_owl_slow(current, now)
+            if owl_mutation: status_mutations.append(owl_mutation)
+            if selected_skill == "thorn_burst":
+                status_mutations.append(apply_status(current, effect_type="resistance_debuff", source_id="thorn_burst", now=now, duration=5.0, stack_rule="refresh", potency=-.08, damage_type="nature", control_flags={"resistance_shred": True}))
+            elif selected_skill == "binding_roots":
+                status_mutations.append(apply_status(current, effect_type="root", source_id="binding_roots", now=now, duration=2.5, stack_rule="refresh", control_flags={"blocks_enemy_attack": True}))
+            elif selected_skill == "null_bloom":
+                status_mutations.append(apply_status(current, effect_type="silence", source_id="null_bloom", now=now, duration=4.0, stack_rule="refresh", control_flags={"blocks_elite_special": True}))
+            elif selected_skill == "venom_spores":
+                venom_snapshot = dot_snapshot(current, "venom_spores", spore_state["level"], .30)
+                status_mutations.append(apply_status(current, effect_type="damage_over_time", source_id="venom_spores", now=now, duration=4.001, stack_rule="independent", damage_type="poison", max_ticks=4, tick_interval=1.0, max_stacks=2, snapshot=venom_snapshot))
         combo_damage = 0
         combo_critical = False
         combo_triggered = False
@@ -4631,6 +4926,13 @@ def attack(
                 resolver.resolve(damage_source="crystal_moth", raw_damage=moth_damage, attack_source="companion", crit_metadata={"critical": False}, boss=boss, context=context, damage_type="arcane", penetration=damage_penetration(equipment, "arcane"))
         poison_damage = 0
         poison_processed = 0
+        cloud_effect = next((e for e in STATUS_EFFECTS.list(telegram_id, identity, now, include_expired=True)
+                             if e.source_id == "poison_cloud" and e.active), None)
+        if cloud_effect:
+            poison_next = cloud_effect.next_tick_at if cloud_effect.ticks_remaining else 0.0
+            poison_until = cloud_effect.expires_at if cloud_effect.ticks_remaining else 0.0
+            poison_processed += sum(1 for event in status_tick_events if event["damage_source"] == "poison_cloud")
+            poison_damage += sum(event["final_damage"] for event in status_tick_events if event["damage_source"] == "poison_cloud")
         poison_per_tick = max(1, round(
             int(current["damage"]) * POISON_CLOUD_DAMAGE_MULTIPLIER
             * skill_power_multiplier(get_player_skill_state(current, "poison_cloud")["level"])
@@ -4649,7 +4951,10 @@ def attack(
                 break
         if poison_processed and not resolution.killed:
             BATTLE_STATES.record_poison_ticks(state, poison_processed)
-        poison_next = poison_next + poison_processed * POISON_CLOUD_TICK_SECONDS if poison_processed else poison_next
+        if poison_processed and not cloud_effect:
+            poison_next += poison_processed * POISON_CLOUD_TICK_SECONDS
+        elite_healing = 0 if resolution.killed else apply_elite_regeneration(connection, current, now)
+        context.enemy_hp = int(current["enemy_hp"])
         if resolution.killed or now >= poison_until:
             poison_until = 0.0
             poison_next = 0.0
@@ -4665,11 +4970,13 @@ def attack(
     except Exception:
         connection.rollback()
         BATTLE_STATES.restore(telegram_id, battle_snapshot)
+        STATUS_EFFECTS.restore(telegram_id, status_snapshot)
         raise
     finally:
         connection.close()
     if reset_battle:
         BATTLE_STATES.reset(telegram_id)
+        STATUS_EFFECTS.reset(telegram_id)
     public_resolution = resolution.public()
     healing = lethal.companion_healing if lethal else 0
     transition = getattr(context, "victory_transition", {})
@@ -4690,6 +4997,14 @@ def attack(
         experience_reward=0, reward=0, companion_healing=healing,
         healing_overflow=transition.get("healing_overflow", 0), stage_sequence=sequence,
         combat_resolution=public_resolution, owl_repeat_stacks=owl_stacks,
+        elite_healing=elite_healing,
+        status_effects=public_status_block(
+            updated, now, expired=[e.public(now) for e in status_expired],
+            applied=[m.effect.public(now) for m in status_mutations if m.action == "applied"],
+            refreshed=[m.effect.public(now) for m in status_mutations if m.action == "refreshed"],
+            removed=[e.public(now) for m in status_mutations for e in m.removed],
+            ticks_processed=status_ticks_processed, tick_events=status_tick_events,
+        ),
         owl_repeat_bonus=round(owl_bonus, 4),
         message=("Враг побеждён" if lethal else f"⚔️ Нанесено {public_resolution['total_damage']} урона"),
     )
@@ -4704,6 +5019,8 @@ def use_poison_cloud(
     telegram_id = int(player_data["telegram_id"])
     now = time.time()
     connection = get_database()
+    status_snapshot = STATUS_EFFECTS.snapshot(telegram_id)
+    battle_snapshot = BATTLE_STATES.snapshot(telegram_id)
 
     try:
         connection.execute("BEGIN IMMEDIATE")
@@ -4762,6 +5079,8 @@ def use_poison_cloud(
         owl_repeat_stacks, owl_repeat_bonus, poison_completion_stacks, poison_stack_bonus = (
             BATTLE_STATES.begin_poison(battle_state, owl_is_active(current))
         )
+        mutation = create_poison_cloud_effect(current, now, battle_state, poison_state["level"])
+        slow_mutation = apply_owl_slow(current, now)
 
         connection.execute(
             """
@@ -4780,8 +5099,14 @@ def use_poison_cloud(
                 telegram_id,
             ),
         )
+        elite_healing = apply_elite_regeneration(connection, current, now)
         connection.commit()
         updated = load_player(connection, telegram_id)
+    except Exception:
+        connection.rollback()
+        STATUS_EFFECTS.restore(telegram_id, status_snapshot)
+        BATTLE_STATES.restore(telegram_id, battle_snapshot)
+        raise
     finally:
         connection.close()
 
@@ -4794,7 +5119,17 @@ def use_poison_cloud(
         poison_completion_stacks=poison_completion_stacks,
         poison_stack_bonus=round(poison_stack_bonus, 4),
         poison_instance_id=battle_state.poison_instance_id,
+        status_effects=public_status_block(
+            updated, now,
+            applied=[item.effect.public(now) for item in (mutation, slow_mutation)
+                     if item and item.action == "applied"],
+            refreshed=[item.effect.public(now) for item in (mutation, slow_mutation)
+                       if item and item.action == "refreshed"],
+            removed=[effect.public(now) for item in (mutation, slow_mutation) if item
+                     for effect in item.removed],
+        ),
         battle_id=public_battle_identity(updated),
+        elite_healing=elite_healing,
         message="☁️ Poison Cloud активировано на 5 секунд",
     )
 
@@ -4808,6 +5143,8 @@ def use_mushroom_shield(
     telegram_id = int(player_data["telegram_id"])
     now = time.time()
     connection = get_database()
+    status_snapshot = STATUS_EFFECTS.snapshot(telegram_id)
+    battle_snapshot = BATTLE_STATES.snapshot(telegram_id)
     try:
         connection.execute("BEGIN IMMEDIATE")
         current = load_player(connection, telegram_id)
@@ -4859,6 +5196,9 @@ def use_mushroom_shield(
             )
 
         battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
+        cleansed = STATUS_EFFECTS.cleanse_one(
+            telegram_id, public_battle_identity(current), "hero", now
+        )
         owl_repeat_stacks, owl_repeat_bonus = BATTLE_STATES.begin_shield(
             battle_state, owl_is_active(current)
         )
@@ -4888,8 +5228,14 @@ def use_mushroom_shield(
             """,
             (shield_capacity, now, int(now), telegram_id),
         )
+        elite_healing = apply_elite_regeneration(connection, current, now)
         connection.commit()
         updated = load_player(connection, telegram_id)
+    except Exception:
+        connection.rollback()
+        STATUS_EFFECTS.restore(telegram_id, status_snapshot)
+        BATTLE_STATES.restore(telegram_id, battle_snapshot)
+        raise
     finally:
         connection.close()
 
@@ -4900,6 +5246,12 @@ def use_mushroom_shield(
         owl_repeat_stacks=owl_repeat_stacks,
         owl_repeat_bonus=round(owl_repeat_bonus, 4),
         skill_used="mushroom_shield",
+        cleansed_effect_id=cleansed.effect_id if cleansed else None,
+        cleansed_effect_type=cleansed.effect_type if cleansed else None,
+        elite_healing=elite_healing,
+        status_effects=public_status_block(
+            updated, now, cleansed=[cleansed.public(now)] if cleansed else []
+        ),
         message=f"🛡️ Mushroom Shield: {shield_capacity} защиты",
     )
 
@@ -4911,6 +5263,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
     telegram_id = int(player_data["telegram_id"])
     now = time.time()
     connection = get_database()
+    status_snapshot = STATUS_EFFECTS.snapshot(telegram_id)
+    battle_snapshot = BATTLE_STATES.snapshot(telegram_id)
     try:
         connection.execute("BEGIN IMMEDIATE")
         current = load_player(connection, telegram_id)
@@ -4932,10 +5286,42 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
                 enemy_attacked=False,
                 message="Враг сейчас не атакует",
             )
-        enemy_attack_interval = max(
-            MIN_ENEMY_ATTACK_INTERVAL,
-            1 / ENEMY_ATTACK_SPEED,
-        )
+        identity = public_battle_identity(current)
+        STATUS_EFFECTS.expire(telegram_id, identity, now)
+        hero_dot_damage, hero_dot_events = process_due_hero_dots(connection, current, now, 32)
+        if int(current["hero_hp"]) <= 0:
+            STATUS_EFFECTS.reset(telegram_id)
+            connection.execute(
+                "UPDATE players SET defeats=defeats+1, mushroom_shield_amount=0, updated_at=? WHERE telegram_id=?",
+                (int(now), telegram_id),
+            )
+            connection.commit()
+            defeated = load_player(connection, telegram_id)
+            return build_player_response(
+                defeated, enemy_attacked=False, hero_defeated=True,
+                incoming_damage=hero_dot_damage, received_damage=hero_dot_damage,
+                status_effects=public_status_block(defeated, now, ticks_processed=len(hero_dot_events), tick_events=hero_dot_events),
+                message="💀 Яд поверг героя",
+            )
+        elite_state = elite_profile(current)
+        silenced = has_status(current, "silence", "enemy", now)
+        phase = (elite_state["elite_modifier"] == "frenzy"
+                 and int(current["enemy_hp"]) * 2 <= max(1, int(current["enemy_max_hp"]))
+                 and not silenced)
+        enemy_attack_interval = max(MIN_ENEMY_ATTACK_INTERVAL, 1 / ENEMY_ATTACK_SPEED)
+        if elite_state["elite_modifier"] == "frenzy":
+            enemy_attack_interval /= 1.20
+            if phase: enemy_attack_interval /= 1.15
+        enemy_attack_interval *= 1 + current_slow(current, now)
+        if has_status(current, "root", "enemy", now):
+            connection.commit()
+            return build_player_response(
+                current, enemy_attacked=False, enemy_action_blocked=True,
+                enemy_action_block_reason="root", blocked=True,
+                incoming_damage=0, received_damage=0, counter_triggered=False,
+                status_effects=public_status_block(current, now, ticks_processed=len(hero_dot_events), tick_events=hero_dot_events),
+                message="Враг обездвижен",
+            )
         elapsed = now - float(current["last_enemy_attack_at"])
         if (
             current["last_enemy_attack_at"] > 0
@@ -5107,6 +5493,17 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             enemy_hp = enemy_max_hp
         if hero_defeated:
             BATTLE_STATES.reset(telegram_id)
+            STATUS_EFFECTS.reset(telegram_id)
+        venomous_applied = None
+        if (not hero_defeated and not counter_lethal and elite_state["elite_modifier"] == "venomous"
+                and not silenced):
+            venomous_applied = apply_status(
+                current, effect_type="damage_over_time", source_id="elite_venomous",
+                source_kind="elite", target="hero", now=now, duration=3.001,
+                stack_rule="refresh", damage_type="poison", max_ticks=3,
+                tick_interval=1.0, potency=calculate_enemy_damage(stage, boss=boss_active) * .03,
+                snapshot={"raw_damage_per_tick": max(1, round(calculate_enemy_damage(stage, boss=boss_active) * .03))},
+            )
         connection.execute(
             """
             UPDATE players
@@ -5138,6 +5535,11 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         )
         connection.commit()
         updated = load_player(connection, telegram_id)
+    except Exception:
+        connection.rollback()
+        STATUS_EFFECTS.restore(telegram_id, status_snapshot)
+        BATTLE_STATES.restore(telegram_id, battle_snapshot)
+        raise
     finally:
         connection.close()
     message = f"🩸 Враг нанёс {received_damage} урона"
@@ -5195,6 +5597,14 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             if shield_auto_used
             else None
         ),
+        status_effects=public_status_block(
+            updated, now,
+            applied=([venomous_applied.effect.public(now)]
+                     if venomous_applied and venomous_applied.action == "applied" else []),
+            refreshed=([venomous_applied.effect.public(now)]
+                       if venomous_applied and venomous_applied.action == "refreshed" else []),
+            ticks_processed=len(hero_dot_events), tick_events=hero_dot_events,
+        ),
         message=message,
     )
 
@@ -5205,6 +5615,7 @@ def respawn(x_telegram_init_data: str = Header(...)) -> dict:
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
     BATTLE_STATES.reset(telegram_id)
+    STATUS_EFFECTS.reset(telegram_id)
     now = time.time()
     connection = get_database()
     try:
@@ -5259,6 +5670,7 @@ def start_boss(x_telegram_init_data: str = Header(...)) -> dict:
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
     BATTLE_STATES.reset(telegram_id)
+    STATUS_EFFECTS.reset(telegram_id)
     now = time.time()
     connection = get_database()
     try:

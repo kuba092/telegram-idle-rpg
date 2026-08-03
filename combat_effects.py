@@ -165,6 +165,9 @@ SKILL_EFFECTS: dict[str, dict[str, Any]] = {
     "poison_cloud": {"event": CombatEvent.POISON_TICK, "damage_multiplier": .45, "duration_seconds": 5.0, "tick_seconds": 1.0, "cooldown_seconds": 20.0},
     "thorn_burst": {"event": CombatEvent.BEFORE_SKILL, "damage_multiplier": 1.25, "growth": .06, "cooldown_seconds": 7.0},
     "arcane_echo": {"event": CombatEvent.BEFORE_SKILL, "damage_multipliers": (.80, .55), "growth": .05, "cooldown_seconds": 9.0},
+    "venom_spores": {"event": CombatEvent.POISON_TICK, "damage_multiplier": .30, "growth": .05, "duration_seconds": 4.0, "tick_seconds": 1.0, "cooldown_seconds": 8.0},
+    "binding_roots": {"event": CombatEvent.BEFORE_SKILL, "damage_multiplier": .70, "growth": .04, "cooldown_seconds": 11.0, "control_seconds": 2.5},
+    "null_bloom": {"event": CombatEvent.BEFORE_SKILL, "damage_multiplier": .65, "growth": .04, "cooldown_seconds": 13.0, "control_seconds": 4.0},
 }
 
 # New temporary effects must be registered before persisted/client supplied IDs are accepted.

@@ -21,6 +21,10 @@ class BattleResult:
     attack_source: str
     raw_damage: int
     damage_type: str = "physical"
+    effect_id: str | None = None
+    tick_index: int | None = None
+    base_resistance: float = 0.0
+    temporary_resistance_modifier: float = 0.0
     resistance_before: float = 0.0
     resistance_after_penetration: float = 0.0
     damage_before_resistance: int = 0
@@ -109,6 +113,9 @@ class CombatResolver:
         context: CombatContext,
         damage_type: str = "physical",
         penetration: float = 0.0,
+        temporary_resistance_modifier: float = 0.0,
+        effect_id: str | None = None,
+        tick_index: int | None = None,
     ) -> BattleResult:
         raw_damage = max(0, round(raw_damage))
         damage_type = damage_type if damage_type in DAMAGE_TYPES else "physical"
@@ -134,6 +141,7 @@ class CombatResolver:
         resistances = normalize_resistances(self.player.get("enemy_resistances_json"))
         breakdown = resistance_breakdown(
             raw_damage, damage_type, resistances.get(damage_type, 0), penetration,
+            temporary_resistance_modifier,
         )
         final_damage = min(before, breakdown["damage_after_resistance"])
         after = min(maximum, max(0, before - final_damage))
@@ -142,6 +150,7 @@ class CombatResolver:
         result = BattleResult(
             damage_source=damage_source, attack_source=attack_source,
             raw_damage=raw_damage, final_damage=final_damage,
+            effect_id=effect_id, tick_index=tick_index,
             **breakdown,
             crit_metadata=dict(crit_metadata or {}),
             enemy_hp_before=before, enemy_hp_after=after, lethal=after == 0,

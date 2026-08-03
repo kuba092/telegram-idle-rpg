@@ -51,23 +51,44 @@ def normalize_resistances(value: Any) -> dict[str, float]:
             for kind in RESISTED_DAMAGE_TYPES}
 
 
+def fortified_resistances(value: Any) -> dict[str, float]:
+    """Add 12 p.p. while retaining at least one weakness at or below 20%."""
+    resistances = normalize_resistances(value)
+    weakest = min(resistances, key=lambda kind: (resistances[kind], kind))
+    fortified = {kind: round(clamp_resistance(amount + .12), 4)
+                 for kind, amount in resistances.items()}
+    fortified[weakest] = min(.20, fortified[weakest])
+    return fortified
+
+
 def resistance_breakdown(damage: Any, damage_type: str,
-                         resistance: Any = 0, penetration: Any = 0) -> dict[str, Any]:
+                         resistance: Any = 0, penetration: Any = 0,
+                         temporary_modifier: Any = 0) -> dict[str, Any]:
     before_damage = max(0, round(float(damage or 0)))
     kind = damage_type if damage_type in DAMAGE_TYPES else "physical"
     if kind == "true":
         return {
-            "damage_type": kind, "resistance_before": 0.0,
+            "damage_type": kind, "base_resistance": 0.0,
+            "temporary_resistance_modifier": 0.0, "resistance_before": 0.0,
             "resistance_after_penetration": 0.0, "penetration_used": 0.0,
             "damage_before_resistance": before_damage,
             "damage_after_resistance": before_damage, "resistance_reduction": 0,
         }
     base = clamp_resistance(resistance)
+    try:
+        temporary = float(temporary_modifier)
+    except (TypeError, ValueError):
+        temporary = 0.0
+    # Temporary modifiers are applied to the base, then penetration and the
+    # existing resistance clamp.  This preserves the established formula.
+    before_penetration = clamp_resistance(base + temporary)
     used = clamp_penetration(penetration)
-    effective = clamp_resistance(base - used)
+    effective = clamp_resistance(before_penetration - used)
     after_damage = max(0, round(before_damage * (1 - effective)))
     return {
-        "damage_type": kind, "resistance_before": base,
+        "damage_type": kind, "base_resistance": base,
+        "temporary_resistance_modifier": temporary,
+        "resistance_before": before_penetration,
         "resistance_after_penetration": effective, "penetration_used": used,
         "damage_before_resistance": before_damage,
         "damage_after_resistance": after_damage,
