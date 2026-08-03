@@ -62,6 +62,7 @@ from awakening_system import (
     awakening_cost, cooldown_multiplier as awakening_cooldown_multiplier,
     mastery_multiplier, normalize_rank_state, public_rank, rank_multiplier, star_cost,
 )
+from growth_center import build_growth_center, compact_summary, invalidate_growth_center
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -959,6 +960,20 @@ LEVEL_STAGE_ANCHORS = (
 )
 
 app = FastAPI(title="Telegram Idle RPG API")
+
+
+@app.middleware("http")
+async def invalidate_growth_cache_after_mutation(request, call_next):
+    """All mutations invalidate derived UI state; failures are harmless."""
+    response = await call_next(request)
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and response.status_code < 500:
+        init_data = request.headers.get("x-telegram-init-data")
+        if init_data:
+            try:
+                invalidate_growth_center(int(validate_telegram_data(init_data)["id"]))
+            except Exception:
+                pass
+    return response
 ACTION_CACHE: dict[tuple[int, str, str], tuple[float, dict]] = {}
 ACTION_CACHE_TTL = 3600
 ACTION_CACHE_MAX = 4096
@@ -3006,6 +3021,24 @@ def public_pending_loot(player: dict) -> dict | None:
     return normalize_item(pending) if pending else None
 
 
+def growth_center_response(player: dict, now: float | None = None) -> dict:
+    skill_collection = normalize_skill_collection(player.get("skills_collection_json"))
+    companion_collection = normalize_companion_collection(player.get("companions_collection_json"))
+    growth_player = {**player, "elite_active": int(elite_profile(player)["elite"])}
+    return build_growth_center(
+        growth_player,
+        skill_collection=skill_collection,
+        companion_collection=companion_collection,
+        skill_slots=normalize_skill_slots(player.get("skill_slots_json"), skill_collection),
+        companion_slots=normalize_companion_slots(player.get("companion_slots_json"), companion_collection),
+        skill_catalog=SKILL_CATALOG,
+        companion_catalog=COMPANION_CATALOG,
+        inventory=normalized_inventory(player),
+        equipment=public_equipment(player),
+        now=now if now is not None else time.time(),
+    )
+
+
 def build_player_response(player: dict, **extra) -> dict:
     current_time = time.time()
     level = clamp_int(player.get("level", 1), 1, MAX_HERO_LEVEL)
@@ -3626,6 +3659,8 @@ def build_player_response(player: dict, **extra) -> dict:
             "companion": response["companion_damage"],
         },
     }
+    growth = growth_center_response(player, current_time)["growth_center"]
+    response["growth_center_summary"] = compact_summary(growth)
     return response
 
 
@@ -3993,6 +4028,13 @@ def player(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
     return build_player_response(player_data)
+
+
+@app.get("/growth-center")
+def growth_center(x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    return growth_center_response(player_data)
 
 
 @app.post("/quests/claim-legacy")

@@ -5297,6 +5297,20 @@
       letter-spacing: 0.04em;
     }
 
+    .growth-center-button { position:fixed;right:12px;top:116px;z-index:42;border:1px solid #ffffff35;border-radius:14px;background:rgba(8,24,20,.9);color:#fff;padding:9px 11px;font-weight:900;box-shadow:0 8px 24px #0007; }
+    .growth-center-badge { display:inline-grid;place-items:center;min-width:17px;height:17px;margin-left:5px;padding:0 4px;border-radius:9px;background:#ff5266;font-size:10px; }
+    .growth-center-modal { position:fixed;inset:0;z-index:210;display:grid;place-items:center;padding:14px;background:#07100dcc; }
+    .growth-center-modal.hidden { display:none; }
+    .growth-center-card { width:min(560px,100%);max-height:88vh;overflow:auto;border:1px solid #ffffff26;border-radius:20px;background:#13251f;padding:15px;box-shadow:0 18px 50px #000a; }
+    .growth-center-head { display:flex;justify-content:space-between;align-items:center;gap:10px; }
+    .growth-center-head button { border:0;background:#ffffff18;color:#fff;border-radius:10px;padding:8px 11px; }
+    .growth-priority,.growth-row,.growth-step,.growth-warning { margin-top:9px;padding:10px;border:1px solid #ffffff1f;border-radius:12px;background:#ffffff0b; }
+    .growth-priority { border-color:#ffd76888;background:#ffd76812; }.growth-warning { border-color:#ff607088;background:#ff607018; }
+    .growth-row button { margin-top:7px;border:0;border-radius:9px;padding:7px 9px;background:#76d998;color:#092015;font-weight:900; }
+    .growth-meta { color:var(--muted);font-size:11px;margin-top:4px; }.growth-flow { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px; }
+    .growth-step { margin:0;font-size:11px; }.growth-step.ready { border-color:#7cf39b77; }.growth-step.blocked { opacity:.62; }.growth-step.completed { opacity:.55; }
+    .growth-badges { display:flex;flex-wrap:wrap;gap:5px;margin-top:9px; }.growth-badges span { padding:4px 7px;border-radius:10px;background:#ffffff13;font-size:10px; }
+
 </style>
 </head>
 <body>
@@ -6512,6 +6526,11 @@ id="companionSummonChances"
 </div>
 </section>
 </main>
+<button class="growth-center-button" id="growthCenterOpen">🌱 Центр развития <span class="growth-center-badge" id="growthCenterBadge">0</span></button>
+<div class="growth-center-modal hidden" id="growthCenterModal"><div class="growth-center-card">
+  <div class="growth-center-head"><div><strong>Центр развития</strong><div class="growth-meta">Ежедневный маршрут</div></div><button id="growthCenterClose">Закрыть</button></div>
+  <div id="growthCenterContent"><div class="growth-row">Загрузка…</div></div>
+</div></div>
 <div id="progressionLaunchers" style="position:fixed;right:12px;bottom:82px;z-index:80;display:grid;gap:8px">
   <button id="offlineOpen" class="secondary-game-button" type="button">🌙 Offline</button>
   <button id="summonOpen" class="primary-game-button" type="button">🔮 Призыв</button>
@@ -6659,6 +6678,7 @@ id="companionSummonChances"
     };
 
     let player = null;
+    let growthCenter = null;
     let activeShopTab = "skills";
     let currentMonster = FOREST_ENEMIES[0];
     let currentBossState = false;
@@ -6676,6 +6696,48 @@ id="companionSummonChances"
     let pendingPlayerAfterDefeat = null;
 
     const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+    function renderGrowthCenter() {
+      const root = growthCenter?.growth_center;
+      if (!root) return;
+      $("growthCenterBadge").textContent = String(root.notifications?.total_count || 0);
+      $("growthCenterBadge").style.display = root.notifications?.total_count ? "inline-grid" : "none";
+      const priority = root.priority_action || {};
+      const warning = root.counters?.inventory_free === 0
+        ? `<div class="growth-warning">🔴 Инвентарь заполнен. Освободите место перед добычей.</div>` : "";
+      const recommendations = (root.recommended_actions || []).slice(0, 5).map(action =>
+        `<div class="growth-row"><strong>${escapeHtml(action.reason)}</strong><div class="growth-meta">${escapeHtml(action.category)}${action.candidate?.entity_id ? ` · ${escapeHtml(action.candidate.entity_id)}` : ""}</div><button data-growth-route="${escapeHtml(action.target_route)}">Перейти</button></div>`
+      ).join("");
+      const steps = (root.daily_flow?.steps || []).map(step =>
+        `<div class="growth-step ${escapeHtml(step.status)}"><strong>${escapeHtml(step.title)}</strong><div class="growth-meta">${escapeHtml(step.status)}${step.blocker_summary ? ` · ${escapeHtml(step.blocker_summary)}` : ""}</div></div>`
+      ).join("");
+      const badges = (root.notifications?.items || []).map(item =>
+        `<span>${item.severity === "critical" ? "🔴" : item.severity === "attention" ? "🟡" : "🔵"} ${escapeHtml(item.title)} · ${item.count}</span>`
+      ).join("");
+      const best = root.summaries?.better_items?.best_item;
+      const blockers = (root.blockers || []).slice(0, 4).map(item => escapeHtml(item.message)).join(" · ");
+      $("growthCenterContent").innerHTML = `${warning}<div class="growth-priority"><strong>${escapeHtml(priority.title || "Маршрут завершён")}</strong><div class="growth-meta">${escapeHtml(priority.description || priority.reason || "")}</div>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}</div><div class="growth-badges">${badges}</div>${recommendations}${best ? `<div class="growth-row">🏆 Лучший предмет: ${escapeHtml(best.slot)} · +${best.build_score_delta} build score${best.locked ? " · 🔒" : ""}</div>` : ""}${blockers ? `<div class="growth-row"><strong>Что мешает</strong><div class="growth-meta">${blockers}</div></div>` : ""}<h3>Сегодня</h3><div class="growth-flow">${steps}</div>`;
+    }
+
+    async function refreshGrowthCenter() {
+      growthCenter = await apiRequest("/growth-center");
+      renderGrowthCenter();
+    }
+
+    function openGrowthTarget(route) {
+      $("growthCenterModal").classList.add("hidden");
+      if (route.startsWith("/offline")) return $("offlineOpen")?.click();
+      if (route.startsWith("/summon")) return $("summonOpen")?.click();
+      if (route.startsWith("/quests")) return $("questsBattleButton")?.click();
+      if (route.includes("skill") || route.includes("companion")) return openEnhancementsScreen();
+      if (route.includes("loot") || route.includes("inventory") || route.includes("chest")) return showLootModal();
+      if (route === "/boss/start") return elements.bossButton?.scrollIntoView({behavior:"smooth"});
+      document.body.classList.remove("section-open");
+    }
+
+    $("growthCenterOpen").addEventListener("click", async () => { $("growthCenterModal").classList.remove("hidden"); try { await refreshGrowthCenter(); } catch (error) { setMessage(`❌ ${error.message}`, true); } });
+    $("growthCenterClose").addEventListener("click", () => $("growthCenterModal").classList.add("hidden"));
+    $("growthCenterContent").addEventListener("click", event => { const button = event.target.closest("[data-growth-route]"); if (button) openGrowthTarget(button.dataset.growthRoute); });
     const compactNumber = new Intl.NumberFormat("ru-RU", { notation:"compact", maximumFractionDigits:1 });
     const fullNumber = new Intl.NumberFormat("ru-RU");
     function formatNumber(value) {
@@ -9694,15 +9756,19 @@ id="companionSummonChances"
         elements.loadingText.textContent = "Загружаем игру…";
 
         const playerPromise = apiRequest("/player");
+        const growthPromise = apiRequest("/growth-center");
         const assetsPromise = preloadCriticalAssets();
 
-        const [playerData] = await Promise.all([
+        const [playerData, growthData] = await Promise.all([
           playerPromise,
+          growthPromise,
           assetsPromise
         ]);
 
         player = playerData;
+        growthCenter = growthData;
         renderPlayer();
+        renderGrowthCenter();
 
         elements.loadingOverlay.classList.add("hidden");
 
