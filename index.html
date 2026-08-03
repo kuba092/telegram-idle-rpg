@@ -5587,7 +5587,7 @@
 <div class="game-modal hidden" id="questsModal">
 <div class="modal-panel quests-modal-panel">
 <div class="quests-modal-header">
-<div class="modal-title">📋 Ежедневные задания</div>
+<div class="modal-title">📋 Задания · 💎 <span id="questCrystalBalance">0</span></div>
 <button
   aria-label="Вернуться в бой"
   class="modal-close"
@@ -5597,6 +5597,11 @@
 </div>
 
 <div class="quests-content">
+<div class="loot-actions" id="questTabs">
+<button class="loot-action" data-quest-tab="daily" type="button">Ежедневные</button>
+<button class="loot-action" data-quest-tab="weekly" type="button">Недельные</button>
+<button class="loot-action" data-quest-tab="achievements" type="button">Достижения</button>
+</div>
 
 <div class="quests-summary">
 <div class="quests-summary-top">
@@ -5606,6 +5611,9 @@
 <div class="quests-reset">
 Сброс через <span id="questResetTimer">--:--:--</span> · UTC
 </div>
+<div class="quest-progress-copy" id="questActivityText"></div>
+<div class="quest-progress-track"><div class="quest-progress-fill" id="questActivityBar"></div></div>
+<button class="quest-claim-button" id="questClaimAll" type="button">Забрать всё</button>
 </div>
 
 <div class="quest-list" id="dailyQuestList">
@@ -7821,6 +7829,57 @@ id="companionSummonChances"
       }
     }
 
+
+    let activeQuestTab = "daily";
+
+    function modernQuestCardHtml(quest) {
+      const reward = quest.reward || {};
+      const rewardText = Object.entries(reward).map(([key, value]) =>
+        `${key === "premium_crystals" ? "💎" : "🎁"} ${formatNumber(value)} ${escapeHtml(key)}`
+      ).join(" · ");
+      const current = Number(quest.current_value || 0), target = Number(quest.target_value || 1);
+      const canClaim = quest.completed && !quest.claimed;
+      return `<div class="quest-card ${quest.claimed ? "claimed" : canClaim ? "completed" : ""}">
+        <div class="quest-head"><div><div class="quest-name">${escapeHtml(quest.title)}</div><div class="quest-description">${escapeHtml(quest.description)}</div></div><div class="quest-reward">${rewardText}</div></div>
+        <div class="quest-progress-copy"><span>${Math.min(current,target)} / ${target}</span><span>${quest.claimed ? "Получено" : quest.completed ? "Готово" : "В процессе"}</span></div>
+        <div class="quest-progress-track"><div class="quest-progress-fill" style="width:${Math.min(100,current/target*100)}%"></div></div>
+        <div class="quest-actions"><button class="quest-claim-button" data-modern-quest="${escapeHtml(quest.quest_id)}" data-version="${Number(quest.version || 1)}" type="button" ${canClaim ? "" : "disabled"}>${quest.claimed ? "Получено" : "Забрать"}</button></div></div>`;
+    }
+
+    function updateQuestResetTimer() {
+      const quests = player?.quests; if (!quests || !elements.questResetTimer) return;
+      if (activeQuestTab === "achievements") { elements.questResetTimer.textContent = "не сбрасываются"; return; }
+      const target = new Date(activeQuestTab === "weekly" ? quests.weekly_reset_at : quests.daily_reset_at).getTime();
+      const server = new Date(quests.server_time).getTime();
+      const seconds = Math.max(0, Math.floor((target - server) / 1000));
+      const days = Math.floor(seconds / 86400), hours = Math.floor(seconds % 86400 / 3600), minutes = Math.floor(seconds % 3600 / 60);
+      elements.questResetTimer.textContent = `${days ? `${days}д ` : ""}${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}`;
+    }
+
+    function renderDailyQuests() {
+      const root = player?.quests; if (!root?.daily) return;
+      const section = root[activeQuestTab]; const quests = section?.quests || [];
+      document.getElementById("questCrystalBalance").textContent = formatNumber(player?.progression_resources?.premium_crystals || 0);
+      document.querySelector(".quests-summary-title").textContent = activeQuestTab === "daily" ? "Ежедневные задания" : activeQuestTab === "weekly" ? "Недельные задания" : "Достижения";
+      elements.questSummaryCount.textContent = `${section.completed_count || 0} / ${quests.length}`;
+      elements.dailyQuestList.innerHTML = quests.map(modernQuestCardHtml).join("") || `<div class="quest-status-message">Нет заданий</div>`;
+      const points = Number(section.activity_points || 0), maximum = activeQuestTab === "daily" ? 60 : activeQuestTab === "weekly" ? 120 : 0;
+      document.getElementById("questActivityText").textContent = maximum ? `Активность: ${points} / ${maximum}` : "Достижения не сбрасываются";
+      document.getElementById("questActivityBar").style.width = maximum ? `${Math.min(100, points / maximum * 100)}%` : "0%";
+      elements.dailyQuestBonus.innerHTML = (section.milestones || []).map(m => `<div class="quest-card"><div class="quest-head"><div class="quest-name">Веха ${m.milestone_points}</div><div class="quest-reward">${Object.entries(m.reward).map(([k,v])=>`${k === "premium_crystals" ? "💎" : "🎁"} ${v} ${escapeHtml(k)}`).join(" · ")}</div></div><button class="quest-claim-button" data-quest-milestone="${m.milestone_points}" ${m.completed && !m.claimed ? "" : "disabled"}>${m.claimed ? "Получено" : "Забрать"}</button></div>`).join("");
+      document.querySelectorAll("[data-modern-quest]").forEach(b => b.onclick = () => claimModernQuest(b.dataset.modernQuest, Number(b.dataset.version)));
+      document.querySelectorAll("[data-quest-milestone]").forEach(b => b.onclick = () => claimModernMilestone(Number(b.dataset.questMilestone)));
+      updateQuestResetTimer();
+    }
+
+    async function claimModernQuest(questId, version) {
+      try { const result = await apiRequest("/quests/claim", "POST", {quest_id:questId, quest_type:activeQuestTab === "achievements" ? "achievement" : activeQuestTab, expected_version:version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); renderDailyQuests(); setMessage(`✅ Получено 💎 ${result.premium_crystals_gained || 0}`); } catch(error) { setMessage(`❌ ${error.message}`, true); }
+    }
+    async function claimModernMilestone(points) {
+      try { const result = await apiRequest("/quests/claim-milestone", "POST", {period_type:activeQuestTab, milestone_points:points, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); renderDailyQuests(); setMessage(`✅ Получено 💎 ${result.premium_crystals_gained || 0}`); } catch(error) { setMessage(`❌ ${error.message}`, true); }
+    }
+    document.querySelectorAll("[data-quest-tab]").forEach(button => button.addEventListener("click", () => { activeQuestTab=button.dataset.questTab; renderDailyQuests(); }));
+    document.getElementById("questClaimAll")?.addEventListener("click", async () => { try { const result=await apiRequest("/quests/claim-all","POST",{quest_type:activeQuestTab === "achievements" ? "achievement" : activeQuestTab,client_action_id:crypto.randomUUID()}); player=await apiRequest("/player");renderPlayer();renderDailyQuests();setMessage(`✅ Наград: ${result.claimed_count}, 💎 ${result.premium_crystals_gained || 0}`); } catch(error) { setMessage(`❌ ${error.message}`,true); } });
 
     function escapeHtml(value) {
       return String(value ?? "")

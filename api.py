@@ -1,4 +1,5 @@
 import bisect
+import datetime as dt
 import hashlib
 import hmac
 import json
@@ -43,6 +44,11 @@ from progression_systems import (
     companion_public, companion_upgrade_cost, progression_entry, skill_cooldown_multiplier,
     skill_effective_multiplier, skill_gold_cost, skill_public, skill_upgrade_cost,
     victory_progression_reward,
+)
+from quest_system import (
+    DAILY_MILESTONES, WEEKLY_MILESTONES, QuestProgressTracker,
+    ensure_state as ensure_quest_state, public_block as public_quest_block,
+    reward_totals,
 )
 
 
@@ -2382,6 +2388,11 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             telegram_id,
             now,
         )
+        ensure_quest_state(connection, telegram_id, now)
+        QuestProgressTracker(connection, telegram_id, now).dispatch(
+            "player_login", 1,
+            client_action_id=f"login:{time.strftime('%Y-%m-%d', time.gmtime(now))}",
+        )
         ensure_chest_boss_state(
             connection,
             telegram_id,
@@ -3188,6 +3199,8 @@ def build_player_response(player: dict, **extra) -> dict:
         "companions_collection_json",
         "companion_slots_json",
         "daily_quests_claimed_json",
+        "daily_quests_json", "weekly_quests_json", "achievements_json",
+        "quest_daily_reset_key", "quest_weekly_reset_key", "quest_claim_history_json",
     }
     public_player = {
         key: value
@@ -3227,7 +3240,7 @@ def build_player_response(player: dict, **extra) -> dict:
         "secondary_stat_catalog": SECONDARY_STATS,
         "comparison_profiles": {"damage": "Урон", "defense": "Защита", "balanced": "Баланс"},
         "comparison_profile": str(player.get("comparison_profile", "balanced")),
-        "quests": build_daily_quests(player),
+        "quests": public_quest_block(player),
         "chest_boss": build_chest_boss_state(player),
         "gem_boss": build_gem_boss_state(player),
         "pending_loot": public_loot_item(pending_loot, player) if pending_loot else None,
@@ -3606,6 +3619,12 @@ def create_database() -> None:
         ("refinement_crystal", "INTEGER NOT NULL DEFAULT 0"),
         ("refinement_ore", "INTEGER NOT NULL DEFAULT 0"),
         ("premium_crystals", "INTEGER NOT NULL DEFAULT 0"),
+        ("daily_quests_json", "TEXT NOT NULL DEFAULT ''"),
+        ("weekly_quests_json", "TEXT NOT NULL DEFAULT ''"),
+        ("achievements_json", "TEXT NOT NULL DEFAULT ''"),
+        ("quest_daily_reset_key", "TEXT NOT NULL DEFAULT ''"),
+        ("quest_weekly_reset_key", "TEXT NOT NULL DEFAULT ''"),
+        ("quest_claim_history_json", "TEXT NOT NULL DEFAULT '{}'"),
         ("skill_tomes", "INTEGER NOT NULL DEFAULT 0"),
         ("companion_essence", "INTEGER NOT NULL DEFAULT 0"),
         ("chest_xp", "INTEGER NOT NULL DEFAULT 0"),
@@ -3880,8 +3899,8 @@ def player(x_telegram_init_data: str = Header(...)) -> dict:
     return build_player_response(player_data)
 
 
-@app.post("/quests/claim")
-def claim_daily_quest(
+@app.post("/quests/claim-legacy")
+def legacy_claim_daily_quest(
     quest_id: str,
     x_telegram_init_data: str = Header(...),
 ) -> dict:
@@ -4046,6 +4065,100 @@ def claim_daily_quest(
             )
         ),
     )
+
+
+def _apply_quest_rewards(connection, telegram_id: int, rewards: list[dict]) -> dict:
+    totals = reward_totals(rewards)
+    if totals:
+        setters = ",".join(f"{field}={field}+?" for field in totals)
+        connection.execute(f"UPDATE players SET {setters},updated_at=? WHERE telegram_id=?",
+                           (*totals.values(), int(time.time()), telegram_id))
+    return totals
+
+
+# Python-level compatibility for integrations importing the former handler.
+claim_daily_quest = legacy_claim_daily_quest
+
+
+def _quest_claim_response(connection, telegram_id, rewards, *, duplicate=False, **extra):
+    totals = reward_totals(rewards)
+    row = dict(connection.execute("SELECT premium_crystals,skill_tomes,companion_essence,salvage_dust,refinement_ore FROM players WHERE telegram_id=?", (telegram_id,)).fetchone())
+    resources = {key: value for key, value in totals.items() if key != "premium_crystals"}
+    return {**extra, "premium_crystals_gained": totals.get("premium_crystals", 0),
+            "resources_gained": resources, "new_balances": {key: max(0, int(value)) for key,value in row.items()},
+            "duplicate_request": duplicate, "stale_version": False, "transaction_completed": True}
+
+
+@app.post("/quests/claim")
+def claim_quest(payload: dict = Body(default={}), quest_id: str | None = None,
+                x_telegram_init_data: str = Header(...)) -> dict:
+    # Backward compatible adapter for the old query-only daily contract.
+    if quest_id and not payload:
+        return legacy_claim_daily_quest(quest_id, x_telegram_init_data)
+    user = validate_telegram_data(x_telegram_init_data); player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"]); action_id = payload.get("client_action_id")
+    cached = cached_action(telegram_id, "quest-claim", action_id)
+    if cached: return cached
+    qid = str(payload.get("quest_id", quest_id or "")); qtype = str(payload.get("quest_type", "daily"))
+    fields = {"daily":"daily_quests_json", "weekly":"weekly_quests_json", "achievement":"achievements_json"}
+    if qtype not in fields: raise HTTPException(status_code=404, detail="Неизвестный тип задания")
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); ensure_quest_state(connection, telegram_id)
+        current = load_player(connection, telegram_id); state = parse_json_object(current.get(fields[qtype])); quests = state.get("quests", [])
+        quest = next((item for item in quests if item.get("quest_id") == qid), None)
+        if quest is None: raise HTTPException(status_code=404, detail="Задание не найдено")
+        expected = payload.get("expected_version")
+        if expected is not None and int(expected) != int(quest.get("version", 1)):
+            connection.rollback(); return {"quest_id": qid, "quest_type": qtype, "reward": {}, "claimed": False, "duplicate_request": False, "stale_version": True, "transaction_completed": False}
+        if not quest.get("completed"): raise HTTPException(status_code=409, detail="Задание не выполнено")
+        if quest.get("claimed"):
+            connection.rollback(); result = {"quest_id": qid, "quest_type": qtype, "reward": quest["reward"], "claimed": True, "premium_crystals_gained": 0, "resources_gained": {}, "duplicate_request": True, "stale_version": False, "transaction_completed": False}; remember_action(telegram_id,"quest-claim",action_id,result); return result
+        quest["claimed"] = True; quest["claimed_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); quest["version"] = int(quest.get("version",1)) + 1
+        connection.execute(f"UPDATE players SET {fields[qtype]}=? WHERE telegram_id=?", (json.dumps(state, ensure_ascii=False), telegram_id))
+        _apply_quest_rewards(connection, telegram_id, [quest["reward"]]); connection.commit()
+        result = _quest_claim_response(connection, telegram_id, [quest["reward"]], quest_id=qid, quest_type=qtype, reward=quest["reward"], claimed=True)
+    except HTTPException: connection.rollback(); raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+    remember_action(telegram_id, "quest-claim", action_id, result); return result
+
+
+@app.post("/quests/claim-milestone")
+def claim_quest_milestone(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user=validate_telegram_data(x_telegram_init_data); player_data=get_or_create_player(user); telegram_id=int(player_data["telegram_id"])
+    action_id=payload.get("client_action_id"); cached=cached_action(telegram_id,"quest-milestone",action_id)
+    if cached: return cached
+    period=str(payload.get("period_type")); points=int(payload.get("milestone_points",0)); spec={"daily":("daily_quests_json",10,DAILY_MILESTONES),"weekly":("weekly_quests_json",20,WEEKLY_MILESTONES)}.get(period)
+    if not spec or points not in spec[2]: raise HTTPException(status_code=404,detail="Веха не найдена")
+    connection=get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); ensure_quest_state(connection,telegram_id); current=load_player(connection,telegram_id); state=parse_json_object(current.get(spec[0])); claimed=state.setdefault("claimed_milestones",[])
+        earned=sum(spec[1] for q in state.get("quests",[]) if q.get("completed"))
+        if earned < points: raise HTTPException(status_code=409,detail="Недостаточно очков активности")
+        if points in claimed: connection.rollback(); return {"period_type":period,"milestone_points":points,"claimed":True,"premium_crystals_gained":0,"resources_gained":{},"duplicate_request":True,"transaction_completed":False}
+        claimed.append(points); connection.execute(f"UPDATE players SET {spec[0]}=? WHERE telegram_id=?",(json.dumps(state,ensure_ascii=False),telegram_id)); reward=spec[2][points]; _apply_quest_rewards(connection,telegram_id,[reward]); connection.commit(); result=_quest_claim_response(connection,telegram_id,[reward],period_type=period,milestone_points=points,reward=reward,claimed=True)
+    except HTTPException: connection.rollback(); raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+    remember_action(telegram_id,"quest-milestone",action_id,result); return result
+
+
+@app.post("/quests/claim-all")
+def claim_all_quests(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user=validate_telegram_data(x_telegram_init_data); p=get_or_create_player(user); telegram_id=int(p["telegram_id"]); action_id=payload.get("client_action_id")
+    cached=cached_action(telegram_id,"quest-claim-all",action_id)
+    if cached:return cached
+    qtype=str(payload.get("quest_type")); field={"daily":"daily_quests_json","weekly":"weekly_quests_json","achievement":"achievements_json"}.get(qtype)
+    if not field: raise HTTPException(status_code=404,detail="Неизвестный тип задания")
+    connection=get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE");ensure_quest_state(connection,telegram_id);current=load_player(connection,telegram_id);state=parse_json_object(current.get(field)); selected=[q for q in state.get("quests",[]) if q.get("completed") and not q.get("claimed")][:50]; stamp=dt.datetime.now(dt.timezone.utc).isoformat()
+        for q in selected:q["claimed"]=True;q["claimed_at"]=stamp;q["version"]=int(q.get("version",1))+1
+        rewards=[q["reward"] for q in selected];connection.execute(f"UPDATE players SET {field}=? WHERE telegram_id=?",(json.dumps(state,ensure_ascii=False),telegram_id));_apply_quest_rewards(connection,telegram_id,rewards);connection.commit();result=_quest_claim_response(connection,telegram_id,rewards,quest_type=qtype,claimed_count=len(selected),breakdown=[{"quest_id":q["quest_id"],"reward":q["reward"]} for q in selected])
+    except Exception:connection.rollback();raise
+    finally:connection.close()
+    remember_action(telegram_id,"quest-claim-all",action_id,result);return result
 
 
 @app.post("/offline/claim")
@@ -4779,6 +4892,16 @@ def _resolve_victory(connection, current, was_boss, context):
         "UPDATE players SET daily_kills=daily_kills+?, daily_bosses=daily_bosses+? WHERE telegram_id=?",
         (0 if was_boss else 1, 1 if was_boss else 0, int(current["telegram_id"])),
     )
+    tracker = QuestProgressTracker(connection, int(current["telegram_id"]), now)
+    tracker.dispatch("enemy_defeated", 1)
+    if defeated_elite:
+        tracker.dispatch("elite_defeated", 1)
+    if was_boss:
+        tracker.dispatch("boss_defeated", 1)
+    tracker.dispatch("stage_reached", highest_stage, absolute=True)
+    tracker.dispatch("skill_tomes_gained", progression_reward["skill_tomes_gained"])
+    tracker.dispatch("companion_essence_gained", progression_reward["companion_essence_gained"])
+    tracker.first_clear(int(current.get("highest_stage", 1)), highest_stage)
     next_profile = generate_enemy_profile(
         stage, bool(boss_active),
         f"{current.get('telegram_id', 0)}:{kills}:{enemy_max_hp}",
@@ -6779,6 +6902,9 @@ def salvage_inventory(payload: dict = Body(...), x_telegram_init_data: str = Hea
         connection.execute("UPDATE players SET inventory_json=?, pending_loot_json=?, salvage_dust=?, refinement_ore=?, chest_xp=chest_xp+?, updated_at=? WHERE telegram_id=?",
                            (json.dumps(inventory, ensure_ascii=False), pending_json, dust, ore, reward["chest_xp"],
                             int(time.time()), telegram_id))
+        tracker = QuestProgressTracker(connection, telegram_id)
+        tracker.dispatch("item_salvaged", 1, client_action_id=action_id)
+        tracker.dispatch("chest_xp_gained", reward["chest_xp"])
         connection.commit()
         result = {"salvaged_item_id": target, "rarity": reward["rarity"],
                   "dust_gained": reward["dust"], "crystals_gained": reward["ore"],
@@ -6834,6 +6960,9 @@ def salvage_inventory_bulk(payload: dict = Body(...), x_telegram_init_data: str 
         pending_json = "" if pending and item_identifier(pending) in selected else current.get("pending_loot_json", "")
         connection.execute("UPDATE players SET inventory_json=?,pending_loot_json=?,salvage_dust=salvage_dust+?,refinement_ore=refinement_ore+?,chest_xp=chest_xp+?,updated_at=? WHERE telegram_id=?",
                            (json.dumps(kept, ensure_ascii=False), pending_json, total_dust, total_crystals, total_xp, int(time.time()), telegram_id))
+        tracker = QuestProgressTracker(connection, telegram_id)
+        tracker.dispatch("item_salvaged", len(results), client_action_id=payload.get("client_action_id"))
+        tracker.dispatch("chest_xp_gained", total_xp)
         connection.commit()
     except Exception:
         connection.rollback(); raise
@@ -6915,6 +7044,9 @@ def reroll_inventory_secondary(payload: dict = Body(...), x_telegram_init_data: 
         connection.execute("UPDATE players SET inventory_json=?,equipment_json=?,pending_loot_json=?,salvage_dust=salvage_dust-?,refinement_ore=refinement_ore-?,updated_at=? WHERE telegram_id=?",
                            (json.dumps(inventory, ensure_ascii=False), json.dumps(equipment, ensure_ascii=False), pending_json, cost["dust"], cost["ore"], int(time.time()), telegram_id))
         if location == "equipment": sync_player_stats(connection, telegram_id)
+        QuestProgressTracker(connection, telegram_id).dispatch(
+            "item_rerolled", 1, client_action_id=payload.get("client_action_id")
+        )
         connection.commit()
         result = {"item_id": target, "old_stat": stat_key, "new_stat": new_key, "old_value": old_value,
                   "new_value": changed["secondary_stats"][new_key], "dust_spent": cost["dust"],
@@ -6961,6 +7093,7 @@ def upgrade_chest(payload: dict = Body(default={}), x_telegram_init_data: str = 
             "UPDATE players SET chest_level=?, chest_xp=?, chest_upgrade_step=0, updated_at=? WHERE telegram_id=?",
             (new_level, remaining, int(time.time()), telegram_id),
         )
+        QuestProgressTracker(connection, telegram_id).dispatch("chest_level_reached", new_level, absolute=True)
         connection.commit()
     finally:
         connection.close()
@@ -7027,6 +7160,10 @@ def open_loot_transaction(
             "salvage_dust=salvage_dust+?,refinement_ore=refinement_ore+?,chest_xp=chest_xp+?,"
             "experience=?,level=?,updated_at=? WHERE telegram_id=?",
             (reward["dust"], reward["ore"], 1 + reward["chest_xp"], total_exp, new_level, now, telegram_id))
+        tracker = QuestProgressTracker(connection, telegram_id)
+        tracker.dispatch("chest_opened", 1)
+        tracker.dispatch("item_salvaged", 1)
+        tracker.dispatch("chest_xp_gained", 1 + reward["chest_xp"])
         sync_player_stats(connection, telegram_id); updated = load_player(connection, telegram_id)
         return updated, {"opened": True, "auto_salvaged": True, "auto_salvage_rewards": reward,
                          "item_kept": False, "loot": loot, "comparison": comparison,
@@ -7059,6 +7196,9 @@ def open_loot_transaction(
             ),
         )
         sync_player_stats(connection, telegram_id)
+        tracker = QuestProgressTracker(connection, telegram_id)
+        tracker.dispatch("chest_opened", 1)
+        tracker.dispatch("chest_xp_gained", 1)
         updated = load_player(connection, telegram_id)
         return updated, {
             "opened": True,
@@ -7097,6 +7237,9 @@ def open_loot_transaction(
             telegram_id,
         ),
     )
+    tracker = QuestProgressTracker(connection, telegram_id)
+    tracker.dispatch("chest_opened", 1)
+    tracker.dispatch("chest_xp_gained", 1)
     sync_player_stats(connection, telegram_id)
     updated = load_player(connection, telegram_id)
     return updated, {
@@ -7296,6 +7439,12 @@ def _upgrade_progression(payload: dict, init_data: str, *, kind: str, bulk: bool
             f"UPDATE players SET {json_field}=?, {resource_field}={resource_field}-?, gold=gold-?, updated_at=? WHERE telegram_id=?",
             (json.dumps(collection, ensure_ascii=False), spent_resource, spent_gold, int(time.time()), telegram_id),
         )
+        tracker = QuestProgressTracker(connection, telegram_id)
+        total_levels = sum(int(value.get("level", 0)) for value in collection.values() if value.get("owned"))
+        tracker.dispatch("skill_upgraded" if is_skill else "companion_upgraded", len(steps),
+                         client_action_id=action_id, achievement_amount=total_levels,
+                         mastered=level >= MAX_PROGRESSION_LEVEL)
+        tracker.dispatch("gold_spent", spent_gold)
         connection.commit()
         result = {f"{kind}_id": object_id, "old_level": old_level, "new_level": level,
                   ("tomes_spent" if is_skill else "essence_spent"): spent_resource,
