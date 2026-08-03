@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -152,6 +153,8 @@ class CompanionEffectsTest(unittest.TestCase):
         self.assertEqual(response["companion_effects"]["damage_multiplier"], 1.0)
         self.assertEqual(response["companion_effects"]["hp_multiplier"], 1.0)
         self.assertEqual(response["companion_effects"]["extra_attack_damage"], 0)
+        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"], 1.0)
+        self.assertEqual(response["companion_effects"]["crit_chance_bonus"], 0.0)
         self.assertEqual(response["companion_effects"]["active_effects"], [])
 
     def test_multiple_companion_effects_are_combined(self):
@@ -164,6 +167,146 @@ class CompanionEffectsTest(unittest.TestCase):
         self.assertEqual(response["damage_dealt"], 112)
         self.assertEqual(response["companion_damage"], 6)
         self.assertEqual(before_attack["hero_max_hp"], 110)
+        self.assertEqual(len(response["companion_effects"]["active_effects"]), 3)
+
+    def test_mushroom_owl_reduces_skill_cooldown(self):
+        collection = self.collection(mushroom_owl=5)
+        self.set_state(
+            collection,
+            ["mushroom_owl", None, None],
+            spore_strike_last_used_at=time.time(),
+        )
+
+        response = api.build_player_response(self.player())
+
+        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"], 0.9)
+        self.assertEqual(response["skills"]["spore_strike"]["cooldown_seconds"], 7.2)
+        self.assertLessEqual(response["skills"]["spore_strike"]["cooldown_remaining"], 7.2)
+
+        self.set_state(
+            collection,
+            ["mushroom_owl", None, None],
+            spore_strike_last_used_at=time.time() - 7.5,
+        )
+        skill_response = self.attack("spore_strike")
+        self.assertTrue(skill_response["attacked"])
+        self.assertEqual(skill_response["skill_used"], "spore_strike")
+
+    def test_mushroom_owl_cooldown_reduction_is_capped(self):
+        collection = self.collection(mushroom_owl=20)
+        self.set_state(collection, ["mushroom_owl", None, None])
+
+        effects = api.calculate_companion_effects(self.player())
+
+        self.assertEqual(effects["skill_cooldown_multiplier"], 0.7)
+
+    def test_thorn_wolf_increases_and_caps_critical_chance(self):
+        collection = self.collection(thorn_wolf=10)
+        self.set_state(collection, ["thorn_wolf", None, None])
+        effects = api.calculate_companion_effects(self.player())
+        self.assertEqual(effects["crit_chance_bonus"], 5.0)
+
+        fake_stats = {"total": {"crit_chance": 99.0, "crit_damage": 200.0}}
+        with (
+            patch.object(api, "calculate_equipment_stats", return_value=fake_stats),
+            patch.object(api.random, "random", return_value=0.9999),
+        ):
+            damage, critical = api.calculate_hero_attack_damage(self.player())
+
+        self.assertTrue(critical)
+        self.assertEqual(damage, 200)
+
+    def test_thorn_wolf_critical_bonus_applies_to_attack_and_skill(self):
+        collection = self.collection(thorn_wolf=10)
+        self.set_state(collection, ["thorn_wolf", None, None])
+        with patch.object(api.random, "random", return_value=0.075):
+            normal_response = api.attack("test")
+
+        self.set_state(collection, ["thorn_wolf", None, None])
+        with patch.object(api.random, "random", return_value=0.075):
+            skill_response = api.attack("test", skill="spore_strike")
+
+        self.assertTrue(normal_response["critical"])
+        self.assertTrue(skill_response["critical"])
+
+    def test_ancient_entling_heals_after_normal_enemy(self):
+        collection = self.collection(ancient_entling=5)
+        self.set_state(
+            collection,
+            ["ancient_entling", None, None],
+            enemy_hp=1,
+            hero_hp=344,
+            hero_max_hp=688,
+        )
+
+        response = self.attack()
+
+        self.assertEqual(response["companion_healing"], 34)
+        self.assertEqual(response["hero_hp"], 378)
+
+    def test_ancient_entling_heals_twice_as_much_after_boss(self):
+        collection = self.collection(ancient_entling=5)
+        self.set_state(
+            collection,
+            ["ancient_entling", None, None],
+            enemy_hp=1,
+            boss_active=1,
+            hero_hp=344,
+            hero_max_hp=688,
+        )
+
+        response = self.attack()
+
+        self.assertTrue(response["boss_defeated"])
+        self.assertEqual(response["companion_healing"], 69)
+        self.assertEqual(response["hero_hp"], 413)
+
+    def test_ancient_entling_healing_does_not_exceed_max_hp(self):
+        collection = self.collection(ancient_entling=20)
+        self.set_state(
+            collection,
+            ["ancient_entling", None, None],
+            enemy_hp=1,
+            hero_hp=683,
+            hero_max_hp=688,
+        )
+
+        response = self.attack()
+
+        self.assertEqual(response["companion_healing"], 5)
+        self.assertEqual(response["hero_hp"], 688)
+
+    def test_closed_slot_does_not_apply_new_effect(self):
+        collection = self.collection(mushroom_owl=5, thorn_wolf=5)
+        self.set_state(
+            collection,
+            ["mushroom_owl", "thorn_wolf", None],
+            level=10,
+            experience=api.LEVEL_TOTAL_EXP[10],
+        )
+
+        effects = api.calculate_companion_effects(self.player())
+
+        self.assertEqual(effects["skill_cooldown_multiplier"], 0.9)
+        self.assertEqual(effects["crit_chance_bonus"], 0.0)
+
+    def test_multiple_new_effects_work_together(self):
+        collection = self.collection(
+            mushroom_owl=5, thorn_wolf=4, ancient_entling=5
+        )
+        self.set_state(
+            collection,
+            ["mushroom_owl", "thorn_wolf", "ancient_entling"],
+            enemy_hp=1,
+            hero_hp=344,
+            hero_max_hp=688,
+        )
+
+        response = self.attack()
+
+        self.assertEqual(response["companion_effects"]["skill_cooldown_multiplier"], 0.9)
+        self.assertEqual(response["companion_effects"]["crit_chance_bonus"], 2.0)
+        self.assertEqual(response["companion_healing"], 34)
         self.assertEqual(len(response["companion_effects"]["active_effects"]), 3)
 
 

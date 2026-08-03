@@ -168,28 +168,32 @@ COMPANION_CATALOG = {
         "name": "Грибная сова",
         "icon": "🦉",
         "rarity": "rare",
-        "implemented": False,
-        "description": "Мудрая сова из глубины грибного леса.",
+        "implemented": True,
+        "description": "Снижает перезарядку навыков на 2% за уровень (до 30%).",
     },
     "thorn_wolf": {
         "name": "Шипастый волк",
         "icon": "🐺",
         "rarity": "epic",
-        "implemented": False,
-        "description": "Лесной хищник с бронёй из колючих лоз.",
+        "implemented": True,
+        "description": "Увеличивает шанс критического удара на 0,5 п.п. за уровень.",
     },
     "ancient_entling": {
         "name": "Древний энтёнок",
         "icon": "🌳",
         "rarity": "legendary",
-        "implemented": False,
-        "description": "Юный хранитель древнего леса.",
+        "implemented": True,
+        "description": "Лечит на 1% максимального HP за уровень после победы (вдвое больше после босса).",
     },
 }
 
 COMPANION_DAMAGE_PER_LEVEL = 0.03
 COMPANION_HP_PER_LEVEL = 0.05
 COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL = 0.02
+COMPANION_SKILL_COOLDOWN_REDUCTION_PER_LEVEL = 0.02
+COMPANION_SKILL_COOLDOWN_MAX_REDUCTION = 0.30
+COMPANION_CRIT_CHANCE_PER_LEVEL = 0.5
+COMPANION_HEALING_PER_LEVEL = 0.01
 
 SKILL_SYSTEM_UNLOCK_LEVEL = 5
 SKILL_SLOT_UNLOCK_LEVELS = (5, 15, 30)
@@ -644,7 +648,13 @@ def calculate_hero_attack_damage(
         parse_json_object(player["equipment_json"]),
         int(player["level"]),
     )["total"]
-    critical = random.random() < float(stats["crit_chance"]) / 100
+    companion_effects = calculate_companion_effects(player)
+    crit_chance = min(
+        100.0,
+        float(stats["crit_chance"])
+        + float(companion_effects["crit_chance_bonus"]),
+    )
+    critical = random.random() < crit_chance / 100
     damage = base_damage * max(0.0, float(damage_multiplier))
     if critical:
         damage *= float(stats["crit_damage"]) / 100
@@ -1212,7 +1222,14 @@ def calculate_companion_effects(player: dict) -> dict:
         level >= unlock_level
         for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
     )
-    bonuses = {"damage": 0.0, "hp": 0.0, "extra_attack": 0.0}
+    bonuses = {
+        "damage": 0.0,
+        "hp": 0.0,
+        "extra_attack": 0.0,
+        "skill_cooldown_reduction": 0.0,
+        "crit_chance": 0.0,
+        "healing": 0.0,
+    }
     active_effects = []
     definitions = {
         "forest_sprite": (
@@ -1226,6 +1243,19 @@ def calculate_companion_effects(player: dict) -> dict:
         "spore_beetle": (
             "extra_attack", COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL,
             "Добавляет к обычной атаке 2% базового урона героя за уровень.",
+        ),
+        "mushroom_owl": (
+            "skill_cooldown_reduction",
+            COMPANION_SKILL_COOLDOWN_REDUCTION_PER_LEVEL,
+            "Снижает время перезарядки всех навыков на 2% за уровень (до 30%).",
+        ),
+        "thorn_wolf": (
+            "crit_chance", COMPANION_CRIT_CHANCE_PER_LEVEL,
+            "Увеличивает шанс критического удара на 0,5 процентного пункта за уровень.",
+        ),
+        "ancient_entling": (
+            "healing", COMPANION_HEALING_PER_LEVEL,
+            "Восстанавливает 1% максимального HP за уровень после победы и вдвое больше после босса.",
         ),
     }
     for companion_id in slots[:unlocked_count]:
@@ -1251,8 +1281,23 @@ def calculate_companion_effects(player: dict) -> dict:
         "damage_multiplier": round(1.0 + bonuses["damage"], 4),
         "hp_multiplier": round(1.0 + bonuses["hp"], 4),
         "extra_attack_damage": extra_attack_damage,
+        "skill_cooldown_multiplier": round(
+            1.0 - min(
+                COMPANION_SKILL_COOLDOWN_MAX_REDUCTION,
+                bonuses["skill_cooldown_reduction"],
+            ),
+            4,
+        ),
+        "crit_chance_bonus": round(bonuses["crit_chance"], 4),
+        "victory_healing_ratio": round(bonuses["healing"], 4),
         "active_effects": active_effects,
     }
+
+
+def companion_skill_cooldown(player: dict, base_seconds: float) -> float:
+    return float(base_seconds) * float(
+        calculate_companion_effects(player)["skill_cooldown_multiplier"]
+    )
 
 
 def default_skill_collection() -> dict:
@@ -2618,17 +2663,23 @@ def build_player_response(player: dict, **extra) -> dict:
     spore_last_used_at = float(
         player.get("spore_strike_last_used_at", 0)
     )
+    spore_cooldown_seconds = companion_skill_cooldown(
+        player, SPORE_STRIKE_COOLDOWN_SECONDS
+    )
     spore_elapsed = time.time() - spore_last_used_at
     spore_cooldown_remaining = (
         0.0
         if spore_last_used_at <= 0
         else max(
             0.0,
-            SPORE_STRIKE_COOLDOWN_SECONDS - spore_elapsed,
+            spore_cooldown_seconds - spore_elapsed,
         )
     )
     shield_last_used_at = float(
         player.get("mushroom_shield_last_used_at", 0)
+    )
+    shield_cooldown_seconds = companion_skill_cooldown(
+        player, MUSHROOM_SHIELD_COOLDOWN_SECONDS
     )
     shield_elapsed = time.time() - shield_last_used_at
     shield_cooldown_remaining = (
@@ -2636,7 +2687,7 @@ def build_player_response(player: dict, **extra) -> dict:
         if shield_last_used_at <= 0
         else max(
             0.0,
-            MUSHROOM_SHIELD_COOLDOWN_SECONDS - shield_elapsed,
+            shield_cooldown_seconds - shield_elapsed,
         )
     )
     companion_effects_for_hp = calculate_companion_effects(player)
@@ -2665,6 +2716,9 @@ def build_player_response(player: dict, **extra) -> dict:
     poison_last_used_at = float(
         player.get("poison_cloud_last_used_at", 0)
     )
+    poison_cooldown_seconds = companion_skill_cooldown(
+        player, POISON_CLOUD_COOLDOWN_SECONDS
+    )
     poison_until = float(player.get("poison_cloud_until", 0))
     poison_next_tick_at = float(
         player.get("poison_cloud_next_tick_at", 0)
@@ -2675,7 +2729,7 @@ def build_player_response(player: dict, **extra) -> dict:
         if poison_last_used_at <= 0
         else max(
             0.0,
-            POISON_CLOUD_COOLDOWN_SECONDS
+            poison_cooldown_seconds
             - (current_time - poison_last_used_at),
         )
     )
@@ -2742,6 +2796,11 @@ def build_player_response(player: dict, **extra) -> dict:
     public_player["hero_hp"] = effective_hero_hp
     public_player["hero_max_hp"] = effective_hero_max_hp
     stats["total"]["hero_max_hp"] = effective_hero_max_hp
+    stats["total"]["crit_chance"] = min(
+        100.0,
+        float(stats["total"]["crit_chance"])
+        + float(companion_effects["crit_chance_bonus"]),
+    )
     response = {
         **public_player,
         "equipment": equipment,
@@ -2867,7 +2926,7 @@ def build_player_response(player: dict, **extra) -> dict:
                     spore_damage_multiplier,
                     3,
                 ),
-                "cooldown_seconds": SPORE_STRIKE_COOLDOWN_SECONDS,
+                "cooldown_seconds": spore_cooldown_seconds,
                 "cooldown_remaining": spore_cooldown_remaining,
                 "ready": (
                     spore_skill_state["available"]
@@ -2886,7 +2945,7 @@ def build_player_response(player: dict, **extra) -> dict:
                     ]
                 ),
                 "hp_ratio": round(shield_hp_ratio, 4),
-                "cooldown_seconds": MUSHROOM_SHIELD_COOLDOWN_SECONDS,
+                "cooldown_seconds": shield_cooldown_seconds,
                 "cooldown_remaining": shield_cooldown_remaining,
                 "capacity": shield_capacity,
                 "amount": shield_amount,
@@ -2913,7 +2972,7 @@ def build_player_response(player: dict, **extra) -> dict:
                 ),
                 "duration_seconds": POISON_CLOUD_DURATION_SECONDS,
                 "tick_seconds": POISON_CLOUD_TICK_SECONDS,
-                "cooldown_seconds": POISON_CLOUD_COOLDOWN_SECONDS,
+                "cooldown_seconds": poison_cooldown_seconds,
                 "cooldown_remaining": poison_cooldown_remaining,
                 "duration_remaining": poison_duration_remaining,
                 "active": poison_active,
@@ -3571,9 +3630,14 @@ def attack(
             current.get("spore_strike_last_used_at", 0)
         )
         spore_elapsed = now - spore_last_used_at
+        companion_effects = calculate_companion_effects(current)
+        spore_cooldown_seconds = (
+            SPORE_STRIKE_COOLDOWN_SECONDS
+            * companion_effects["skill_cooldown_multiplier"]
+        )
         spore_ready = (
             spore_last_used_at <= 0
-            or spore_elapsed >= SPORE_STRIKE_COOLDOWN_SECONDS
+            or spore_elapsed >= spore_cooldown_seconds
         )
 
         manual_spore = requested_skill == "spore_strike"
@@ -3599,7 +3663,7 @@ def attack(
         if manual_spore and not spore_ready:
             remaining = max(
                 0.0,
-                SPORE_STRIKE_COOLDOWN_SECONDS - spore_elapsed,
+                spore_cooldown_seconds - spore_elapsed,
             )
             connection.commit()
             return build_player_response(
@@ -3631,10 +3695,14 @@ def attack(
             poison_until > now
             and poison_next_tick_at > 0
         )
+        poison_cooldown_seconds = (
+            POISON_CLOUD_COOLDOWN_SECONDS
+            * companion_effects["skill_cooldown_multiplier"]
+        )
         poison_ready = (
             poison_last_used_at <= 0
             or now - poison_last_used_at
-                >= POISON_CLOUD_COOLDOWN_SECONDS
+                >= poison_cooldown_seconds
         )
         poison_state = get_player_skill_state(
             current,
@@ -3696,7 +3764,6 @@ def attack(
 
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
-        companion_effects = calculate_companion_effects(current)
         dealt_damage, critical = calculate_hero_attack_damage(
             current,
             damage_multiplier=(
@@ -3709,6 +3776,19 @@ def attack(
             if not use_spore_strike
             else 0
         )
+        if critical and poison_damage:
+            equipment_stats = calculate_equipment_stats(
+                parse_json_object(current["equipment_json"]),
+                int(current["level"]),
+            )["total"]
+            poison_damage = max(
+                1,
+                round(
+                    poison_damage
+                    * float(equipment_stats["crit_damage"])
+                    / 100
+                ),
+            )
         dealt_damage += poison_damage + companion_damage
         enemy_hp = int(current["enemy_hp"]) - dealt_damage
         enemy_max_hp = int(current["enemy_max_hp"])
@@ -3726,7 +3806,30 @@ def attack(
         game_completed = int(current.get("game_completed", 0))
         old_progress = wave_progress(current)
         last_enemy_attack_at = float(current["last_enemy_attack_at"])
+        companion_healing = 0
         if enemy_defeated:
+            hp_multiplier = float(companion_effects["hp_multiplier"])
+            effective_max_hp = max(
+                1, round(int(current["hero_max_hp"]) * hp_multiplier)
+            )
+            effective_hp = min(
+                effective_max_hp,
+                max(0, round(int(current["hero_hp"]) * hp_multiplier)),
+            )
+            requested_healing = round(
+                effective_max_hp
+                * float(companion_effects["victory_healing_ratio"])
+                * (2 if boss_active else 1)
+            )
+            companion_healing = max(
+                0, min(requested_healing, effective_max_hp - effective_hp)
+            )
+            if companion_healing:
+                healed_effective_hp = effective_hp + companion_healing
+                current["hero_hp"] = min(
+                    int(current["hero_max_hp"]),
+                    round(healed_effective_hp / hp_multiplier),
+                )
             total_kills += 1
             experience_reward = 0
             if boss_active:
@@ -3785,6 +3888,7 @@ def attack(
             """
             UPDATE players
             SET enemy_hp = ?, enemy_max_hp = ?,
+                hero_hp = ?,
                 stage = ?, kills_in_stage = ?,
                 total_kills = ?, total_bosses = ?,
                 chests = ?, experience = ?, level = ?,
@@ -3802,6 +3906,7 @@ def attack(
             (
                 max(0, enemy_hp),
                 enemy_max_hp,
+                int(current["hero_hp"]),
                 stage,
                 kills,
                 total_kills,
@@ -3867,11 +3972,14 @@ def attack(
             message = f"🏆 Финальный босс побеждён! +{chest_reward} сундуков"
         else:
             message = f"👑 Босс побеждён! +{chest_reward} сундуков"
+    if companion_healing:
+        message += f" · 🌿 Лечение спутника: +{companion_healing} HP"
     return build_player_response(
         updated,
         attacked=True,
         damage_dealt=dealt_damage,
         companion_damage=companion_damage,
+        companion_healing=companion_healing,
         critical=critical,
         skill_used=("spore_strike" if use_spore_strike else None),
         spore_strike_used=use_spore_strike,
@@ -3929,14 +4037,17 @@ def use_poison_cloud(
             current.get("poison_cloud_last_used_at", 0)
         )
         elapsed = now - last_used_at
+        cooldown_seconds = companion_skill_cooldown(
+            current, POISON_CLOUD_COOLDOWN_SECONDS
+        )
 
         if (
             last_used_at > 0
-            and elapsed < POISON_CLOUD_COOLDOWN_SECONDS
+            and elapsed < cooldown_seconds
         ):
             remaining = max(
                 0.0,
-                POISON_CLOUD_COOLDOWN_SECONDS - elapsed,
+                cooldown_seconds - elapsed,
             )
             connection.commit()
             return build_player_response(
@@ -4019,13 +4130,16 @@ def use_mushroom_shield(
             current.get("mushroom_shield_last_used_at", 0)
         )
         elapsed = now - last_used_at
+        cooldown_seconds = companion_skill_cooldown(
+            current, MUSHROOM_SHIELD_COOLDOWN_SECONDS
+        )
         if (
             last_used_at > 0
-            and elapsed < MUSHROOM_SHIELD_COOLDOWN_SECONDS
+            and elapsed < cooldown_seconds
         ):
             remaining = max(
                 0.0,
-                MUSHROOM_SHIELD_COOLDOWN_SECONDS - elapsed,
+                cooldown_seconds - elapsed,
             )
             connection.commit()
             return build_player_response(
@@ -4154,9 +4268,12 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             current.get("mushroom_shield_last_used_at", 0)
         )
         shield_elapsed = now - shield_last_used_at
+        shield_cooldown_seconds = companion_skill_cooldown(
+            current, MUSHROOM_SHIELD_COOLDOWN_SECONDS
+        )
         shield_ready = (
             shield_last_used_at <= 0
-            or shield_elapsed >= MUSHROOM_SHIELD_COOLDOWN_SECONDS
+            or shield_elapsed >= shield_cooldown_seconds
         )
         shield_unlocked = shield_state["available"]
         shield_auto_used = (
