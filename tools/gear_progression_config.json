@@ -1,0 +1,149 @@
+{
+  "simulation": {
+    "days": 365,
+    "checkpoints": [1, 3, 7, 14, 30, 60, 90, 180, 365],
+    "seed": 20260803,
+    "max_stage": 1000,
+    "monte_carlo_samples": 1200,
+    "significant_upgrade_ratio": 0.01,
+    "daily_combat_first_pass_ratio": 0.65,
+    "external_system_growth_curve": 0.62,
+    "external_system_growth_days": 365
+  },
+  "hero": {
+    "max_level": 100,
+    "base_damage": 10,
+    "damage_per_level": 2,
+    "base_hp": 100,
+    "hp_per_level": 12,
+    "experience_to_max": 3000000,
+    "experience_curve_power": 2.2,
+    "experience_per_chest_base": 10,
+    "experience_per_chest_level": 1.6666666667,
+    "equipment_stage_cap_per_level": 8
+  },
+  "combat": {
+    "base_enemy_hp": 30,
+    "enemy_hp_stage_growth": 0.12,
+    "enemy_hp_power": 2.2,
+    "base_enemy_damage": 3,
+    "enemy_damage_stage_growth": 0.082,
+    "enemy_damage_power": 1.46,
+    "enemies_per_stage": 10,
+    "boss_hp_multiplier": 6.0,
+    "milestone_boss_hp_multiplier": 7.5,
+    "boss_damage_multiplier": 1.8,
+    "milestone_boss_damage_multiplier": 2.0,
+    "hero_attacks_per_second": 1.0,
+    "enemy_attack_interval_seconds": 2.0,
+    "maximum_boss_kill_seconds": 150.0,
+    "minimum_boss_hits_survived": 3,
+    "stage_transition_seconds": 2.0,
+    "normal_enemy_transition_seconds": 0.35,
+    "normal_chests_per_kill": 1,
+    "last_normal_chest_bonus": 1,
+    "boss_chests": 4,
+    "milestone_boss_chests": 6
+  },
+  "chest": {
+    "start_level": 1,
+    "max_level": 25,
+    "starter_chests": 3,
+    "upgrade_base_cost": 650,
+    "upgrade_cost_growth": 1.62,
+    "quality_power_per_level": 0.052,
+    "random_bonus_base": 0.12,
+    "random_bonus_stage_scale": 0.00035,
+    "sell_base_multiplier": 2.35,
+    "sell_chest_level_multiplier": 0.035
+  },
+  "item": {
+    "stage_power_scale": 1.05,
+    "hero_level_power_scale": 1.8,
+    "chest_level_power_scale": 2.8,
+    "damage_per_power_attack": 0.5,
+    "damage_per_power_mixed": 0.25,
+    "hp_per_power_defense": 3.8,
+    "hp_per_power_mixed": 1.9,
+    "slots": {
+      "helmet": "defense",
+      "armor": "defense",
+      "gloves": "mixed",
+      "pants": "defense",
+      "boots": "defense",
+      "weapon": "attack",
+      "necklace": "mixed",
+      "ring": "attack",
+      "belt": "defense",
+      "talisman": "attack"
+    }
+  },
+  "rarities": [
+    {"key": "common", "rank": 1, "power": 1.0, "sell": 1.0},
+    {"key": "uncommon", "rank": 2, "power": 1.22, "sell": 1.18},
+    {"key": "rare", "rank": 3, "power": 1.52, "sell": 1.5},
+    {"key": "epic", "rank": 4, "power": 2.05, "sell": 2.0},
+    {"key": "legendary", "rank": 5, "power": 2.8, "sell": 2.8},
+    {"key": "mythic", "rank": 6, "power": 3.8, "sell": 4.0},
+    {"key": "ancient", "rank": 7, "power": 5.1, "sell": 5.6},
+    {"key": "divine", "rank": 8, "power": 6.8, "sell": 7.5},
+    {"key": "celestial", "rank": 9, "power": 9.0, "sell": 10.0}
+  ],
+  "rarity_weights": {
+    "1": [78, 20, 2, 0, 0, 0, 0, 0, 0],
+    "5": [60, 29, 9, 1.8, 0.2, 0, 0, 0, 0],
+    "10": [43, 31, 19, 5.5, 1.3, 0.2, 0, 0, 0],
+    "15": [31, 29, 25, 11, 3.2, 0.7, 0.1, 0, 0],
+    "20": [23, 27, 28, 16, 4.3, 1.35, 0.3, 0.05, 0],
+    "25": [17, 24, 29, 21, 5.2, 2.8, 0.8, 0.18, 0.02]
+  },
+  "pity": {
+    "enabled_by_default": true,
+    "guaranteed_rarity_every": 50,
+    "guaranteed_rarity_min_rank": 4,
+    "guaranteed_upgrade_after": 120,
+    "forced_upgrade_power_ratio": 0.035
+  },
+  "profiles": {
+    "f2p": {
+      "daily_quest_chests": 10,
+      "offline_chests": 12,
+      "pass_chests": 0,
+      "paid_chests_daily_limit": 0,
+      "active_combat_seconds": 1800,
+      "skill_damage_bonus_day_365": 0.22,
+      "companion_damage_bonus_day_365": 0.16,
+      "companion_hp_bonus_day_365": 0.2
+    },
+    "low_spender": {
+      "daily_quest_chests": 10,
+      "offline_chests": 12,
+      "pass_chests": 8,
+      "paid_chests_daily_limit": 5,
+      "active_combat_seconds": 2100,
+      "skill_damage_bonus_day_365": 0.3,
+      "companion_damage_bonus_day_365": 0.22,
+      "companion_hp_bonus_day_365": 0.28
+    },
+    "mid_spender": {
+      "daily_quest_chests": 10,
+      "offline_chests": 12,
+      "pass_chests": 15,
+      "paid_chests_daily_limit": 18,
+      "active_combat_seconds": 2400,
+      "skill_damage_bonus_day_365": 0.4,
+      "companion_damage_bonus_day_365": 0.3,
+      "companion_hp_bonus_day_365": 0.38
+    },
+    "whale": {
+      "daily_quest_chests": 10,
+      "offline_chests": 12,
+      "pass_chests": 25,
+      "paid_chests_daily_limit": 45,
+      "active_combat_seconds": 2700,
+      "skill_damage_bonus_day_365": 0.55,
+      "companion_damage_bonus_day_365": 0.42,
+      "companion_hp_bonus_day_365": 0.52
+    }
+  }
+}
