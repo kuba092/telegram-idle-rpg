@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import api
 from combat_effects import (
+    BattleStateStore,
     COMPANION_EFFECTS,
     CombatContext,
     CombatEffectEngine,
@@ -113,6 +114,65 @@ class CombatEffectEngineTest(unittest.TestCase):
             "forest_sprite", "baby_slime", "spore_beetle", "mushroom_owl",
             "thorn_wolf", "ancient_entling",
         })
+
+    def test_battle_state_isolated_reset_and_identity(self):
+        store = BattleStateStore(max_entries=2, ttl_seconds=10)
+        first = store.get(1, (1, 0, False, 30), now=1)
+        other = store.get(2, (1, 0, False, 30), now=1)
+        self.assertEqual(store.use_skill(first, "spore_strike", True), (0, 0.0))
+        self.assertEqual(store.use_skill(first, "spore_strike", True), (1, 0.1))
+        self.assertEqual(store.use_skill(other, "spore_strike", True), (0, 0.0))
+        changed = store.get(1, (1, 1, False, 30), now=2)
+        self.assertEqual(store.use_skill(changed, "spore_strike", True), (0, 0.0))
+        store.reset(1)
+        self.assertIsNone(store.peek(1, (1, 1, False, 30), now=2))
+
+    def test_owl_repeat_is_per_skill_and_capped(self):
+        store = BattleStateStore()
+        state = store.get(1, (1,), now=1)
+        self.assertEqual(store.use_skill(state, "spore_strike", True), (0, 0.0))
+        self.assertEqual(store.use_skill(state, "mushroom_shield", True), (0, 0.0))
+        self.assertEqual(store.use_skill(state, "spore_strike", True), (1, 0.1))
+        result = None
+        for _ in range(8):
+            result = store.use_skill(state, "spore_strike", True)
+        self.assertEqual(result, (5, 0.5))
+        self.assertEqual(store.use_skill(state, "poison_cloud", False), (0, 0.0))
+
+    def test_poison_completion_requires_five_ticks_and_caps(self):
+        store = BattleStateStore()
+        state = store.get(1, (1,), now=1)
+        store.begin_poison(state, True)
+        self.assertFalse(store.record_poison_ticks(state, 4))
+        self.assertEqual(state.stacks("poison_completion", "poison_cloud"), 0)
+        self.assertTrue(store.record_poison_ticks(state, 1))
+        for _ in range(5):
+            _, owl_bonus, _, poison_bonus = store.begin_poison(state, True)
+            store.record_poison_ticks(state, 5)
+        self.assertEqual(state.stacks("poison_completion", "poison_cloud"), 3)
+        self.assertAlmostEqual(poison_bonus, 0.3)
+        self.assertGreater(owl_bonus, 0)
+        # Fixed order: base * Owl * completed-cloud.
+        self.assertAlmostEqual(100 * (1 + owl_bonus) * (1 + poison_bonus), 195)
+
+    def test_shield_mitigation_refreshes_without_stacking(self):
+        store = BattleStateStore()
+        state = store.get(1, (1,), now=1)
+        self.assertEqual(store.mitigation_remaining(state, 1), 0)
+        store.break_shield(state, 2)
+        self.assertEqual(store.mitigation_remaining(state, 3), 2)
+        self.assertEqual(store.incoming_damage_multiplier(state, 3), 0.9)
+        store.break_shield(state, 4)
+        self.assertEqual(store.mitigation_remaining(state, 4), 3)
+        self.assertEqual(state.stacks("shield_mitigation", "mushroom_shield"), 1)
+        self.assertEqual(store.mitigation_remaining(state, 7), 0)
+
+    def test_battle_store_is_bounded(self):
+        store = BattleStateStore(max_entries=2, ttl_seconds=100)
+        store.get(1, (1,), now=1)
+        store.get(2, (1,), now=2)
+        store.get(3, (1,), now=3)
+        self.assertLessEqual(len(store), 2)
 
 
 if __name__ == "__main__":

@@ -7082,6 +7082,22 @@ id="companionSummonChances"
       if (!battleRunning || !player?.can_attack) return;
       clearTimeout(heroAttackTimer); heroAttackTimer = setTimeout(performAttack, Math.max(.1, Number(seconds || 1)) * 1000);
     }
+    function combatEffectSuffix(result) {
+      const effects = result?.battle_effects || {};
+      const parts = [];
+      const owlStacks = effects.owl_repeat_stacks || {};
+      const owlTotal = Object.values(owlStacks).reduce(
+        (sum, value) => sum + Number(value || 0), 0
+      );
+      if (owlTotal > 0) parts.push(`🦉 повторы: ${owlTotal}`);
+      if (Number(effects.poison_completion_stacks || 0) > 0) {
+        parts.push(`☁️ завершённые облака: ${Number(effects.poison_completion_stacks)}/3`);
+      }
+      if (effects.shield_mitigation_active) {
+        parts.push(`🛡️ защита: ${Number(effects.shield_mitigation_remaining || 0).toFixed(1)}с`);
+      }
+      return parts.length ? ` · ${parts.join(" · ")}` : "";
+    }
     function scheduleMonsterAttack(seconds) {
     if (!battleRunning || !player?.can_attack || heroDefeated) return;
 
@@ -7130,12 +7146,12 @@ id="companionSummonChances"
           || Number(player.damage || 0) + companionDamage;
         showDamage(displayedDamage, result.critical);
         if (result.enemy_defeated) {
-          setMessage(result.message || "Враг побеждён");
+          setMessage((result.message || "Враг побеждён") + combatEffectSuffix(result));
           await animateEnemyDefeat(result);
           try { telegram.HapticFeedback?.notificationOccurred("success"); } catch (_) {}
         } else {
           player = result; renderPlayer(); animateEnemyHit();
-          setMessage(result.message || `Нанесено ${result.damage_dealt} урона`);
+          setMessage((result.message || `Нанесено ${result.damage_dealt} урона`) + combatEffectSuffix(result));
           try { telegram.HapticFeedback?.impactOccurred("light"); } catch (_) {}
         }
         syncBattleState();
@@ -7165,7 +7181,7 @@ id="companionSummonChances"
         }
         elements.enemySprite.src = currentMonster.attack; elements.enemySprite.className = "fighter-sprite anim-enemy-attack";
         await wait(180); elements.heroSprite.src = HERO_ASSETS.hit; elements.heroSprite.className = "fighter-sprite anim-hero-hit";
-        restartAnimation(elements.heroHitFlash, "fx-hero-hit"); setMessage(result.message);
+        restartAnimation(elements.heroHitFlash, "fx-hero-hit"); setMessage((result.message || "") + combatEffectSuffix(result));
         try { telegram.HapticFeedback?.impactOccurred("medium"); } catch (_) {}
         restoreEnemyIdle(510);
         if (result.hero_defeated) { await handleHeroDefeat(); return; }

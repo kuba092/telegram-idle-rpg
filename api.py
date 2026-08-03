@@ -14,6 +14,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from combat_effects import (
+    BattleStateStore,
     SKILL_EFFECTS,
     CombatContext,
     CombatEffectEngine,
@@ -54,6 +55,51 @@ POISON_CLOUD_TICK_SECONDS = SKILL_EFFECTS["poison_cloud"]["tick_seconds"]
 POISON_CLOUD_COOLDOWN_SECONDS = SKILL_EFFECTS["poison_cloud"]["cooldown_seconds"]
 
 COMBAT_EFFECT_ENGINE = CombatEffectEngine()
+BATTLE_STATES = BattleStateStore()
+
+
+def battle_identity(player: dict) -> tuple:
+    """Identity of the currently spawned campaign enemy (HP is deliberately excluded)."""
+    return (
+        int(player.get("stage", 1)),
+        int(player.get("kills_in_stage", 0)),
+        bool(int(player.get("boss_active", 0))),
+        int(player.get("enemy_max_hp", 0)),
+    )
+
+
+def owl_is_active(player: dict) -> bool:
+    return any(
+        effect[0].effect_id == "mushroom_owl"
+        for effect in active_companion_sources(
+            normalize_companion_slots(
+                player.get("companion_slots_json"),
+                normalize_companion_collection(player.get("companions_collection_json")),
+            ),
+            normalize_companion_collection(player.get("companions_collection_json")),
+            sum(int(player.get("level", 1)) >= value for value in COMPANION_SLOT_UNLOCK_LEVELS),
+        )
+    )
+
+
+def public_battle_effects(player: dict, now: float | None = None) -> dict:
+    current_time = time.time() if now is None else now
+    state = BATTLE_STATES.peek(int(player.get("telegram_id", 0)), battle_identity(player), current_time)
+    owl = {
+        effect.source_id: min(5, max(0, effect.stack_count - 1))
+        for effect in (state.temporary_effects if state else [])
+        if effect.effect_id == "mushroom_owl_repeat"
+    }
+    poison_stacks = state.stacks("poison_completion", "poison_cloud") if state else 0
+    mitigation_remaining = BATTLE_STATES.mitigation_remaining(state, current_time)
+    return {
+        "owl_repeat_stacks": owl,
+        "owl_repeat_bonus": {skill_id: round(stacks * .10, 4) for skill_id, stacks in owl.items()},
+        "poison_completion_stacks": poison_stacks,
+        "poison_stack_bonus": round(poison_stacks * .10, 4),
+        "shield_mitigation_active": mitigation_remaining > 0,
+        "shield_mitigation_remaining": round(mitigation_remaining, 3),
+    }
 
 # COMPANION_SYSTEM_CONSTANTS_V1
 COMPANION_SYSTEM_UNLOCK_LEVEL = 10
@@ -1250,6 +1296,7 @@ def calculate_companion_effects(player: dict) -> dict:
         "damage_multiplier": round(stats.damage_multiplier, 4),
         "hp_multiplier": round(stats.max_hp_multiplier, 4),
         "extra_attack_damage": extra_attack_damage,
+        "attack_speed_multiplier": round(stats.attack_speed_multiplier, 4),
         "skill_cooldown_multiplier": round(stats.cooldown_multiplier, 4),
         "crit_chance_bonus": round(stats.crit_chance_bonus, 4),
         "crit_damage_bonus": round(stats.crit_damage_bonus, 4),
@@ -2566,8 +2613,13 @@ def public_pending_loot(player: dict) -> dict | None:
 
 
 def build_player_response(player: dict, **extra) -> dict:
+    current_time = time.time()
     attack_speed = max(0.1, float(player.get("attack_speed", 1.0)))
-    attack_interval = max(MIN_ATTACK_INTERVAL, 1 / attack_speed)
+    companion_effects = calculate_companion_effects(player)
+    attack_interval = max(
+        MIN_ATTACK_INTERVAL,
+        1 / (attack_speed * float(companion_effects["attack_speed_multiplier"])),
+    )
     boss_active = bool(int(player.get("boss_active", 0)))
     boss_waiting = bool(int(player.get("boss_waiting", 0)))
     game_completed = bool(int(player.get("game_completed", 0)))
@@ -2670,6 +2722,15 @@ def build_player_response(player: dict, **extra) -> dict:
         round(
             effective_max_hp_for_skills
             * shield_hp_ratio
+            * (
+                BATTLE_STATES.peek(
+                    int(player.get("telegram_id", 0)), battle_identity(player), current_time
+                ).shield_capacity_multiplier
+                if BATTLE_STATES.peek(
+                    int(player.get("telegram_id", 0)), battle_identity(player), current_time
+                ) is not None
+                else 1.0
+            )
         ),
     )
     shield_amount = max(
@@ -2690,7 +2751,6 @@ def build_player_response(player: dict, **extra) -> dict:
     poison_next_tick_at = float(
         player.get("poison_cloud_next_tick_at", 0)
     )
-    current_time = time.time()
     poison_cooldown_remaining = (
         0.0
         if poison_last_used_at <= 0
@@ -2732,7 +2792,7 @@ def build_player_response(player: dict, **extra) -> dict:
         level >= unlock_level
         for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
     )
-    companion_effects = calculate_companion_effects(player)
+    battle_effects = public_battle_effects(player)
     hp_multiplier = float(companion_effects["hp_multiplier"])
     effective_hero_max_hp = max(
         1,
@@ -2873,6 +2933,7 @@ def build_player_response(player: dict, **extra) -> dict:
             "collection": companion_collection,
         },
         "companion_effects": companion_effects,
+        "battle_effects": battle_effects,
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
         "crit_damage": stats["total"]["crit_damage"],
@@ -3573,7 +3634,11 @@ def attack(
                 message="Нажмите кнопку «Босс», чтобы начать реванш",
             )
         attack_speed = max(0.1, float(current["attack_speed"]))
-        attack_interval = max(MIN_ATTACK_INTERVAL, 1 / attack_speed)
+        rate_effects = calculate_companion_effects(current)
+        attack_interval = max(
+            MIN_ATTACK_INTERVAL,
+            1 / (attack_speed * float(rate_effects["attack_speed_multiplier"])),
+        )
         elapsed = now - float(current["last_attack_at"])
         if current["last_attack_at"] > 0 and elapsed < attack_interval:
             connection.commit()
@@ -3603,6 +3668,7 @@ def attack(
         )
         spore_elapsed = now - spore_last_used_at
         companion_effects = calculate_companion_effects(current)
+        battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
         spore_cooldown_seconds = (
             SPORE_STRIKE_COOLDOWN_SECONDS
             * companion_effects["skill_cooldown_multiplier"]
@@ -3647,9 +3713,16 @@ def attack(
             )
 
         use_spore_strike = manual_spore or auto_spore
+        owl_repeat_stacks = 0
+        owl_repeat_bonus = 0.0
+        if use_spore_strike:
+            owl_repeat_stacks, owl_repeat_bonus = BATTLE_STATES.use_skill(
+                battle_state, "spore_strike", owl_is_active(current)
+            )
         damage_multiplier = (
             float(SKILL_EFFECTS["spore_strike"]["damage_multiplier"])
             * skill_power_multiplier(spore_state["level"])
+            * (1.0 + owl_repeat_bonus)
             if use_spore_strike
             else 1.0
         )
@@ -3694,6 +3767,9 @@ def attack(
             poison_until = now + POISON_CLOUD_DURATION_SECONDS
             poison_next_tick_at = now + POISON_CLOUD_TICK_SECONDS
             poison_active = True
+            BATTLE_STATES.begin_poison(
+                battle_state, owl_is_active(current)
+            )
 
         poison_ticks = 0
         poison_damage = 0
@@ -3724,11 +3800,14 @@ def attack(
                         * calculate_companion_effects(current)[
                             "damage_multiplier"
                         ]
+                        * (1.0 + battle_state.poison_owl_bonus)
+                        * (1.0 + battle_state.poison_stack_bonus)
                     ),
                 )
                 poison_damage = (
                     poison_damage_per_tick * poison_ticks
                 )
+                BATTLE_STATES.record_poison_ticks(battle_state, poison_ticks)
 
             if now >= poison_until:
                 poison_until = 0.0
@@ -3954,6 +4033,9 @@ def attack(
                 ),
             )
 
+        if enemy_defeated:
+            BATTLE_STATES.reset(telegram_id)
+
         sync_player_stats(connection, telegram_id)
         connection.commit()
         updated = load_player(connection, telegram_id)
@@ -3999,6 +4081,8 @@ def attack(
         experience_reward=experience_reward,
         reward=0,
         message=message,
+        owl_repeat_stacks=owl_repeat_stacks,
+        owl_repeat_bonus=round(owl_repeat_bonus, 4),
     )
 
 
@@ -4065,6 +4149,10 @@ def use_poison_cloud(
 
         poison_until = now + POISON_CLOUD_DURATION_SECONDS
         poison_next_tick_at = now + POISON_CLOUD_TICK_SECONDS
+        battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
+        owl_repeat_stacks, owl_repeat_bonus, poison_completion_stacks, poison_stack_bonus = (
+            BATTLE_STATES.begin_poison(battle_state, owl_is_active(current))
+        )
 
         connection.execute(
             """
@@ -4092,6 +4180,10 @@ def use_poison_cloud(
         updated,
         poison_used=True,
         skill_used="poison_cloud",
+        owl_repeat_stacks=owl_repeat_stacks,
+        owl_repeat_bonus=round(owl_repeat_bonus, 4),
+        poison_completion_stacks=poison_completion_stacks,
+        poison_stack_bonus=round(poison_stack_bonus, 4),
         message="☁️ Poison Cloud активировано на 5 секунд",
     )
 
@@ -4155,6 +4247,10 @@ def use_mushroom_shield(
                 message=f"🛡️ Mushroom Shield: ещё {remaining:.1f} сек.",
             )
 
+        battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
+        owl_repeat_stacks, owl_repeat_bonus = BATTLE_STATES.begin_shield(
+            battle_state, owl_is_active(current)
+        )
         shield_capacity = max(
             1,
             round(
@@ -4163,6 +4259,11 @@ def use_mushroom_shield(
                 * MUSHROOM_SHIELD_HP_RATIO
                 * skill_power_multiplier(
                     shield_state["level"]
+                )
+                * (
+                    BATTLE_STATES.peek(telegram_id, battle_identity(current), now).shield_capacity_multiplier
+                    if BATTLE_STATES.peek(telegram_id, battle_identity(current), now) is not None
+                    else 1.0
                 )
             ),
         )
@@ -4185,6 +4286,8 @@ def use_mushroom_shield(
         updated,
         shield_used=True,
         shield_gained=shield_capacity,
+        owl_repeat_stacks=owl_repeat_stacks,
+        owl_repeat_bonus=round(owl_repeat_bonus, 4),
         skill_used="mushroom_shield",
         message=f"🛡️ Mushroom Shield: {shield_capacity} защиты",
     )
@@ -4253,7 +4356,7 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             current,
             "mushroom_shield",
         )
-        shield_capacity = max(
+        base_shield_capacity = max(
             1,
             round(
                 hero_max_hp
@@ -4262,6 +4365,10 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
                     shield_state["level"]
                 )
             ),
+        )
+        battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
+        shield_capacity = max(
+            1, round(base_shield_capacity * battle_state.shield_capacity_multiplier)
         )
         shield_amount = max(
             0,
@@ -4292,16 +4399,31 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         )
 
         if shield_auto_used:
+            _, auto_shield_bonus = BATTLE_STATES.begin_shield(
+                battle_state, owl_is_active(current)
+            )
+            shield_capacity = max(1, round(base_shield_capacity * (1.0 + auto_shield_bonus)))
             shield_amount = shield_capacity
             shield_last_used_at = now
 
-        incoming_damage = calculate_enemy_damage(
+        raw_incoming_damage = calculate_enemy_damage(
             stage,
             boss=boss_active,
         )
+        mitigation_remaining = BATTLE_STATES.mitigation_remaining(battle_state, now)
+        incoming_damage = round(
+            raw_incoming_damage
+            * BATTLE_STATES.incoming_damage_multiplier(battle_state, now)
+        )
+        damage_reduced_by_effect = raw_incoming_damage - incoming_damage
+        shield_before_damage = shield_amount
         absorbed_damage = min(shield_amount, incoming_damage)
         received_damage = max(0, incoming_damage - absorbed_damage)
         shield_amount -= absorbed_damage
+        shield_broken = shield_before_damage > 0 and shield_amount == 0
+        if shield_broken:
+            BATTLE_STATES.break_shield(battle_state, now)
+            mitigation_remaining = 3.0
 
         effective_hero_hp = max(0, hero_hp_before - received_damage)
         hero_defeated = effective_hero_hp <= 0
@@ -4323,6 +4445,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             boss_waiting = 1
             enemy_max_hp = calculate_enemy_hp(stage, boss=True)
             enemy_hp = enemy_max_hp
+        if hero_defeated:
+            BATTLE_STATES.reset(telegram_id)
         connection.execute(
             """
             UPDATE players
@@ -4373,6 +4497,10 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         enemy_attacked=True,
         hero_defeated=hero_defeated,
         incoming_damage=incoming_damage,
+        raw_incoming_damage=raw_incoming_damage,
+        damage_reduced_by_effect=damage_reduced_by_effect,
+        shield_mitigation_active=(not hero_defeated and mitigation_remaining > 0),
+        shield_mitigation_remaining=(0.0 if hero_defeated else round(mitigation_remaining, 3)),
         received_damage=received_damage,
         absorbed_damage=absorbed_damage,
         shield_remaining=shield_amount,
@@ -4391,6 +4519,7 @@ def respawn(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
+    BATTLE_STATES.reset(telegram_id)
     now = time.time()
     connection = get_database()
     try:
@@ -4444,6 +4573,7 @@ def start_boss(x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
+    BATTLE_STATES.reset(telegram_id)
     now = time.time()
     connection = get_database()
     try:

@@ -144,6 +144,31 @@ class CompanionEffectsTest(unittest.TestCase):
         self.assertEqual(response["companion_damage"], 56)
         self.assertEqual(response["damage_dealt"], 156)
 
+    def test_spore_beetle_attack_speed_levels_and_skill_cooldown(self):
+        collection = self.collection(spore_beetle=20)
+        self.set_state(collection, ["spore_beetle", None, None], attack_speed=1.0)
+        response = api.build_player_response(self.player())
+        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"], 1.13)
+        self.assertAlmostEqual(response["attack_interval"], 1 / 1.13)
+        self.assertEqual(response["skills"]["spore_strike"]["cooldown_seconds"], 8.0)
+
+        collection = self.collection(spore_beetle=10)
+        self.set_state(collection, ["spore_beetle", None, None], attack_speed=1.0)
+        response = api.build_player_response(self.player())
+        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"], 1.065)
+
+    def test_spore_beetle_speed_removed_or_in_closed_slot(self):
+        collection = self.collection(spore_beetle=20)
+        self.set_state(collection, [None, None, None], attack_speed=1.0)
+        self.assertEqual(api.build_player_response(self.player())["attack_interval"], 1.0)
+        self.set_state(
+            collection, [None, "spore_beetle", None], attack_speed=1.0,
+            level=10, experience=api.LEVEL_TOTAL_EXP[10],
+        )
+        response = api.build_player_response(self.player())
+        self.assertEqual(response["companion_effects"]["attack_speed_multiplier"], 1.0)
+        self.assertEqual(response["attack_interval"], 1.0)
+
     def test_unequipped_companion_has_no_effect(self):
         collection = self.collection(forest_sprite=5, baby_slime=5, spore_beetle=5)
         self.set_state(collection, [None, None, None])

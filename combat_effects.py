@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from threading import RLock
+import time
 from typing import Any, Callable, Iterable
 
 
@@ -128,7 +130,7 @@ class EffectDefinition:
 COMPANION_EFFECTS: dict[str, EffectDefinition] = {
     "forest_sprite": EffectDefinition("forest_sprite", "companion", modifiers_per_level={"damage_multiplier": .013}, description="Увеличивает итоговый урон героя на 1,3% за уровень."),
     "baby_slime": EffectDefinition("baby_slime", "companion", modifiers_per_level={"max_hp_multiplier": .015}, description="Увеличивает максимальный HP героя на 1,5% за уровень."),
-    "spore_beetle": EffectDefinition("spore_beetle", "companion", events=(CombatEvent.BEFORE_NORMAL_ATTACK,), custom_per_level={"extra_attack_ratio": .028}, description="Добавляет к обычной атаке 2,8% базового урона героя за уровень."),
+    "spore_beetle": EffectDefinition("spore_beetle", "companion", modifiers_per_level={"attack_speed_multiplier": .0065}, events=(CombatEvent.BEFORE_NORMAL_ATTACK,), custom_per_level={"extra_attack_ratio": .028}, description="Добавляет к обычной атаке 2,8% базового урона героя и 0,65% скорости обычной атаки за уровень."),
     "mushroom_owl": EffectDefinition("mushroom_owl", "companion", modifiers_per_level={"cooldown_multiplier": -.015}, description="Снижает время перезарядки всех навыков на 1,5% за уровень (до 30%)."),
     "thorn_wolf": EffectDefinition("thorn_wolf", "companion", modifiers_per_level={"crit_chance_bonus": .75, "crit_damage_bonus": 1.0}, description="Даёт +0,75 п.п. к шансу крита и +1% к критическому урону за уровень.", public_extra=lambda level: {"crit_damage_bonus": round(level * 1.0, 4)}),
     "ancient_entling": EffectDefinition("ancient_entling", "companion", events=(CombatEvent.ENEMY_KILLED, CombatEvent.BOSS_KILLED), custom_per_level={"victory_healing_ratio": .006}, description="Восстанавливает 0,6% максимального HP за уровень после победы и вдвое больше после босса."),
@@ -143,7 +145,146 @@ SKILL_EFFECTS: dict[str, dict[str, Any]] = {
 # New temporary effects must be registered before persisted/client supplied IDs are accepted.
 TEMPORARY_EFFECT_DEFINITIONS: dict[str, dict[str, Any]] = {
     "poison_cloud": {"events": (CombatEvent.POISON_TICK,)},
+    "mushroom_owl_repeat": {"events": (CombatEvent.BEFORE_SKILL,)},
+    "poison_completion": {"events": (CombatEvent.POISON_TICK,)},
+    "shield_mitigation": {"events": (CombatEvent.BEFORE_RECEIVE_DAMAGE,)},
 }
+
+
+@dataclass
+class BattleState:
+    """Short-lived state for exactly one spawned enemy."""
+
+    identity: tuple[Any, ...]
+    temporary_effects: list[TemporaryEffect] = field(default_factory=list)
+    poison_ticks: int = 0
+    poison_owl_bonus: float = 0.0
+    poison_stack_bonus: float = 0.0
+    shield_capacity_multiplier: float = 1.0
+    last_seen: float = 0.0
+
+    def effect(self, effect_id: str, source_id: str = "") -> TemporaryEffect | None:
+        return next((effect for effect in self.temporary_effects if effect.effect_id == effect_id and (not source_id or effect.source_id == source_id)), None)
+
+    def stacks(self, effect_id: str, source_id: str = "") -> int:
+        effect = self.effect(effect_id, source_id)
+        return effect.stack_count if effect else 0
+
+
+class BattleStateStore:
+    """Bounded, process-local battle state. Entries never persist to the database."""
+
+    def __init__(self, max_entries: int = 4096, ttl_seconds: float = 3600.0) -> None:
+        self.max_entries = max(1, max_entries)
+        self.ttl_seconds = max(1.0, ttl_seconds)
+        self._states: dict[int, BattleState] = {}
+        self._lock = RLock()
+
+    def _prune(self, now: float) -> None:
+        expired = [key for key, state in self._states.items() if now - state.last_seen > self.ttl_seconds]
+        for key in expired:
+            self._states.pop(key, None)
+        if len(self._states) >= self.max_entries:
+            oldest = sorted(self._states, key=lambda key: self._states[key].last_seen)
+            for key in oldest[:len(self._states) - self.max_entries + 1]:
+                self._states.pop(key, None)
+
+    def get(self, player_id: int, identity: tuple[Any, ...], now: float | None = None) -> BattleState:
+        current_time = time.time() if now is None else now
+        with self._lock:
+            self._prune(current_time)
+            state = self._states.get(player_id)
+            if state is None or state.identity != identity:
+                state = BattleState(identity=identity, last_seen=current_time)
+                self._states[player_id] = state
+            state.last_seen = current_time
+            state.temporary_effects = [effect for effect in state.temporary_effects if effect.remaining_duration <= 0 or effect.remaining_duration > current_time]
+            return state
+
+    def peek(self, player_id: int, identity: tuple[Any, ...], now: float | None = None) -> BattleState | None:
+        current_time = time.time() if now is None else now
+        with self._lock:
+            state = self._states.get(player_id)
+            if state is None or state.identity != identity:
+                return None
+            state.temporary_effects = [effect for effect in state.temporary_effects if effect.remaining_duration <= 0 or effect.remaining_duration > current_time]
+            return state
+
+    def reset(self, player_id: int) -> None:
+        with self._lock:
+            self._states.pop(player_id, None)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._states.clear()
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._states)
+
+    @staticmethod
+    def _add_stack(state: BattleState, effect_id: str, source_id: str, max_stacks: int) -> int:
+        effect = state.effect(effect_id, source_id)
+        if effect is None:
+            effect = TemporaryEffect(effect_id, 0, 0, 1, max_stacks, source_type="combat", source_id=source_id)
+            state.temporary_effects.append(effect)
+        else:
+            effect.stack_count = min(max_stacks, effect.stack_count + 1)
+        return effect.stack_count
+
+    def use_skill(self, state: BattleState, skill_id: str, owl_active: bool) -> tuple[int, float]:
+        if not owl_active:
+            return 0, 0.0
+        repeats = state.stacks("mushroom_owl_repeat", skill_id)
+        bonus = min(5, repeats) * .10
+        # Store applications (up to six) so public repeat stacks remain 0 after
+        # the first cast and reach five after the sixth cast.
+        self._add_stack(state, "mushroom_owl_repeat", skill_id, 6)
+        return min(5, repeats), bonus
+
+    def begin_poison(self, state: BattleState, owl_active: bool) -> tuple[int, float, int, float]:
+        owl_stacks, owl_bonus = self.use_skill(state, "poison_cloud", owl_active)
+        completion_stacks = state.stacks("poison_completion", "poison_cloud")
+        state.poison_ticks = 0
+        state.poison_owl_bonus = owl_bonus
+        state.poison_stack_bonus = completion_stacks * .10
+        return owl_stacks, owl_bonus, completion_stacks, state.poison_stack_bonus
+
+    def begin_shield(self, state: BattleState, owl_active: bool) -> tuple[int, float]:
+        stacks, bonus = self.use_skill(state, "mushroom_shield", owl_active)
+        state.shield_capacity_multiplier = 1.0 + bonus
+        return stacks, bonus
+
+    def record_poison_ticks(self, state: BattleState, ticks: int) -> bool:
+        before = state.poison_ticks
+        state.poison_ticks = min(5, state.poison_ticks + max(0, ticks))
+        if before < 5 and state.poison_ticks == 5:
+            self._add_stack(state, "poison_completion", "poison_cloud", 3)
+            return True
+        return False
+
+    def break_shield(self, state: BattleState, now: float) -> None:
+        effect = state.effect("shield_mitigation", "mushroom_shield")
+        if effect is None:
+            state.temporary_effects.append(TemporaryEffect(
+                "shield_mitigation", 3.0, now + 3.0, source_type="skill",
+                source_id="mushroom_shield", modifiers={"incoming_damage_multiplier": .90},
+            ))
+        else:
+            effect.remaining_duration = now + 3.0
+
+    def mitigation_remaining(self, state: BattleState | None, now: float) -> float:
+        effect = state.effect("shield_mitigation", "mushroom_shield") if state else None
+        return max(0.0, effect.remaining_duration - now) if effect else 0.0
+
+    def incoming_damage_multiplier(self, state: BattleState | None, now: float) -> float:
+        stats = CombatStats()
+        for effect in sorted(
+            state.temporary_effects if state else [], key=lambda item: (item.effect_id, item.source_id)
+        ):
+            if effect.remaining_duration > now and effect.modifiers:
+                stats.apply(effect.modifiers)
+        return stats.incoming_damage_multiplier
 
 
 class CombatEffectEngine:
