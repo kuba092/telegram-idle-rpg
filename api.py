@@ -407,6 +407,10 @@ DAILY_QUEST_DEFINITIONS = {
 }
 
 DAILY_ALL_QUESTS_REWARD_SCROLLS = 3
+
+# COMPANION_DAILY_REWARDS_V1
+DAILY_ALL_QUESTS_REWARD_COMPANION_SCROLLS = 3
+
 DAILY_ALL_QUESTS_ID = "daily_complete"
 
 ENEMY_ATTACK_SPEED = 0.5
@@ -1990,6 +1994,10 @@ def build_daily_quests(player: dict) -> dict:
     claims = normalize_daily_claims(
         player.get("daily_quests_claimed_json")
     )
+    companion_rewards_unlocked = (
+        int(player.get("level", 1))
+        >= COMPANION_SYSTEM_UNLOCK_LEVEL
+    )
     quests = []
     completed_count = 0
     claimed_count = 0
@@ -2024,6 +2032,11 @@ def build_daily_quests(player: dict) -> dict:
                     "skill_scrolls": int(
                         definition["scrolls"]
                     ),
+                    "companion_scrolls": (
+                        int(definition["scrolls"])
+                        if companion_rewards_unlocked
+                        else 0
+                    ),
                 },
             }
         )
@@ -2056,6 +2069,11 @@ def build_daily_quests(player: dict) -> dict:
             "claimable": bonus_unlocked and not all_claimed,
             "reward": {
                 "skill_scrolls": DAILY_ALL_QUESTS_REWARD_SCROLLS,
+                "companion_scrolls": (
+                    DAILY_ALL_QUESTS_REWARD_COMPANION_SCROLLS
+                    if companion_rewards_unlocked
+                    else 0
+                ),
             },
         },
     }
@@ -3237,17 +3255,25 @@ def claim_daily_quest(
                 )
 
             reward_scrolls = DAILY_ALL_QUESTS_REWARD_SCROLLS
+            reward_companion_scrolls = (
+                DAILY_ALL_QUESTS_REWARD_COMPANION_SCROLLS
+                if int(current.get("level", 1))
+                >= COMPANION_SYSTEM_UNLOCK_LEVEL
+                else 0
+            )
 
             connection.execute(
                 """
                 UPDATE players
                 SET skill_scrolls = skill_scrolls + ?,
+                    companion_scrolls = companion_scrolls + ?,
                     daily_all_claimed = 1,
                     updated_at = ?
                 WHERE telegram_id = ?
                 """,
                 (
                     reward_scrolls,
+                    reward_companion_scrolls,
                     int(time.time()),
                     telegram_id,
                 ),
@@ -3293,18 +3319,26 @@ def claim_daily_quest(
 
             claims[quest_id] = True
             reward_scrolls = int(definition["scrolls"])
+            reward_companion_scrolls = (
+                reward_scrolls
+                if int(current.get("level", 1))
+                >= COMPANION_SYSTEM_UNLOCK_LEVEL
+                else 0
+            )
             quest_name = str(definition["name"])
 
             connection.execute(
                 """
                 UPDATE players
                 SET skill_scrolls = skill_scrolls + ?,
+                    companion_scrolls = companion_scrolls + ?,
                     daily_quests_claimed_json = ?,
                     updated_at = ?
                 WHERE telegram_id = ?
                 """,
                 (
                     reward_scrolls,
+                    reward_companion_scrolls,
                     json.dumps(
                         claims,
                         ensure_ascii=False,
@@ -3325,9 +3359,18 @@ def claim_daily_quest(
         quest_claimed=True,
         quest_id=quest_id,
         quest_reward_scrolls=reward_scrolls,
+        quest_reward_companion_scrolls=(
+            reward_companion_scrolls
+        ),
         message=(
             f"✅ {quest_name}: "
-            f"+{reward_scrolls} свитк."
+            f"+{reward_scrolls} свитк. навыков"
+            + (
+                f", +{reward_companion_scrolls} "
+                f"свитк. спутников"
+                if reward_companion_scrolls > 0
+                else ""
+            )
         ),
     )
 

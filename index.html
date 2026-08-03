@@ -7427,9 +7427,23 @@ id="companionSummonChances"
         ? (quest.completed ? 1 : 0)
         : Math.max(0, Math.min(1, progress / target));
 
+      // COMPANION_QUEST_REWARD_UI_V1
       const rewardScrolls = Number(
         quest.reward?.skill_scrolls || 0
       );
+      const rewardCompanionScrolls = Number(
+        quest.reward?.companion_scrolls || 0
+      );
+
+      const rewardParts = [
+        `📜 +${rewardScrolls}`,
+      ];
+
+      if (rewardCompanionScrolls > 0) {
+        rewardParts.push(
+          `🐾 +${rewardCompanionScrolls}`
+        );
+      }
 
       let buttonText = "В ПРОЦЕССЕ";
       let disabled = true;
@@ -7474,7 +7488,7 @@ id="companionSummonChances"
               </div>
             </div>
             <div class="quest-reward">
-              📜 +${rewardScrolls}
+              ${rewardParts.join("<br>")}
             </div>
           </div>
 
@@ -7614,6 +7628,7 @@ id="companionSummonChances"
         renderPlayer();
         renderDailyQuests();
         renderSkillShop();
+        renderCompanionShop();
 
         setMessage(
           player.message || "✅ Награда получена"
