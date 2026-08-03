@@ -14,6 +14,7 @@ import time
 import uuid
 from typing import Any, Callable, Iterable
 from progression_systems import companion_milestone_multiplier
+from awakening_system import mastery_multiplier, rank_multiplier
 
 
 class CombatEvent(str, Enum):
@@ -384,7 +385,13 @@ def active_companion_sources(equipped: Iterable[str | None], collection: dict[st
         definition = COMPANION_EFFECTS.get(companion_id or "")
         if definition is not None and bool(entry.get("owned")):
             level = max(1, int(entry.get("level", 1)))
-            sources.append((definition, level * companion_milestone_multiplier(level)))
+            role = ("healing" if companion_id == "ancient_entling" else
+                    "defensive" if companion_id in {"baby_slime", "moss_turtle"} else
+                    "utility" if companion_id in {"mushroom_owl", "thorn_wolf"} else "damage")
+            effective = (level * companion_milestone_multiplier(level)
+                         * rank_multiplier(entry, "companion")
+                         * mastery_multiplier(entry, "companion", role))
+            sources.append((definition, effective))
     return sources
 
 

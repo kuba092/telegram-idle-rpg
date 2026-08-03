@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from typing import Any, Mapping
+from awakening_system import normalize_rank_state
 
 MAX_PROGRESSION_LEVEL = 50
 MILESTONE_LEVELS = (5, 10, 20, 30, 40, 50)
@@ -72,10 +73,9 @@ def progression_entry(raw: Any, *, owned_default: bool = True) -> dict:
 
     level = min(MAX_PROGRESSION_LEVEL, max(1, safe_int(entry.get("level", 1), 1)))
     return {"owned": bool(entry.get("owned", owned_default)), "level": level,
-            "fragments": max(0, safe_int(entry.get("fragments", 0), 0)),
             "experience": max(0, safe_int(entry.get("experience", 0), 0)),
             "upgrade_count": max(0, safe_int(entry.get("upgrade_count", level - 1), level - 1)),
-            "max_level": MAX_PROGRESSION_LEVEL}
+            "max_level": MAX_PROGRESSION_LEVEL, **normalize_rank_state(entry)}
 
 
 def skill_public(level: int, base_cooldown: float | None = None) -> dict:

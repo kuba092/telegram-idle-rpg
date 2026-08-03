@@ -57,6 +57,11 @@ from summon_system import (
     normalize_fragments, normalize_state as normalize_summon_state,
     public_banner, roll_rarity,
 )
+from awakening_system import (
+    MAX_RANK, MAX_AWAKENING_TIER, advance_awakening, advance_star,
+    awakening_cost, cooldown_multiplier as awakening_cooldown_multiplier,
+    mastery_multiplier, normalize_rank_state, public_rank, rank_multiplier, star_cost,
+)
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -208,7 +213,10 @@ def dot_snapshot(player: dict, skill_id: str, level: int, base_multiplier: float
     companions = calculate_companion_effects(player)
     boss = bool(int(player.get("boss_active", 0)))
     growth = float(SKILL_EFFECTS[skill_id].get("growth", 0.0))
-    level_multiplier = (1 + growth * (max(1, int(level)) - 1)) * skill_effective_multiplier(level)
+    rank_state = get_player_skill_state(player, skill_id)
+    rank_effect = rank_multiplier(rank_state, "skill") * mastery_multiplier(rank_state, "skill", "dot")
+    level_multiplier = ((1 + growth * (max(1, int(level)) - 1))
+                        * skill_effective_multiplier(level) * rank_effect)
     raw = max(1, round(
         int(player.get("damage", 0)) * base_multiplier * level_multiplier
         * equipment["skill_damage_multiplier"] * companions["damage_multiplier"]
@@ -219,6 +227,7 @@ def dot_snapshot(player: dict, skill_id: str, level: int, base_multiplier: float
         "base_damage": int(player.get("damage", 0)),
         "base_multiplier": base_multiplier, "skill_level": int(level),
         "skill_level_multiplier": level_multiplier,
+        "rank_version": rank_state["rank_version"], "rank_multiplier": rank_effect,
         "skill_damage": equipment["skill_damage_multiplier"],
         "boss_damage": equipment["boss_damage_multiplier"] if boss else 1.0,
         "poison_penetration": damage_penetration(equipment, "poison"),
@@ -1670,12 +1679,14 @@ def companion_skill_cooldown(player: dict, base_seconds: float) -> float:
 
 
 def effective_skill_cooldown(player: dict, skill_id: str, base_seconds: float) -> float:
-    level = get_player_skill_state(player, skill_id)["level"]
+    skill_state = get_player_skill_state(player, skill_id)
+    level = skill_state["level"]
     companion_reduction = 1.0 - float(
         calculate_companion_effects(player)["skill_cooldown_multiplier"]
     )
     milestone_reduction = 1.0 - skill_cooldown_multiplier(level)
-    total_reduction = min(.30, companion_reduction + milestone_reduction)
+    awakening_reduction = 1.0 - awakening_cooldown_multiplier(skill_state)
+    total_reduction = min(.30, companion_reduction + milestone_reduction + awakening_reduction)
     return float(base_seconds) * (1.0 - total_reduction)
 
 
@@ -1935,8 +1946,7 @@ def roll_companion_id(summon_level: int) -> str:
 
 
 def apply_companion_summon(
-    collection: dict,
-    companion_id: str,
+    collection: dict, fragments: dict, companion_id: str,
 ) -> dict:
     definition = COMPANION_CATALOG[companion_id]
     rarity = str(definition["rarity"])
@@ -1949,7 +1959,6 @@ def apply_companion_summon(
         collection[companion_id] = {
             "owned": True,
             "level": 1,
-            "fragments": 0,
         }
 
         return {
@@ -1962,7 +1971,7 @@ def apply_companion_summon(
             "fragments_gained": 0,
             "levels_gained": 0,
             "level": 1,
-            "fragments": 0,
+            "fragments": fragments.get(companion_id, 0),
         }
 
     companion_level = clamp_int(
@@ -1970,33 +1979,14 @@ def apply_companion_summon(
         1,
         COMPANION_MAX_LEVEL,
     )
-    fragments = max(
-        0,
-        int(entry.get("fragments", 0)),
-    )
+    fragment_balance = max(0, int(fragments.get(companion_id, 0)))
     fragments_gained = COMPANION_DUPLICATE_FRAGMENTS[
         rarity
     ]
-    fragments += fragments_gained
+    fragment_balance += fragments_gained
+    fragments[companion_id] = fragment_balance
     levels_gained = 0
-
-    while companion_level < COMPANION_MAX_LEVEL:
-        required = companion_fragments_required(
-            companion_level
-        )
-
-        if required <= 0 or fragments < required:
-            break
-
-        fragments -= required
-        companion_level += 1
-        levels_gained += 1
-
-    collection[companion_id] = {
-        "owned": True,
-        "level": companion_level,
-        "fragments": fragments,
-    }
+    collection[companion_id] = {**progression_entry(entry), "owned": True, "level": companion_level}
 
     return {
         "companion_id": companion_id,
@@ -2008,7 +1998,7 @@ def apply_companion_summon(
         "fragments_gained": fragments_gained,
         "levels_gained": levels_gained,
         "level": companion_level,
-        "fragments": fragments,
+        "fragments": fragment_balance,
     }
 
 
@@ -2111,8 +2101,7 @@ def roll_skill_id(summon_level: int) -> str:
 
 
 def apply_skill_summon(
-    collection: dict,
-    skill_id: str,
+    collection: dict, fragments: dict, skill_id: str,
 ) -> dict:
     definition = SKILL_CATALOG[skill_id]
     rarity = str(definition["rarity"])
@@ -2122,7 +2111,6 @@ def apply_skill_summon(
         collection[skill_id] = {
             "owned": True,
             "level": 1,
-            "fragments": 0,
         }
         return {
             "skill_id": skill_id,
@@ -2134,7 +2122,7 @@ def apply_skill_summon(
             "fragments_gained": 0,
             "levels_gained": 0,
             "level": 1,
-            "fragments": 0,
+            "fragments": fragments.get(skill_id, 0),
         }
 
     skill_level = clamp_int(
@@ -2142,26 +2130,12 @@ def apply_skill_summon(
         1,
         SKILL_MAX_LEVEL,
     )
-    fragments = max(0, int(entry.get("fragments", 0)))
+    fragment_balance = max(0, int(fragments.get(skill_id, 0)))
     fragments_gained = SKILL_DUPLICATE_FRAGMENTS[rarity]
-    fragments += fragments_gained
+    fragment_balance += fragments_gained
+    fragments[skill_id] = fragment_balance
     levels_gained = 0
-
-    while skill_level < SKILL_MAX_LEVEL:
-        required = skill_fragments_required(skill_level)
-
-        if required <= 0 or fragments < required:
-            break
-
-        fragments -= required
-        skill_level += 1
-        levels_gained += 1
-
-    collection[skill_id] = {
-        "owned": True,
-        "level": skill_level,
-        "fragments": fragments,
-    }
+    collection[skill_id] = {**progression_entry(entry), "owned": True, "level": skill_level}
 
     return {
         "skill_id": skill_id,
@@ -2173,7 +2147,7 @@ def apply_skill_summon(
         "fragments_gained": fragments_gained,
         "levels_gained": levels_gained,
         "level": skill_level,
-        "fragments": fragments,
+        "fragments": fragment_balance,
     }
 
 
@@ -2228,6 +2202,7 @@ def get_player_skill_state(
         ),
         "slot_unlocked": slot_unlocked,
         "available": owned and equipped and slot_unlocked,
+        **normalize_rank_state(entry),
     }
 
 
@@ -2237,6 +2212,15 @@ def skill_power_multiplier(skill_level: int) -> float:
         (skill_level - 1)
         * SKILL_POWER_PER_LEVEL
     )) * skill_effective_multiplier(skill_level)
+
+
+def player_skill_power_multiplier(player: dict, skill_id: str) -> float:
+    state = get_player_skill_state(player, skill_id)
+    role = ("dot" if skill_id in {"poison_cloud", "venom_spores"} else
+            "shield" if skill_id == "mushroom_shield" else
+            "control" if skill_id in {"binding_roots", "null_bloom"} else "instant")
+    return (skill_power_multiplier(state["level"]) * rank_multiplier(state, "skill")
+            * mastery_multiplier(state, "skill", role))
 
 
 def unavailable_skill_message(
@@ -2315,6 +2299,42 @@ def ensure_player_companion_data(
     )
 
 
+def migrate_embedded_fragments(connection: sqlite3.Connection, telegram_id: int) -> None:
+    """Move legacy per-entry fragments to canonical balances exactly once.
+
+    Removing the source key in the same transaction is the migration marker, so
+    retries after rollback and subsequent logins cannot credit it twice.
+    """
+    row = connection.execute(
+        "SELECT skills_collection_json,companions_collection_json,skill_fragments_json,companion_fragments_json FROM players WHERE telegram_id=?",
+        (telegram_id,),
+    ).fetchone()
+    if row is None:
+        return
+    updates = {}
+    for collection_field, fragment_field, catalog in (
+        ("skills_collection_json", "skill_fragments_json", SKILL_CATALOG),
+        ("companions_collection_json", "companion_fragments_json", COMPANION_CATALOG),
+    ):
+        collection = parse_json_object(row[collection_field])
+        balances = normalize_fragments(row[fragment_field], set(catalog))
+        changed = False
+        for entity_id, raw_entry in collection.items():
+            if entity_id not in catalog or not isinstance(raw_entry, dict) or "fragments" not in raw_entry:
+                continue
+            try: embedded = max(0, int(raw_entry.get("fragments", 0)))
+            except (TypeError, ValueError, OverflowError): embedded = 0
+            balances[entity_id] = balances.get(entity_id, 0) + embedded
+            raw_entry.pop("fragments", None)
+            changed = True
+        if changed:
+            updates[collection_field] = json.dumps(collection, ensure_ascii=False, separators=(",", ":"))
+            updates[fragment_field] = json.dumps(balances, ensure_ascii=False, separators=(",", ":"))
+    if updates:
+        assignments = ",".join(f"{field}=?" for field in updates)
+        connection.execute(f"UPDATE players SET {assignments} WHERE telegram_id=?", (*updates.values(), telegram_id))
+
+
 def ensure_player_skill_data(
     connection: sqlite3.Connection,
     telegram_id: int,
@@ -2388,6 +2408,7 @@ def get_or_create_player(user: dict, accrue_offline: bool = False) -> dict:
             """,
             (telegram_id, username, first_name, now, now, now, now),
         )
+        migrate_embedded_fragments(connection, telegram_id)
         ensure_player_skill_data(connection, telegram_id)
         ensure_player_companion_data(connection, telegram_id)
         ensure_daily_quest_state(
@@ -3049,15 +3070,15 @@ def build_player_response(player: dict, **extra) -> dict:
 
     spore_damage_multiplier = (
         SPORE_STRIKE_DAMAGE_MULTIPLIER
-        * skill_power_multiplier(spore_skill_state["level"])
+        * player_skill_power_multiplier(player, "spore_strike")
     )
     shield_hp_ratio = (
         MUSHROOM_SHIELD_HP_RATIO
-        * skill_power_multiplier(shield_skill_state["level"])
+        * player_skill_power_multiplier(player, "mushroom_shield")
     )
     poison_damage_multiplier = (
         POISON_CLOUD_DAMAGE_MULTIPLIER
-        * skill_power_multiplier(poison_skill_state["level"])
+        * player_skill_power_multiplier(player, "poison_cloud")
     )
 
     spore_last_used_at = float(
@@ -3555,13 +3576,35 @@ def build_player_response(player: dict, **extra) -> dict:
         "total_skill_fragments": sum(skill_fragments.values()),
         "total_companion_fragments": sum(companion_fragments.values())}
     for entity_id, entry in response["skill_system"]["collection"].items():
-        entry.update({"rarity": SKILL_CATALOG.get(entity_id, {}).get("rarity", "common"),
-                      "fragments": skill_fragments.get(entity_id, 0), "unlocked": bool(entry.get("owned")),
+        rarity = SKILL_CATALOG.get(entity_id, {}).get("rarity", "common")
+        role = ("dot" if entity_id in {"poison_cloud", "venom_spores"} else "shield" if entity_id == "mushroom_shield"
+                else "control" if entity_id in {"binding_roots", "null_bloom"} else "instant")
+        preview = (rank_multiplier(entry, "skill") * mastery_multiplier(entry, "skill", role)
+                   * skill_power_multiplier(int(entry.get("level", 1))))
+        entry.update(public_rank(entry, skill_fragments.get(entity_id, 0), rarity, "skill", round(preview, 6)))
+        entry.update({"rarity": rarity, "unlocked": bool(entry.get("owned")),
                       "summon_source_available": entity_id in SKILL_CATALOG})
     for entity_id, entry in response["companion_system"]["collection"].items():
-        entry.update({"rarity": COMPANION_CATALOG.get(entity_id, {}).get("rarity", "common"),
-                      "fragments": companion_fragments.get(entity_id, 0), "unlocked": bool(entry.get("owned")),
+        rarity = COMPANION_CATALOG.get(entity_id, {}).get("rarity", "common")
+        role = ("healing" if entity_id == "ancient_entling" else "defensive" if entity_id in {"baby_slime", "moss_turtle"}
+                else "utility" if entity_id in {"mushroom_owl", "thorn_wolf"} else "damage")
+        preview = (companion_milestone_multiplier(int(entry.get("level", 1))) * rank_multiplier(entry, "companion")
+                   * mastery_multiplier(entry, "companion", role))
+        entry.update(public_rank(entry, companion_fragments.get(entity_id, 0), rarity, "companion", round(preview, 6)))
+        entry.update({"rarity": rarity, "unlocked": bool(entry.get("owned")),
                       "summon_source_available": entity_id in COMPANION_CATALOG})
+    skill_entries = response["skill_system"]["collection"].values()
+    companion_entries = response["companion_system"]["collection"].values()
+    response["progression_summary"].update({
+        "total_skill_ranks": sum(int(e["rank"]) for e in skill_entries if e.get("owned")),
+        "total_companion_ranks": sum(int(e["rank"]) for e in companion_entries if e.get("owned")),
+        "total_skill_awakenings": sum(int(e["awakening_tier"]) for e in skill_entries if e.get("owned")),
+        "total_companion_awakenings": sum(int(e["awakening_tier"]) for e in companion_entries if e.get("owned")),
+        "rankable_skills": sum(bool(e["rank_up_available"]) for e in skill_entries if e.get("owned")),
+        "rankable_companions": sum(bool(e["rank_up_available"]) for e in companion_entries if e.get("owned")),
+        "awakenable_skills": sum(bool(e["awakening_available"]) for e in skill_entries if e.get("owned")),
+        "awakenable_companions": sum(bool(e["awakening_available"]) for e in companion_entries if e.get("owned")),
+    })
     response["battle_breakdown"] = {
         "normal_attack_damage": response["normal_attack_damage"],
         "combo_damage": response["combo_damage"],
@@ -4293,6 +4336,123 @@ def summon_history(x_telegram_init_data: str = Header(...)) -> dict:
     return {"history": history[:100]}
 
 
+def _rank_operation(entity_type: str, payload: dict, header: str, *, bulk: bool = False,
+                    awaken: bool = False) -> dict:
+    player = get_or_create_player(validate_telegram_data(header)); telegram_id = int(player["telegram_id"])
+    entity_id = str(payload.get("entity_id") or "").strip()
+    action_id = str(payload.get("client_action_id") or "").strip()
+    if not action_id: raise HTTPException(status_code=422, detail="client_action_id обязателен")
+    catalog = SKILL_CATALOG if entity_type == "skill" else COMPANION_CATALOG
+    if entity_id not in catalog: raise HTTPException(status_code=404, detail="Сущность не найдена")
+    collection_field = "skills_collection_json" if entity_type == "skill" else "companions_collection_json"
+    fragment_field = "skill_fragments_json" if entity_type == "skill" else "companion_fragments_json"
+    operation = f"{entity_type}:{'awaken' if awaken else 'rank-bulk' if bulk else 'rank'}"
+    action_key = f"{operation}:{action_id}"
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); current = load_player(connection, telegram_id)
+        actions = _durable_actions(current)
+        if action_key in actions:
+            connection.rollback(); return {**actions[action_key], "duplicate_request": True}
+        collection = (normalize_skill_collection(current.get(collection_field)) if entity_type == "skill"
+                      else normalize_companion_collection(current.get(collection_field)))
+        entry = collection.get(entity_id)
+        if not entry or not entry.get("owned"): raise HTTPException(status_code=409, detail="Сущность не разблокирована")
+        state = normalize_rank_state(entry); expected = payload.get("expected_rank_version")
+        if expected is None: raise HTTPException(status_code=422, detail="expected_rank_version обязателен")
+        try: expected_version = int(expected)
+        except (TypeError, ValueError): raise HTTPException(status_code=422, detail="expected_rank_version некорректен")
+        if expected_version != state["rank_version"]:
+            connection.rollback()
+            stale = {"entity_id": entity_id, "fragments_spent": 0, "rank_version": state["rank_version"],
+                     "duplicate_request": False, "stale_version": True, "transaction_completed": False}
+            if awaken:
+                stale.update({"old_tier": state["awakening_tier"], "new_tier": state["awakening_tier"],
+                              "fragments_remaining": normalize_fragments(current.get(fragment_field), set(catalog)).get(entity_id, 0),
+                              "next_awakening_cost": awakening_cost(str(catalog[entity_id].get("rarity", "common")), state["awakening_tier"]),
+                              "awakening_nodes_unlocked": public_rank(state, 0, str(catalog[entity_id].get("rarity", "common")), entity_type)["awakening_nodes"],
+                              "max_awakening_reached": state["awakening_tier"] >= MAX_AWAKENING_TIER})
+            else:
+                stale.update({"old_rank": state["rank"], "old_stars": state["rank_stars"],
+                              "new_rank": state["rank"], "new_stars": state["rank_stars"], "rank_advanced": False,
+                              "fragments_remaining": normalize_fragments(current.get(fragment_field), set(catalog)).get(entity_id, 0),
+                              "next_fragment_cost": star_cost(str(catalog[entity_id].get("rarity", "common")), state),
+                              "max_rank_reached": state["rank"] >= MAX_RANK})
+                if bulk: stale["steps"] = []
+            return stale
+        fragments = normalize_fragments(current.get(fragment_field), set(catalog)); balance = fragments.get(entity_id, 0)
+        rarity = str(catalog[entity_id].get("rarity", "common")); steps = []
+        if awaken:
+            cost = awakening_cost(rarity, state["awakening_tier"])
+            if state["rank"] < MAX_RANK: raise HTTPException(status_code=409, detail="Требуется rank 5")
+            if cost is None: raise HTTPException(status_code=409, detail="Достигнут максимум awakening")
+            if balance < cost: raise HTTPException(status_code=409, detail="Недостаточно fragments")
+            old_tier = state["awakening_tier"]; balance -= cost; state = advance_awakening(state)
+            result = {"entity_id": entity_id, "old_tier": old_tier, "new_tier": state["awakening_tier"],
+                      "fragments_spent": cost, "fragments_remaining": balance,
+                      "next_awakening_cost": awakening_cost(rarity, state["awakening_tier"]),
+                      "awakening_nodes_unlocked": public_rank(state, balance, rarity, entity_type)["awakening_nodes"],
+                      "rank_version": state["rank_version"], "max_awakening_reached": state["awakening_tier"] >= MAX_AWAKENING_TIER}
+        else:
+            requested = 1
+            if bulk:
+                try: requested = 10 if payload.get("max_affordable") else int(payload.get("steps", 1))
+                except (TypeError, ValueError): raise HTTPException(status_code=422, detail="steps некорректен")
+                if requested < 1 or requested > 10: raise HTTPException(status_code=422, detail="steps должен быть от 1 до 10")
+            old_rank, old_stars = state["rank"], state["rank_stars"]
+            spent = 0
+            for _ in range(requested):
+                cost = star_cost(rarity, state)
+                if cost is None or balance < cost: break
+                before = dict(state); balance -= cost; spent += cost; state, advanced = advance_star(state)
+                steps.append({"old_rank": before["rank"], "old_stars": before["rank_stars"],
+                              "new_rank": state["rank"], "new_stars": state["rank_stars"],
+                              "fragments_spent": cost, "rank_advanced": advanced, "rank_version": state["rank_version"]})
+            if not steps: raise HTTPException(status_code=409, detail="Недостаточно fragments или достигнут max rank")
+            result = {"entity_id": entity_id, "old_rank": old_rank, "old_stars": old_stars,
+                      "new_rank": state["rank"], "new_stars": state["rank_stars"], "fragments_spent": spent,
+                      "fragments_remaining": balance, "next_fragment_cost": star_cost(rarity, state),
+                      "rank_version": state["rank_version"], "rank_advanced": state["rank"] > old_rank,
+                      "max_rank_reached": state["rank"] >= MAX_RANK}
+            if bulk: result["steps"] = steps
+        entry.update(state); collection[entity_id] = entry; fragments[entity_id] = balance
+        connection.execute(f"UPDATE players SET {collection_field}=?,{fragment_field}=?,updated_at=? WHERE telegram_id=?",
+                           (json.dumps(collection, ensure_ascii=False), json.dumps(fragments, ensure_ascii=False), int(time.time()), telegram_id))
+        QuestProgressTracker(connection, telegram_id).dispatch(
+            f"{entity_type}_{'awakened' if awaken else 'ranked_up'}", 1 if awaken else len(steps),
+            client_action_id=action_id)
+        result.update({"duplicate_request": False, "stale_version": False, "transaction_completed": True})
+        _store_durable_action(connection, telegram_id, action_key, result, actions); connection.commit(); return result
+    except HTTPException: connection.rollback(); raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+
+
+@app.post("/skills/rank-up")
+def rank_up_skill(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _rank_operation("skill", payload, x_telegram_init_data)
+
+@app.post("/companions/rank-up")
+def rank_up_companion(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _rank_operation("companion", payload, x_telegram_init_data)
+
+@app.post("/skills/rank-up-bulk")
+def rank_up_skill_bulk(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _rank_operation("skill", payload, x_telegram_init_data, bulk=True)
+
+@app.post("/companions/rank-up-bulk")
+def rank_up_companion_bulk(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _rank_operation("companion", payload, x_telegram_init_data, bulk=True)
+
+@app.post("/skills/awaken")
+def awaken_skill(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _rank_operation("skill", payload, x_telegram_init_data, awaken=True)
+
+@app.post("/companions/awaken")
+def awaken_companion(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    return _rank_operation("companion", payload, x_telegram_init_data, awaken=True)
+
+
 def _perform_summon(banner_id: str, payload: dict, header: str) -> dict:
     if banner_id not in SUMMON_BANNERS: raise HTTPException(status_code=404, detail="Неизвестный баннер")
     try: count = int(payload.get("count"))
@@ -4325,6 +4485,7 @@ def _perform_summon(banner_id: str, payload: dict, header: str) -> dict:
         for index in range(1, count + 1):
             guaranteed = summon_guarantee(state); rarity = roll_rarity(seed, index, guaranteed)
             entity_id, actual_rarity = choose_entity(catalog, rarity, seed, index); existing = bool(collection.get(entity_id, {}).get("owned"))
+            fragments_before = fragments.get(entity_id, 0)
             fragment_gain = 0
             if existing:
                 fragment_gain = SUMMON_FRAGMENTS[actual_rarity]; fragments[entity_id] = fragments.get(entity_id, 0) + fragment_gain; gained[entity_id] = gained.get(entity_id, 0) + fragment_gain
@@ -4333,6 +4494,9 @@ def _perform_summon(banner_id: str, payload: dict, header: str) -> dict:
             advance_summon_pity(state, actual_rarity)
             item = {"pull_index": index, "entity_id": entity_id, "entity_type": config["entity_type"], "rarity": actual_rarity,
                     "newly_unlocked": not existing, "duplicate": existing, "fragments_gained": fragment_gain,
+                    "fragments_before": fragments_before, "fragments_after": fragments.get(entity_id, 0),
+                    "rank_up_available": bool(existing and star_cost(actual_rarity, collection.get(entity_id, {})) is not None and fragments.get(entity_id, 0) >= star_cost(actual_rarity, collection.get(entity_id, {}))),
+                    "awakening_available": bool(existing and normalize_rank_state(collection.get(entity_id, {}))["rank"] >= MAX_RANK and awakening_cost(actual_rarity, normalize_rank_state(collection.get(entity_id, {}))["awakening_tier"]) is not None and fragments.get(entity_id, 0) >= awakening_cost(actual_rarity, normalize_rank_state(collection.get(entity_id, {}))["awakening_tier"])),
                     "guarantee_triggered": guaranteed is not None, "guarantee_type": guaranteed}
             results.append(item); state["summon_history"].append({"timestamp": timestamp, "banner_id": banner_id, "entity_id": entity_id,
                 "rarity": actual_rarity, "newly_unlocked": not existing, "guarantee_triggered": guaranteed is not None})
@@ -4550,7 +4714,7 @@ def _legacy_attack(
             )
         damage_multiplier = (
             float(SKILL_EFFECTS["spore_strike"]["damage_multiplier"])
-            * skill_power_multiplier(spore_state["level"])
+            * player_skill_power_multiplier(current, "spore_strike")
             * (1.0 + owl_repeat_bonus)
             if use_spore_strike
             else 1.0
@@ -4622,9 +4786,7 @@ def _legacy_attack(
                     round(
                         int(current["damage"])
                         * POISON_CLOUD_DAMAGE_MULTIPLIER
-                        * skill_power_multiplier(
-                            poison_state["level"]
-                        )
+                        * player_skill_power_multiplier(current, "poison_cloud")
                         * calculate_companion_effects(current)[
                             "damage_multiplier"
                         ]
@@ -5242,19 +5404,21 @@ def attack(
         if use_skill:
             owl_stacks, owl_bonus = BATTLE_STATES.use_skill(state, selected_skill, owl_is_active(current))
             if selected_skill == "spore_strike":
-                multiplier = SPORE_STRIKE_DAMAGE_MULTIPLIER * skill_power_multiplier(spore_state["level"]) * (1 + owl_bonus)
+                multiplier = SPORE_STRIKE_DAMAGE_MULTIPLIER * player_skill_power_multiplier(current, "spore_strike") * (1 + owl_bonus)
             elif selected_skill == "thorn_burst":
-                multiplier = 1.25 * (1 + .06 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+                selected_state = get_player_skill_state(current, selected_skill)
+                multiplier = 1.25 * (1 + .06 * (selected_state["level"] - 1)) * skill_effective_multiplier(selected_state["level"]) * rank_multiplier(selected_state, "skill") * mastery_multiplier(selected_state, "skill", "instant") * (1 + owl_bonus)
                 if current_profile["resistances"]["physical"] - current_profile["resistances"]["nature"] >= .15:
                     multiplier *= 1.20
             elif selected_skill == "arcane_echo":
-                multiplier = .80 * (1 + .05 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+                selected_state = get_player_skill_state(current, selected_skill)
+                multiplier = .80 * (1 + .05 * (selected_state["level"] - 1)) * skill_effective_multiplier(selected_state["level"]) * rank_multiplier(selected_state, "skill") * mastery_multiplier(selected_state, "skill", "instant") * (1 + owl_bonus)
             elif selected_skill == "venom_spores":
                 multiplier = 0.0
             elif selected_skill == "binding_roots":
-                multiplier = .70 * (1 + .04 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+                multiplier = .70 * (1 + .04 * (spore_state["level"] - 1)) * skill_effective_multiplier(spore_state["level"]) * rank_multiplier(spore_state, "skill") * mastery_multiplier(spore_state, "skill", "control") * (1 + owl_bonus)
             elif selected_skill == "null_bloom":
-                multiplier = .65 * (1 + .04 * (spore_state["level"] - 1)) * (1 + owl_bonus)
+                multiplier = .65 * (1 + .04 * (spore_state["level"] - 1)) * skill_effective_multiplier(spore_state["level"]) * rank_multiplier(spore_state, "skill") * mastery_multiplier(spore_state, "skill", "control") * (1 + owl_bonus)
         context = CombatContext(int(current["hero_hp"]), int(current["hero_max_hp"]), int(current["enemy_hp"]), "boss" if boss else "normal")
         context.resolved_at = now
         hp_before_healing = stage_sequence_state(current)["current_hp"]
@@ -5331,7 +5495,7 @@ def attack(
             poison_damage += sum(event["final_damage"] for event in status_tick_events if event["damage_source"] == "poison_cloud")
         poison_per_tick = max(1, round(
             int(current["damage"]) * POISON_CLOUD_DAMAGE_MULTIPLIER
-            * skill_power_multiplier(get_player_skill_state(current, "poison_cloud")["level"])
+            * player_skill_power_multiplier(current, "poison_cloud")
             * companions["damage_multiplier"] * equipment["skill_damage_multiplier"]
             * (1 + state.poison_owl_bonus) * (1 + state.poison_stack_bonus)
             * (equipment["boss_damage_multiplier"] if boss else 1)
@@ -5601,9 +5765,7 @@ def use_mushroom_shield(
                 int(current["hero_max_hp"])
                 * calculate_companion_effects(current)["hp_multiplier"]
                 * MUSHROOM_SHIELD_HP_RATIO
-                * skill_power_multiplier(
-                    shield_state["level"]
-                )
+                * player_skill_power_multiplier(current, "mushroom_shield")
                 * (
                     BATTLE_STATES.peek(telegram_id, battle_identity(current), now).shield_capacity_multiplier
                     if BATTLE_STATES.peek(telegram_id, battle_identity(current), now) is not None
@@ -5752,9 +5914,7 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             round(
                 hero_max_hp
                 * MUSHROOM_SHIELD_HP_RATIO
-                * skill_power_multiplier(
-                    shield_state["level"]
-                )
+                * player_skill_power_multiplier(current, "mushroom_shield")
             ),
         )
         battle_state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
@@ -8152,6 +8312,7 @@ def summon_skills(
         collection = normalize_skill_collection(
             current.get("skills_collection_json")
         )
+        fragments = normalize_fragments(current.get("skill_fragments_json"), set(SKILL_CATALOG))
         summon_exp = max(
             0,
             int(current.get("skill_summon_exp", 0)),
@@ -8167,8 +8328,7 @@ def summon_skills(
             )
             skill_id = roll_skill_id(current_summon_level)
             result = apply_skill_summon(
-                collection,
-                skill_id,
+                collection, fragments, skill_id,
             )
             result["summon_level"] = current_summon_level
             results.append(result)
@@ -8187,6 +8347,7 @@ def summon_skills(
                 skill_summon_level = ?,
                 skill_summon_exp = ?,
                 skills_collection_json = ?,
+                skill_fragments_json = ?,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -8199,10 +8360,12 @@ def summon_skills(
                     ensure_ascii=False,
                     separators=(",", ":"),
                 ),
+                json.dumps(fragments, ensure_ascii=False, separators=(",", ":")),
                 now,
                 telegram_id,
             ),
         )
+        QuestProgressTracker(connection, telegram_id, now).dispatch("skill_summoned", count)
         connection.commit()
         updated = load_player(connection, telegram_id)
     finally:
@@ -8311,6 +8474,7 @@ def summon_companions(
         collection = normalize_companion_collection(
             current.get("companions_collection_json")
         )
+        fragments = normalize_fragments(current.get("companion_fragments_json"), set(COMPANION_CATALOG))
         summon_exp = max(
             0,
             int(current.get("companion_summon_exp", 0)),
@@ -8332,8 +8496,7 @@ def summon_companions(
                 current_summon_level
             )
             result = apply_companion_summon(
-                collection,
-                companion_id,
+                collection, fragments, companion_id,
             )
             result["summon_level"] = (
                 current_summon_level
@@ -8355,6 +8518,7 @@ def summon_companions(
             SET companion_scrolls = ?,
                 companion_summon_exp = ?,
                 companions_collection_json = ?,
+                companion_fragments_json = ?,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -8366,10 +8530,12 @@ def summon_companions(
                     ensure_ascii=False,
                     separators=(",", ":"),
                 ),
+                json.dumps(fragments, ensure_ascii=False, separators=(",", ":")),
                 now,
                 telegram_id,
             ),
         )
+        QuestProgressTracker(connection, telegram_id, now).dispatch("companion_summoned", count)
         connection.commit()
         updated = load_player(
             connection,

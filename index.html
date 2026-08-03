@@ -8349,7 +8349,7 @@ id="companionSummonChances"
 
               <div class="collection-skill-progress">
                 ${owned
-                  ? `Уровень ${level}/50 · ${fragments} фрагм. · ${entry.next_milestone ? `следующая веха ${entry.next_milestone}` : "Мастерство"}<br>Цена: ${formatNumber(entry.upgrade_cost?.companion_essence || 0)} эссенции + ${formatNumber(entry.upgrade_cost?.gold || 0)} золота<br>Вехи: ${(entry.active_milestones || []).join(", ") || "—"}`
+                  ? `Уровень ${level}/50 · Ранг ${entry.rank || 0} · ★ ${entry.rank_stars || 0}/5 · Пробуждение ${entry.awakening_tier || 0}/3<br>Фрагменты: ${fragments}/${entry.next_fragment_cost ?? "MAX"} · Итоговый эффект ×${entry.effective_preview || 1}<br>${(entry.awakening_nodes || []).map(node => `${node.unlocked ? "✅" : "🔒"} ${node.title}: ${node.effect_summary}`).join("<br>")}`
                   : "Не получен"}
               </div>
 
@@ -8362,6 +8362,9 @@ id="companionSummonChances"
               <div class="collection-skill-actions">
                 <button class="collection-skill-equip" data-upgrade-companion="${escapeHtml(companion.id)}" data-levels="1" type="button" ${!owned || level >= 50 ? "disabled" : ""}>УЛУЧШИТЬ</button>
                 <button class="collection-skill-equip" data-upgrade-companion="${escapeHtml(companion.id)}" data-levels="10" type="button" ${!owned || level >= 50 ? "disabled" : ""}>УЛУЧШИТЬ ×10</button>
+                <button class="collection-skill-equip" data-rank-entity="companion" data-rank-id="${escapeHtml(companion.id)}" data-rank-steps="1" type="button" ${!entry.rank_up_available ? "disabled" : ""}>ПОВЫСИТЬ РАНГ</button>
+                <button class="collection-skill-equip" data-rank-entity="companion" data-rank-id="${escapeHtml(companion.id)}" data-rank-steps="10" type="button" ${!entry.rank_up_available ? "disabled" : ""}>ПОВЫСИТЬ ×10</button>
+                <button class="collection-skill-equip" data-awaken-entity="companion" data-awaken-id="${escapeHtml(companion.id)}" type="button" ${!entry.awakening_available ? "disabled" : ""}>ПРОБУДИТЬ</button>
                 <button
                   class="collection-skill-equip"
                   ${active
@@ -8391,6 +8394,7 @@ id="companionSummonChances"
       collectionBox
         .querySelectorAll("[data-upgrade-companion]")
         .forEach((button) => button.addEventListener("click", () => upgradeProgression("companion", button.dataset.upgradeCompanion, Number(button.dataset.levels))));
+      bindRankActions(collectionBox);
 
       collectionBox
         .querySelectorAll("[data-equip-companion]")
@@ -8649,7 +8653,7 @@ id="companionSummonChances"
               </div>
 
               <div class="collection-skill-progress">
-                ${escapeHtml(progressText)} · ${entry.next_milestone ? `следующая веха ${entry.next_milestone}` : "Мастерство"}<br>Цена: ${formatNumber(entry.upgrade_cost?.skill_tomes || 0)} томов + ${formatNumber(entry.upgrade_cost?.gold || 0)} золота<br>Вехи: ${(entry.active_milestones || []).join(", ") || "—"}
+                ${escapeHtml(progressText)} · Ранг ${entry.rank || 0} · ★ ${entry.rank_stars || 0}/5 · Пробуждение ${entry.awakening_tier || 0}/3<br>Фрагменты: ${fragments}/${entry.next_fragment_cost ?? "MAX"} · Итоговый эффект ×${entry.effective_preview || 1}<br>${(entry.awakening_nodes || []).map(node => `${node.unlocked ? "✅" : "🔒"} ${node.title}: ${node.effect_summary}`).join("<br>")}
               </div>
 
               ${
@@ -8663,6 +8667,9 @@ id="companionSummonChances"
               <div class="collection-skill-actions">
                 <button class="collection-skill-equip" data-upgrade-skill="${escapeHtml(skill.id)}" data-levels="1" type="button" ${!owned || skillLevel >= 50 ? "disabled" : ""}>УЛУЧШИТЬ</button>
                 <button class="collection-skill-equip" data-upgrade-skill="${escapeHtml(skill.id)}" data-levels="10" type="button" ${!owned || skillLevel >= 50 ? "disabled" : ""}>УЛУЧШИТЬ ×10</button>
+                <button class="collection-skill-equip" data-rank-entity="skill" data-rank-id="${escapeHtml(skill.id)}" data-rank-steps="1" type="button" ${!entry.rank_up_available ? "disabled" : ""}>ПОВЫСИТЬ РАНГ</button>
+                <button class="collection-skill-equip" data-rank-entity="skill" data-rank-id="${escapeHtml(skill.id)}" data-rank-steps="10" type="button" ${!entry.rank_up_available ? "disabled" : ""}>ПОВЫСИТЬ ×10</button>
+                <button class="collection-skill-equip" data-awaken-entity="skill" data-awaken-id="${escapeHtml(skill.id)}" type="button" ${!entry.awakening_available ? "disabled" : ""}>ПРОБУДИТЬ</button>
                 <button
                   class="collection-skill-equip"
                   data-equip-skill="${escapeHtml(skill.id)}"
@@ -8690,6 +8697,7 @@ id="companionSummonChances"
       collectionBox
         .querySelectorAll("[data-upgrade-skill]")
         .forEach((button) => button.addEventListener("click", () => upgradeProgression("skill", button.dataset.upgradeSkill, Number(button.dataset.levels))));
+      bindRankActions(collectionBox);
 
       collectionBox
         .querySelectorAll("[data-equip-skill]")
@@ -8711,6 +8719,25 @@ id="companionSummonChances"
         await apiRequest(`/${plural}/upgrade${levels > 1 ? "-bulk" : ""}`, "POST", body);
         player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout();
         setMessage(levels > 1 ? "Прогрессия улучшена" : "Уровень повышен");
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+
+    function bindRankActions(container) {
+      container.querySelectorAll("[data-rank-entity]").forEach(button => button.addEventListener("click", () => rankProgression(button.dataset.rankEntity, button.dataset.rankId, Number(button.dataset.rankSteps))));
+      container.querySelectorAll("[data-awaken-entity]").forEach(button => button.addEventListener("click", () => awakenProgression(button.dataset.awakenEntity, button.dataset.awakenId)));
+    }
+    async function rankProgression(kind, id, steps) {
+      const entry = kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id];
+      try {
+        await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/rank-up${steps > 1 ? "-bulk" : ""}`, "POST", {entity_id:id, steps, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
+        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); setMessage("Ранг повышен");
+      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+    async function awakenProgression(kind, id) {
+      const entry = kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id];
+      try {
+        await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/awaken`, "POST", {entity_id:id, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
+        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); setMessage("Пробуждение повышено");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
 
@@ -10656,7 +10683,7 @@ id="companionSummonChances"
         count: Number(button.dataset.summonCount), payment_type: button.dataset.summonPayment,
         client_action_id: crypto.randomUUID(), expected_pity_version: status.pity_version
       });
-      $("summonResults").innerHTML = result.results.map(item => `<div><b>${item.rarity}</b> · ${item.entity_id} · ${item.newly_unlocked ? "новая сущность" : `дубликат, +${item.fragments_gained} fragments`}${item.guarantee_triggered ? ` · ${item.guarantee_type} guarantee` : ""}</div>`).join("");
+      $("summonResults").innerHTML = result.results.map(item => `<div><b>${item.rarity}</b> · ${item.entity_id} · ${item.newly_unlocked ? "новая сущность" : `дубликат, +${item.fragments_gained} fragments (${item.fragments_before}→${item.fragments_after})`}${item.rank_up_available ? " · ⭐ доступен rank-up" : ""}${item.awakening_available ? " · ✨ доступно пробуждение" : ""}${item.guarantee_triggered ? ` · ${item.guarantee_type} guarantee` : ""}</div>`).join("");
       await refreshSummonPanel();
     }));
 

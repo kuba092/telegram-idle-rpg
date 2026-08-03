@@ -72,6 +72,10 @@ EVENT_OBJECTIVES = {
     "gold_spent": "spend_gold",
     "skill_summoned": "perform_skill_summons",
     "companion_summoned": "perform_companion_summons",
+    "skill_ranked_up": "rank_up_skills",
+    "companion_ranked_up": "rank_up_companions",
+    "skill_awakened": "awaken_skills",
+    "companion_awakened": "awaken_companions",
     "offline_rewards_claimed": "claim_offline_rewards",
 }
 
