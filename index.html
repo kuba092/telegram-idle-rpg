@@ -7109,10 +7109,16 @@ id="companionSummonChances"
     function stageSequenceMessage(result) {
       const sequence = result?.stage_sequence;
       if (!result?.enemy_defeated || !sequence) return result?.message || "Враг побеждён";
+      const lethalLabels = {
+        normal: "обычная атака", combo: "combo", counter: "counter",
+        skill: "навык", poison: "яд", companion: "спутник"
+      };
+      const lethalSource = result?.combat_resolution?.lethal_source;
       const parts = [
         result?.message || "Враг побеждён",
+        lethalSource ? `Добивание: ${lethalLabels[lethalSource] || lethalSource}` : null,
         `HP сохранено: ${formatNumber(sequence.hp_carried_to_next_battle)} / ${formatNumber(sequence.max_hp)}`
-      ];
+      ].filter(Boolean);
       if (Number(sequence.companion_healing || 0) > 0) {
         parts.push(`Ancient Entling восстановил ${formatNumber(sequence.companion_healing)} HP`);
       }
@@ -7211,6 +7217,12 @@ id="companionSummonChances"
         try { telegram.HapticFeedback?.impactOccurred("medium"); } catch (_) {}
         restoreEnemyIdle(510);
         if (result.hero_defeated) { await handleHeroDefeat(); return; }
+        if (result.combat_resolution?.enemy_defeated) {
+          setMessage(stageSequenceMessage(result) + combatEffectSuffix(result));
+          await animateEnemyDefeat(result);
+          syncBattleState();
+          return;
+        }
         restoreHeroIdle(390); if (battleRunning) scheduleMonsterAttack(result.enemy_attack_interval);
       } catch (error) {
         setMessage(`❌ ${error.message}`, true); if (battleRunning) scheduleMonsterAttack(3);

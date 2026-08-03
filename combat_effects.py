@@ -9,7 +9,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from threading import RLock
+import copy
 import time
+import uuid
 from typing import Any, Callable, Iterable
 
 
@@ -172,6 +174,8 @@ class BattleState:
     poison_ticks: int = 0
     poison_owl_bonus: float = 0.0
     poison_stack_bonus: float = 0.0
+    poison_instance_id: str | None = None
+    processed_poison_ticks: set[int] = field(default_factory=set)
     shield_capacity_multiplier: float = 1.0
     last_seen: float = 0.0
 
@@ -226,6 +230,17 @@ class BattleStateStore:
         with self._lock:
             self._states.pop(player_id, None)
 
+    def snapshot(self, player_id: int) -> BattleState | None:
+        with self._lock:
+            return copy.deepcopy(self._states.get(player_id))
+
+    def restore(self, player_id: int, state: BattleState | None) -> None:
+        with self._lock:
+            if state is None:
+                self._states.pop(player_id, None)
+            else:
+                self._states[player_id] = state
+
     def clear(self) -> None:
         with self._lock:
             self._states.clear()
@@ -260,7 +275,17 @@ class BattleStateStore:
         state.poison_ticks = 0
         state.poison_owl_bonus = owl_bonus
         state.poison_stack_bonus = completion_stacks * .10
+        state.poison_instance_id = uuid.uuid4().hex
+        state.processed_poison_ticks.clear()
         return owl_stacks, owl_bonus, completion_stacks, state.poison_stack_bonus
+
+    def claim_poison_tick(self, state: BattleState, instance_id: str, tick_index: int) -> bool:
+        if state.poison_instance_id != instance_id or tick_index < 1 or tick_index > 5:
+            return False
+        if tick_index in state.processed_poison_ticks:
+            return False
+        state.processed_poison_ticks.add(tick_index)
+        return True
 
     def begin_shield(self, state: BattleState, owl_active: bool) -> tuple[int, float]:
         stacks, bonus = self.use_skill(state, "mushroom_shield", owl_active)

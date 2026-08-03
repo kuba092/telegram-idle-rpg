@@ -155,6 +155,17 @@ class CombatEffectEngineTest(unittest.TestCase):
         # Fixed order: base * Owl * completed-cloud.
         self.assertAlmostEqual(100 * (1 + owl_bonus) * (1 + poison_bonus), 195)
 
+    def test_poison_instance_rejects_duplicate_and_old_ticks(self):
+        store = BattleStateStore()
+        state = store.get(1, (1, 0, False, 30), now=1)
+        store.begin_poison(state, False)
+        first_instance = state.poison_instance_id
+        self.assertTrue(store.claim_poison_tick(state, first_instance, 1))
+        self.assertFalse(store.claim_poison_tick(state, first_instance, 1))
+        store.begin_poison(state, False)
+        self.assertNotEqual(state.poison_instance_id, first_instance)
+        self.assertFalse(store.claim_poison_tick(state, first_instance, 2))
+
     def test_shield_mitigation_refreshes_without_stacking(self):
         store = BattleStateStore()
         state = store.get(1, (1,), now=1)

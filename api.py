@@ -26,6 +26,7 @@ from equipment_stats import (
     comparison_breakdown, generate_secondary_stats, normalize_item,
     public_secondary_stats,
 )
+from combat_resolver import CombatResolution, CombatResolver
 
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -3709,8 +3710,7 @@ def claim_offline_reward(x_telegram_init_data: str = Header(...)) -> dict:
     )
 
 
-@app.post("/attack")
-def attack(
+def _legacy_attack(
     x_telegram_init_data: str = Header(...),
     skill: str | None = None,
     battle_id: str | None = None,
@@ -4292,6 +4292,283 @@ def attack(
     )
 
 
+def _resolve_victory(connection, current, was_boss, context):
+    """Award the defeated enemy and spawn its successor in the same transaction."""
+    now = float(getattr(context, "resolved_at", time.time()))
+    stage = clamp_int(current["stage"], 1, MAX_STAGE)
+    kills = int(current["kills_in_stage"])
+    total_kills = int(current["total_kills"]) + 1
+    total_bosses = int(current.get("total_bosses", 0))
+    chests = int(current["chests"])
+    highest_stage = max(stage, int(current.get("highest_stage", stage)))
+    game_completed = int(current.get("game_completed", 0))
+    old_progress = wave_progress(current)
+    stage_advanced = False
+    boss_started = False
+    boss_defeated = bool(was_boss)
+    chest_reward = 0
+    if was_boss:
+        total_bosses += 1
+        chest_reward = boss_reward_chests(stage)
+        chests += chest_reward
+        if stage >= MAX_STAGE:
+            game_completed = 1
+            kills = ENEMIES_PER_STAGE
+            boss_active = False
+            enemy_max_hp = calculate_enemy_hp(stage, boss=True)
+            enemy_hp = 0
+        else:
+            stage += 1
+            stage_advanced = True
+            highest_stage = max(highest_stage, stage)
+            kills = 0
+            boss_active = False
+            enemy_max_hp = calculate_enemy_hp(stage)
+            enemy_hp = enemy_max_hp
+    else:
+        kills += 1
+        chest_reward = 3 if kills >= ENEMIES_PER_STAGE else 2
+        chests += chest_reward
+        boss_active = kills >= ENEMIES_PER_STAGE
+        if boss_active:
+            kills = ENEMIES_PER_STAGE
+            boss_started = True
+        enemy_max_hp = calculate_enemy_hp(stage, boss=boss_active)
+        enemy_hp = enemy_max_hp
+
+    companion_effects = calculate_companion_effects(current)
+    equipment = calculate_equipment_stats(
+        parse_json_object(current["equipment_json"]), int(current["level"])
+    )["total"]
+    hp_multiplier = float(companion_effects["hp_multiplier"])
+    effective_max = max(1, round(int(current["hero_max_hp"]) * hp_multiplier))
+    effective_before = min(effective_max, max(0, round(int(current["hero_hp"]) * hp_multiplier)))
+    requested = round(
+        effective_max * float(companion_effects["victory_healing_ratio"])
+        * (2 if was_boss else 1) * equipment["healing_multiplier"]
+    )
+    healing = max(0, min(requested, effective_max - effective_before))
+    if healing:
+        current["hero_hp"] = min(
+            int(current["hero_max_hp"]),
+            round((effective_before + healing) / hp_multiplier),
+        )
+        actual = min(effective_max, max(0, round(int(current["hero_hp"]) * hp_multiplier)))
+        healing = max(0, actual - effective_before)
+    overflow = max(0, requested - healing)
+    provisional = dict(current)
+    provisional.update(stage=stage, kills_in_stage=kills, boss_active=int(boss_active))
+    progress_reached_at = int(current.get("progress_reached_at", 0))
+    if wave_progress(provisional) > old_progress:
+        progress_reached_at = int(now)
+    enemy_interval = max(MIN_ENEMY_ATTACK_INTERVAL, 1 / ENEMY_ATTACK_SPEED)
+    last_enemy_attack_at = now - max(0.0, enemy_interval - (0.55 if boss_active else 0.85))
+    connection.execute(
+        """
+        UPDATE players SET enemy_hp=?, enemy_max_hp=?, hero_hp=?, stage=?,
+          kills_in_stage=?, total_kills=?, total_bosses=?, chests=?,
+          highest_stage=?, boss_active=?, boss_waiting=0, game_completed=?,
+          progress_reached_at=?, last_enemy_attack_at=?, mushroom_shield_amount=0,
+          mushroom_shield_last_used_at=0, spore_strike_last_used_at=0,
+          poison_cloud_last_used_at=0, poison_cloud_until=0,
+          poison_cloud_next_tick_at=0, updated_at=? WHERE telegram_id=?
+        """,
+        (enemy_hp, enemy_max_hp, int(current["hero_hp"]), stage, kills,
+         total_kills, total_bosses, chests, highest_stage, int(boss_active),
+         game_completed, progress_reached_at, last_enemy_attack_at, int(now),
+         int(current["telegram_id"])),
+    )
+    connection.execute(
+        "UPDATE players SET daily_kills=daily_kills+?, daily_bosses=daily_bosses+? WHERE telegram_id=?",
+        (0 if was_boss else 1, 1 if was_boss else 0, int(current["telegram_id"])),
+    )
+    player_update = {
+        "enemy_hp": enemy_hp, "enemy_max_hp": enemy_max_hp,
+        "hero_hp": int(current["hero_hp"]), "stage": stage,
+        "kills_in_stage": kills, "total_kills": total_kills,
+        "total_bosses": total_bosses, "chests": chests,
+        "highest_stage": highest_stage, "boss_active": int(boss_active),
+        "boss_waiting": 0, "game_completed": game_completed,
+    }
+    return {
+        "player": player_update, "reward_granted": True,
+        "companion_healing": healing, "healing_overflow": overflow,
+        "chest_reward": chest_reward, "experience_reward": 0,
+        "stage_advanced": stage_advanced, "boss_started": boss_started,
+        "boss_defeated": boss_defeated,
+        "next_battle_identity": public_battle_identity({**current, **player_update}),
+        "temporary_effects_cleared": True,
+    }
+
+
+@app.post("/attack")
+def attack(
+    x_telegram_init_data: str = Header(...),
+    skill: str | None = None,
+    battle_id: str | None = None,
+) -> dict:
+    """Resolve outgoing events in order: hit, combo, companion, due poison ticks."""
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    now = time.time()
+    connection = get_database()
+    reset_battle = False
+    battle_snapshot = BATTLE_STATES.snapshot(telegram_id)
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+        identity = public_battle_identity(current)
+        if battle_id is not None and battle_id != identity:
+            connection.commit()
+            return build_player_response(
+                current, attacked=False, stale_battle=True,
+                combat_resolution=CombatResolution().public(),
+                message="Этот бой уже завершён",
+            )
+        if int(current["hero_hp"]) <= 0 or int(current.get("game_completed", 0)) or int(current.get("boss_waiting", 0)):
+            connection.commit()
+            return build_player_response(current, attacked=False, combat_resolution=CombatResolution().public())
+        equipment = calculate_equipment_stats(
+            parse_json_object(current["equipment_json"]), int(current["level"])
+        )["total"]
+        companions = calculate_companion_effects(current)
+        attack_interval = max(MIN_ATTACK_INTERVAL, 1 / max(.1, float(current["attack_speed"]) * companions["attack_speed_multiplier"]))
+        elapsed = now - float(current["last_attack_at"])
+        if float(current["last_attack_at"]) > 0 and elapsed < attack_interval:
+            connection.commit()
+            return build_player_response(current, attacked=False, retry_after=attack_interval-elapsed, combat_resolution=CombatResolution().public(), message="Атака ещё не готова")
+        requested = str(skill or "").strip().lower()
+        manual_skill = requested == "spore_strike"
+        if requested and not manual_skill:
+            raise HTTPException(status_code=400, detail="Неизвестный навык")
+        spore_state = get_player_skill_state(current, "spore_strike")
+        if manual_skill and not spore_state["available"]:
+            connection.commit()
+            return build_player_response(current, attacked=False, combat_resolution=CombatResolution().public(), message=unavailable_skill_message(spore_state, "Spore Strike"))
+        spore_last = float(current.get("spore_strike_last_used_at", 0))
+        spore_cd = companion_skill_cooldown(current, SPORE_STRIKE_COOLDOWN_SECONDS)
+        spore_ready = spore_last <= 0 or now-spore_last >= spore_cd
+        if manual_skill and not spore_ready:
+            connection.commit()
+            return build_player_response(current, attacked=False, skill_retry_after=spore_cd-(now-spore_last), combat_resolution=CombatResolution().public())
+        use_skill = manual_skill or (
+            not requested and bool(int(current.get("skills_auto_enabled", 0)))
+            and spore_state["available"] and spore_ready
+        )
+        boss = bool(int(current.get("boss_active", 0)))
+        state = BATTLE_STATES.get(telegram_id, battle_identity(current), now)
+        poison_until = float(current.get("poison_cloud_until", 0))
+        poison_next = float(current.get("poison_cloud_next_tick_at", 0))
+        poison_last = float(current.get("poison_cloud_last_used_at", 0))
+        poison_state = get_player_skill_state(current, "poison_cloud")
+        poison_cd = companion_skill_cooldown(current, POISON_CLOUD_COOLDOWN_SECONDS)
+        poison_auto_used = (
+            not requested and bool(int(current.get("skills_auto_enabled", 0)))
+            and poison_state["available"] and poison_next <= 0
+            and (poison_last <= 0 or now-poison_last >= poison_cd)
+        )
+        if poison_auto_used:
+            poison_last = now
+            poison_until = now + POISON_CLOUD_DURATION_SECONDS
+            poison_next = now + POISON_CLOUD_TICK_SECONDS
+            BATTLE_STATES.begin_poison(state, owl_is_active(current))
+        poison_due = 0
+        if poison_next > 0 and min(now, poison_until) >= poison_next:
+            poison_due = min(5, int((min(now, poison_until) - poison_next) // POISON_CLOUD_TICK_SECONDS) + 1)
+        if poison_due and state.poison_instance_id is None:
+            # Reconstruct a stable logical instance after a process restart.
+            state.poison_instance_id = f"{identity}:{float(current.get('poison_cloud_last_used_at', 0)):.6f}"
+        owl_stacks = owl_bonus = 0
+        multiplier = 1.0
+        if use_skill:
+            owl_stacks, owl_bonus = BATTLE_STATES.use_skill(state, "spore_strike", owl_is_active(current))
+            multiplier = SPORE_STRIKE_DAMAGE_MULTIPLIER * skill_power_multiplier(spore_state["level"]) * (1 + owl_bonus)
+        context = CombatContext(int(current["hero_hp"]), int(current["hero_max_hp"]), int(current["enemy_hp"]), "boss" if boss else "normal")
+        context.resolved_at = now
+        hp_before_healing = stage_sequence_state(current)["current_hp"]
+        resolution = CombatResolution()
+        resolver = CombatResolver(connection, current, identity, public_battle_identity, _resolve_victory, resolution)
+        main_damage, critical = calculate_hero_attack_damage(current, multiplier * companions["damage_multiplier"], "skill" if use_skill else "normal", boss)
+        main_source = "skill" if use_skill else "normal"
+        main_event = resolver.resolve(damage_source=main_source, raw_damage=main_damage, attack_source=main_source, crit_metadata={"critical": critical}, boss=boss, context=context)
+        combo_damage = 0
+        combo_critical = False
+        combo_triggered = False
+        companion_damage = 0
+        if not use_skill:
+            if resolution.killed:
+                resolution.skip("combo", "combo", 0)
+            elif random.random() < equipment["combo_chance"] / 100:
+                combo_triggered = True
+                combo_damage, combo_critical = calculate_hero_attack_damage(current, companions["damage_multiplier"], "combo", boss)
+                resolver.resolve(damage_source="combo", raw_damage=combo_damage, attack_source="combo", crit_metadata={"critical": combo_critical}, boss=boss, context=context)
+            companion_damage = round(int(companions["extra_attack_damage"]) * equipment["companion_damage_multiplier"] * (equipment["boss_damage_multiplier"] if boss else 1))
+            if companion_damage or resolution.killed:
+                resolver.resolve(damage_source="companion", raw_damage=companion_damage, attack_source="companion", crit_metadata={}, boss=boss, context=context)
+        poison_damage = 0
+        poison_processed = 0
+        poison_per_tick = max(1, round(
+            int(current["damage"]) * POISON_CLOUD_DAMAGE_MULTIPLIER
+            * skill_power_multiplier(get_player_skill_state(current, "poison_cloud")["level"])
+            * companions["damage_multiplier"] * equipment["skill_damage_multiplier"]
+            * (1 + state.poison_owl_bonus) * (1 + state.poison_stack_bonus)
+            * (equipment["boss_damage_multiplier"] if boss else 1)
+        ))
+        for offset in range(poison_due):
+            tick_index = state.poison_ticks + offset + 1
+            if not BATTLE_STATES.claim_poison_tick(state, state.poison_instance_id, tick_index):
+                continue
+            event = resolver.resolve(damage_source="poison", raw_damage=poison_per_tick, attack_source="poison", crit_metadata={"poison_instance_id": state.poison_instance_id, "tick_index": tick_index}, boss=boss, context=context)
+            poison_processed += 1
+            poison_damage += event.final_damage
+            if event.lethal:
+                break
+        if poison_processed and not resolution.killed:
+            BATTLE_STATES.record_poison_ticks(state, poison_processed)
+        poison_next = poison_next + poison_processed * POISON_CLOUD_TICK_SECONDS if poison_processed else poison_next
+        if resolution.killed or now >= poison_until:
+            poison_until = 0.0
+            poison_next = 0.0
+        lethal = next((event for event in resolution.events if event.lethal), None)
+        connection.execute("UPDATE players SET last_attack_at=?, spore_strike_last_used_at=?, poison_cloud_last_used_at=?, poison_cloud_until=?, poison_cloud_next_tick_at=?, updated_at=? WHERE telegram_id=?", (now, now if use_skill else spore_last, poison_last, poison_until, poison_next, int(now), telegram_id))
+        sync_player_stats(connection, telegram_id)
+        connection.commit()
+        reset_battle = resolution.killed
+        updated = load_player(connection, telegram_id)
+    except Exception:
+        connection.rollback()
+        BATTLE_STATES.restore(telegram_id, battle_snapshot)
+        raise
+    finally:
+        connection.close()
+    if reset_battle:
+        BATTLE_STATES.reset(telegram_id)
+    public_resolution = resolution.public()
+    healing = lethal.companion_healing if lethal else 0
+    transition = getattr(context, "victory_transition", {})
+    sequence = stage_sequence_state(updated, hp_before_healing=hp_before_healing, companion_healing=healing, healing_overflow=transition.get("healing_overflow", 0), temporary_effects_cleared=bool(lethal), cooldowns_reset_between_battles=bool(lethal))
+    return build_player_response(
+        updated, attacked=True, damage_dealt=public_resolution["total_damage"],
+        normal_attack_damage=main_event.final_damage if main_source == "normal" else 0,
+        skill_damage=main_event.final_damage if main_source == "skill" else 0,
+        combo_damage=next((e.final_damage for e in resolution.events if e.damage_source == "combo"), 0),
+        companion_damage=next((e.final_damage for e in resolution.events if e.damage_source == "companion"), 0),
+        poison_damage=poison_damage, poison_ticks=poison_processed, counter_damage=0, combo_triggered=combo_triggered,
+        counter_triggered=False, critical=critical, combo_critical=combo_critical,
+        attack_source=main_source, skill_used="spore_strike" if use_skill else None,
+        spore_strike_used=use_skill, poison_cloud_used=poison_auto_used, enemy_defeated=public_resolution["enemy_defeated"],
+        boss_defeated=bool(lethal and lethal.boss_defeated),
+        stage_completed=bool(lethal and lethal.stage_advanced),
+        chest_reward=(boss_reward_chests(int(current["stage"])) if lethal and boss else (3 if lethal and lethal.boss_started else 2 if lethal else 0)),
+        experience_reward=0, reward=0, companion_healing=healing,
+        healing_overflow=transition.get("healing_overflow", 0), stage_sequence=sequence,
+        combat_resolution=public_resolution, owl_repeat_stacks=owl_stacks,
+        owl_repeat_bonus=round(owl_bonus, 4),
+        message=("Враг побеждён" if lethal else f"⚔️ Нанесено {public_resolution['total_damage']} урона"),
+    )
+
+
 @app.post("/skills/poison-cloud/use")
 def use_poison_cloud(
     x_telegram_init_data: str = Header(...),
@@ -4390,6 +4667,8 @@ def use_poison_cloud(
         owl_repeat_bonus=round(owl_repeat_bonus, 4),
         poison_completion_stacks=poison_completion_stacks,
         poison_stack_bonus=round(poison_stack_bonus, 4),
+        poison_instance_id=battle_state.poison_instance_id,
+        battle_id=public_battle_identity(updated),
         message="☁️ Poison Cloud активировано на 5 секунд",
     )
 
@@ -4662,9 +4941,29 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         defeats = int(current["defeats"]) + (1 if hero_defeated else 0)
         boss_waiting = int(current.get("boss_waiting", 0))
         new_boss_active = int(boss_active)
-        enemy_hp = max(1, int(current["enemy_hp"]) - counter_damage)
+        resolution = CombatResolution()
+        counter_lethal = False
+        if counter_triggered:
+            counter_context = CombatContext(
+                hero_hp, base_hero_max_hp, int(current["enemy_hp"]),
+                "boss" if boss_active else "normal",
+            )
+            counter_context.resolved_at = now
+            counter_event = CombatResolver(
+                connection, current, public_battle_identity(current),
+                public_battle_identity, _resolve_victory, resolution,
+            ).resolve(
+                damage_source="counter", raw_damage=counter_damage,
+                attack_source="counter", crit_metadata={"critical": counter_critical},
+                boss=boss_active, context=counter_context,
+            )
+            counter_lethal = counter_event.lethal
+            if counter_lethal:
+                hero_hp = int(current["hero_hp"])
+                shield_amount = 0
+        enemy_hp = int(current["enemy_hp"])
         enemy_max_hp = int(current["enemy_max_hp"])
-        if hero_defeated and boss_active:
+        if hero_defeated and boss_active and not counter_lethal:
             new_boss_active = 0
             boss_waiting = 1
             enemy_max_hp = calculate_enemy_hp(stage, boss=True)
@@ -4687,14 +4986,14 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
             (
                 hero_hp,
                 defeats,
-                new_boss_active,
+                int(current.get("boss_active", new_boss_active)) if counter_lethal else new_boss_active,
                 boss_waiting,
                 enemy_hp,
                 enemy_max_hp,
                 0 if hero_defeated else shield_amount,
                 shield_last_used_at,
-                0.0 if hero_defeated else float(current.get("poison_cloud_until", 0)),
-                0.0 if hero_defeated else float(current.get("poison_cloud_next_tick_at", 0)),
+                0.0 if hero_defeated or counter_lethal else float(current.get("poison_cloud_until", 0)),
+                0.0 if hero_defeated or counter_lethal else float(current.get("poison_cloud_next_tick_at", 0)),
                 now,
                 int(now),
                 telegram_id,
@@ -4720,6 +5019,8 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         message = "💀 Босс победил. После возрождения нажмите «Босс»"
     elif hero_defeated:
         message = "💀 Герой повержен"
+    if counter_lethal:
+        BATTLE_STATES.reset(telegram_id)
     return build_player_response(
         updated,
         enemy_attacked=True,
@@ -4734,6 +5035,9 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         counter_triggered=counter_triggered,
         counter_damage=counter_damage,
         counter_critical=counter_critical,
+        enemy_defeated=counter_lethal,
+        boss_defeated=bool(counter_lethal and boss_active),
+        combat_resolution=resolution.public(),
         normal_attack_damage=0,
         skill_damage=0,
         poison_damage=0,
