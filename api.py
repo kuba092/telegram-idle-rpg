@@ -5625,6 +5625,227 @@ def unequip_skill(
     )
 
 
+# COMPANION_SLOTS_API_V1
+@app.post("/companions/equip")
+def equip_companion(
+    slot: int,
+    companion_id: str,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    if slot not in (1, 2, 3):
+        raise HTTPException(
+            status_code=400,
+            detail="Номер слота должен быть от 1 до 3",
+        )
+
+    companion_id = str(companion_id or "").strip()
+    definition = COMPANION_CATALOG.get(companion_id)
+
+    if definition is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Спутник не найден",
+        )
+
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+        level = max(1, int(current.get("level", 1)))
+
+        if level < COMPANION_SYSTEM_UNLOCK_LEVEL:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Система спутников откроется "
+                    f"на {COMPANION_SYSTEM_UNLOCK_LEVEL} уровне героя"
+                ),
+            )
+
+        required_level = int(
+            COMPANION_SLOT_UNLOCK_LEVELS[slot - 1]
+        )
+
+        if level < required_level:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Слот {slot} откроется "
+                    f"на {required_level} уровне героя"
+                ),
+            )
+
+        collection = normalize_companion_collection(
+            current.get("companions_collection_json")
+        )
+        entry = collection.get(companion_id)
+
+        if not isinstance(entry, dict) or not bool(entry.get("owned")):
+            raise HTTPException(
+                status_code=403,
+                detail="Сначала получите этого спутника",
+            )
+
+        slots = normalize_companion_slots(
+            current.get("companion_slots_json"),
+            collection,
+        )
+        occupied_slot = next(
+            (
+                index + 1
+                for index, equipped_id in enumerate(slots)
+                if equipped_id == companion_id
+            ),
+            None,
+        )
+
+        if occupied_slot is not None and occupied_slot != slot:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Этот спутник уже установлен "
+                    f"в слот {occupied_slot}"
+                ),
+            )
+
+        slots[slot - 1] = companion_id
+        connection.execute(
+            """
+            UPDATE players
+            SET companion_slots_json = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                json.dumps(
+                    slots,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                int(time.time()),
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    return build_player_response(
+        updated,
+        companion_equipped=True,
+        equipped_companion_id=companion_id,
+        equipped_companion_slot=slot,
+        message=(
+            f"✅ {definition['name']} установлен "
+            f"в слот {slot}"
+        ),
+    )
+
+
+@app.post("/companions/unequip")
+def unequip_companion(
+    slot: int,
+    x_telegram_init_data: str = Header(...),
+) -> dict:
+    if slot not in (1, 2, 3):
+        raise HTTPException(
+            status_code=400,
+            detail="Номер слота должен быть от 1 до 3",
+        )
+
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    connection = get_database()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+        level = max(1, int(current.get("level", 1)))
+
+        if level < COMPANION_SYSTEM_UNLOCK_LEVEL:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Система спутников откроется "
+                    f"на {COMPANION_SYSTEM_UNLOCK_LEVEL} уровне героя"
+                ),
+            )
+
+        required_level = int(
+            COMPANION_SLOT_UNLOCK_LEVELS[slot - 1]
+        )
+
+        if level < required_level:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Слот {slot} откроется "
+                    f"на {required_level} уровне героя"
+                ),
+            )
+
+        collection = normalize_companion_collection(
+            current.get("companions_collection_json")
+        )
+        slots = normalize_companion_slots(
+            current.get("companion_slots_json"),
+            collection,
+        )
+        removed_companion_id = slots[slot - 1]
+        slots[slot - 1] = None
+
+        connection.execute(
+            """
+            UPDATE players
+            SET companion_slots_json = ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                json.dumps(
+                    slots,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                int(time.time()),
+                telegram_id,
+            ),
+        )
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+    finally:
+        connection.close()
+
+    removed_definition = (
+        COMPANION_CATALOG.get(removed_companion_id)
+        if removed_companion_id
+        else None
+    )
+    removed_name = (
+        removed_definition.get("name")
+        if removed_definition
+        else None
+    )
+
+    return build_player_response(
+        updated,
+        companion_unequipped=True,
+        unequipped_companion_id=removed_companion_id,
+        unequipped_companion_slot=slot,
+        message=(
+            f"Снят спутник {removed_name} из слота {slot}"
+            if removed_name
+            else f"Слот {slot} уже пуст"
+        ),
+    )
+
+
 @app.post("/skills/summon")
 def summon_skills(
     count: int = 1,

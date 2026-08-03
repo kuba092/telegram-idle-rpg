@@ -7989,6 +7989,13 @@ id="companionSummonChances"
               <div class="skill-loadout-slot-level">
                 УР. ${Number(entry.level || 1)}
               </div>
+              <button
+                class="skill-loadout-remove"
+                data-unequip-companion-slot="${index + 1}"
+                type="button"
+              >
+                СНЯТЬ
+              </button>
             </div>
           `;
         })
@@ -8013,9 +8020,21 @@ id="companionSummonChances"
           const rarity = companion.rarity || "common";
           const color =
             RARITY_COLORS[rarity] || "#ffffff";
+          const activeSlotIndex = slots.findIndex(
+            (slot) => slot?.companion_id === companion.id
+          );
+          const active = activeSlotIndex >= 0;
+
+          let actionText = "НЕ ПОЛУЧЕН";
+
+          if (active) {
+            actionText = "СНЯТЬ";
+          } else if (owned) {
+            actionText = "УСТАНОВИТЬ";
+          }
 
           return `
-            <div class="collection-skill ${escapeHtml(rarity)} ${owned ? "" : "not-owned"}">
+            <div class="collection-skill ${escapeHtml(rarity)} ${owned ? "" : "not-owned"} ${active ? "active-loadout" : ""}">
               <div class="collection-skill-badge">
                 ${owned ? `УР. ${level}` : "?"}
               </div>
@@ -8057,19 +8076,106 @@ id="companionSummonChances"
                   : "Не получен"}
               </div>
 
+              ${active
+                ? `<div class="collection-skill-status">
+                     АКТИВЕН В СЛОТЕ ${activeSlotIndex + 1}
+                   </div>`
+                : ""}
+
               <div class="collection-skill-actions">
                 <button
                   class="collection-skill-equip"
+                  ${active
+                    ? `data-unequip-companion-slot="${activeSlotIndex + 1}"`
+                    : `data-equip-companion="${escapeHtml(companion.id)}"`}
                   type="button"
-                  disabled
+                  ${owned ? "" : "disabled"}
                 >
-                  ${owned ? "ЭКИПИРОВКА ПОЗЖЕ" : "НЕ ПОЛУЧЕН"}
+                  ${actionText}
                 </button>
               </div>
             </div>
           `;
         })
         .join("");
+
+      slotsBox
+        .querySelectorAll("[data-unequip-companion-slot]")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            unequipCompanion(
+              Number(button.dataset.unequipCompanionSlot)
+            );
+          });
+        });
+
+      collectionBox
+        .querySelectorAll("[data-equip-companion]")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            equipCompanionToAvailableSlot(
+              button.dataset.equipCompanion
+            );
+          });
+        });
+
+      collectionBox
+        .querySelectorAll("[data-unequip-companion-slot]")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            unequipCompanion(
+              Number(button.dataset.unequipCompanionSlot)
+            );
+          });
+        });
+    }
+
+
+    async function equipCompanionToAvailableSlot(companionId) {
+      const slots = Array.isArray(player?.companion_system?.slots)
+        ? player.companion_system.slots
+        : [];
+      const availableSlot = slots.find(
+        (slot) => slot?.unlocked && !slot?.companion_id
+      );
+      const targetSlot = availableSlot
+        ? Number(availableSlot.index)
+        : Number(
+            slots.find((slot) => slot?.unlocked)?.index || 1
+          );
+
+      try {
+        const result = await apiRequest(
+          `/companions/equip?slot=${targetSlot}&companion_id=${encodeURIComponent(companionId)}`,
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderCompanionLoadout();
+        renderCompanionShop();
+        setMessage(result.message || "Спутник установлен");
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      }
+    }
+
+
+    async function unequipCompanion(slot) {
+      try {
+        const result = await apiRequest(
+          `/companions/unequip?slot=${slot}`,
+          "POST"
+        );
+
+        player = result;
+        renderPlayer();
+        renderCompanionLoadout();
+        renderCompanionShop();
+        setMessage(result.message || "Спутник снят");
+      } catch (error) {
+        setMessage(`❌ ${error.message}`, true);
+      }
     }
 
 
