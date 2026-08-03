@@ -6224,6 +6224,7 @@
 <div class="skill-loadout-note">
 Соберите команду из трёх боевых помощников.
 </div>
+<div class="skill-loadout-note" id="activeCompanionEffects"></div>
 <div class="skill-loadout-slots" id="activeCompanionSlots"></div>
 </div>
 
@@ -7124,7 +7125,10 @@ id="companionSummonChances"
         }
         const useSkill = result.skill_used === "spore_strike";
         animateHeroAttack(useSkill);
-        showDamage(result.damage_dealt || player.damage, result.critical);
+        const companionDamage = Number(result.companion_damage || 0);
+        const displayedDamage = Number(result.damage_dealt || 0)
+          || Number(player.damage || 0) + companionDamage;
+        showDamage(displayedDamage, result.critical);
         if (result.enemy_defeated) {
           setMessage(result.message || "Враг побеждён");
           await animateEnemyDefeat(result);
@@ -7899,6 +7903,7 @@ id="companionSummonChances"
       const slotsBox = $("activeCompanionSlots");
       const collectionBox = $("companionCollectionGrid");
       const countBox = $("companionCollectionCount");
+      const effectsBox = $("activeCompanionEffects");
 
       if (!locked || !body || !slotsBox || !collectionBox) {
         return;
@@ -7922,6 +7927,21 @@ id="companionSummonChances"
       const slots = Array.isArray(system.slots)
         ? system.slots
         : [];
+      const activeEffects = Array.isArray(
+        player?.companion_effects?.active_effects
+      )
+        ? player.companion_effects.active_effects
+        : [];
+
+      if (effectsBox) {
+        effectsBox.innerHTML = activeEffects.length
+          ? `<strong>Активные эффекты:</strong><br>${activeEffects
+              .map((effect) =>
+                `${escapeHtml(effect.name)} (ур. ${Number(effect.level || 1)}): ${escapeHtml(effect.description)}`
+              )
+              .join("<br>")}`
+          : "Активных боевых эффектов нет.";
+      }
 
       const catalogById = Object.fromEntries(
         catalog.map((companion) => [

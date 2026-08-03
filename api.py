@@ -147,22 +147,22 @@ COMPANION_CATALOG = {
         "name": "Лесной дух",
         "icon": "🌿",
         "rarity": "common",
-        "implemented": False,
-        "description": "Небольшой дух леса, усиливающий героя.",
+        "implemented": True,
+        "description": "Увеличивает итоговый урон героя на 3% за уровень.",
     },
     "baby_slime": {
         "name": "Маленький слизень",
         "icon": "🟢",
         "rarity": "common",
-        "implemented": False,
-        "description": "Любопытный слизень, следующий за героем.",
+        "implemented": True,
+        "description": "Увеличивает максимальный HP героя на 5% за уровень.",
     },
     "spore_beetle": {
         "name": "Споровый жук",
         "icon": "🪲",
         "rarity": "rare",
-        "implemented": False,
-        "description": "Жук, покрытый светящимися спорами.",
+        "implemented": True,
+        "description": "Добавляет к обычной атаке 2% базового урона за уровень.",
     },
     "mushroom_owl": {
         "name": "Грибная сова",
@@ -186,6 +186,10 @@ COMPANION_CATALOG = {
         "description": "Юный хранитель древнего леса.",
     },
 }
+
+COMPANION_DAMAGE_PER_LEVEL = 0.03
+COMPANION_HP_PER_LEVEL = 0.05
+COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL = 0.02
 
 SKILL_SYSTEM_UNLOCK_LEVEL = 5
 SKILL_SLOT_UNLOCK_LEVELS = (5, 15, 30)
@@ -1193,6 +1197,62 @@ def normalize_companion_slots(
         slots.append(None)
 
     return slots[:3]
+
+
+def calculate_companion_effects(player: dict) -> dict:
+    """Return combat bonuses from companions in unlocked active slots."""
+    level = clamp_int(player.get("level", 1), 1, MAX_HERO_LEVEL)
+    collection = normalize_companion_collection(
+        player.get("companions_collection_json")
+    )
+    slots = normalize_companion_slots(
+        player.get("companion_slots_json"), collection
+    )
+    unlocked_count = sum(
+        level >= unlock_level
+        for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
+    )
+    bonuses = {"damage": 0.0, "hp": 0.0, "extra_attack": 0.0}
+    active_effects = []
+    definitions = {
+        "forest_sprite": (
+            "damage", COMPANION_DAMAGE_PER_LEVEL,
+            "Увеличивает итоговый урон героя на 3% за уровень.",
+        ),
+        "baby_slime": (
+            "hp", COMPANION_HP_PER_LEVEL,
+            "Увеличивает максимальный HP героя на 5% за уровень.",
+        ),
+        "spore_beetle": (
+            "extra_attack", COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL,
+            "Добавляет к обычной атаке 2% базового урона героя за уровень.",
+        ),
+    }
+    for companion_id in slots[:unlocked_count]:
+        definition = definitions.get(companion_id)
+        if definition is None:
+            continue
+        companion_level = int(collection[companion_id]["level"])
+        effect_type, per_level, description = definition
+        bonuses[effect_type] += per_level * companion_level
+        active_effects.append({
+            "companion_id": companion_id,
+            "name": COMPANION_CATALOG[companion_id]["name"],
+            "level": companion_level,
+            "description": description,
+        })
+    base_damage = max(1, int(player.get("damage", 1)))
+    extra_attack_damage = (
+        max(1, round(base_damage * bonuses["extra_attack"]))
+        if bonuses["extra_attack"] > 0
+        else 0
+    )
+    return {
+        "damage_multiplier": round(1.0 + bonuses["damage"], 4),
+        "hp_multiplier": round(1.0 + bonuses["hp"], 4),
+        "extra_attack_damage": extra_attack_damage,
+        "active_effects": active_effects,
+    }
 
 
 def default_skill_collection() -> dict:
@@ -2579,10 +2639,18 @@ def build_player_response(player: dict, **extra) -> dict:
             MUSHROOM_SHIELD_COOLDOWN_SECONDS - shield_elapsed,
         )
     )
-    shield_capacity = max(
+    companion_effects_for_hp = calculate_companion_effects(player)
+    effective_max_hp_for_skills = max(
         1,
         round(
             int(player.get("hero_max_hp", 1))
+            * companion_effects_for_hp["hp_multiplier"]
+        ),
+    )
+    shield_capacity = max(
+        1,
+        round(
+            effective_max_hp_for_skills
             * shield_hp_ratio
         ),
     )
@@ -2643,6 +2711,19 @@ def build_player_response(player: dict, **extra) -> dict:
         level >= unlock_level
         for unlock_level in COMPANION_SLOT_UNLOCK_LEVELS
     )
+    companion_effects = calculate_companion_effects(player)
+    hp_multiplier = float(companion_effects["hp_multiplier"])
+    effective_hero_max_hp = max(
+        1,
+        round(int(player.get("hero_max_hp", 1)) * hp_multiplier),
+    )
+    effective_hero_hp = max(
+        0,
+        min(
+            effective_hero_max_hp,
+            round(int(player.get("hero_hp", 0)) * hp_multiplier),
+        ),
+    )
 
     hidden_fields = {
         "equipment_json",
@@ -2658,6 +2739,9 @@ def build_player_response(player: dict, **extra) -> dict:
         for key, value in player.items()
         if key not in hidden_fields
     }
+    public_player["hero_hp"] = effective_hero_hp
+    public_player["hero_max_hp"] = effective_hero_max_hp
+    stats["total"]["hero_max_hp"] = effective_hero_max_hp
     response = {
         **public_player,
         "equipment": equipment,
@@ -2762,6 +2846,7 @@ def build_player_response(player: dict, **extra) -> dict:
             ],
             "collection": companion_collection,
         },
+        "companion_effects": companion_effects,
         "hero_stats": stats,
         "crit_chance": stats["total"]["crit_chance"],
         "crit_damage": stats["total"]["crit_damage"],
@@ -3596,6 +3681,9 @@ def attack(
                         * skill_power_multiplier(
                             poison_state["level"]
                         )
+                        * calculate_companion_effects(current)[
+                            "damage_multiplier"
+                        ]
                     ),
                 )
                 poison_damage = (
@@ -3608,11 +3696,20 @@ def attack(
 
         stage = clamp_int(current["stage"], 1, MAX_STAGE)
         boss_active = bool(int(current.get("boss_active", 0)))
+        companion_effects = calculate_companion_effects(current)
         dealt_damage, critical = calculate_hero_attack_damage(
             current,
-            damage_multiplier=damage_multiplier,
+            damage_multiplier=(
+                damage_multiplier
+                * companion_effects["damage_multiplier"]
+            ),
         )
-        dealt_damage += poison_damage
+        companion_damage = (
+            int(companion_effects["extra_attack_damage"])
+            if not use_spore_strike
+            else 0
+        )
+        dealt_damage += poison_damage + companion_damage
         enemy_hp = int(current["enemy_hp"]) - dealt_damage
         enemy_max_hp = int(current["enemy_max_hp"])
         enemy_defeated = enemy_hp <= 0
@@ -3774,6 +3871,7 @@ def attack(
         updated,
         attacked=True,
         damage_dealt=dealt_damage,
+        companion_damage=companion_damage,
         critical=critical,
         skill_used=("spore_strike" if use_spore_strike else None),
         spore_strike_used=use_spore_strike,
@@ -3941,6 +4039,7 @@ def use_mushroom_shield(
             1,
             round(
                 int(current["hero_max_hp"])
+                * calculate_companion_effects(current)["hp_multiplier"]
                 * MUSHROOM_SHIELD_HP_RATIO
                 * skill_power_multiplier(
                     shield_state["level"]
@@ -4018,8 +4117,18 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         stage = int(current["stage"])
         boss_active = bool(int(current.get("boss_active", 0)))
 
-        hero_hp_before = max(0, int(current["hero_hp"]))
-        hero_max_hp = max(1, int(current["hero_max_hp"]))
+        hp_multiplier = float(
+            calculate_companion_effects(current)["hp_multiplier"]
+        )
+        base_hero_max_hp = max(1, int(current["hero_max_hp"]))
+        hero_max_hp = max(1, round(base_hero_max_hp * hp_multiplier))
+        hero_hp_before = max(
+            0,
+            min(
+                hero_max_hp,
+                round(int(current["hero_hp"]) * hp_multiplier),
+            ),
+        )
         shield_state = get_player_skill_state(
             current,
             "mushroom_shield",
@@ -4071,8 +4180,16 @@ def enemy_attack(x_telegram_init_data: str = Header(...)) -> dict:
         received_damage = max(0, incoming_damage - absorbed_damage)
         shield_amount -= absorbed_damage
 
-        hero_hp = max(0, hero_hp_before - received_damage)
-        hero_defeated = hero_hp <= 0
+        effective_hero_hp = max(0, hero_hp_before - received_damage)
+        hero_defeated = effective_hero_hp <= 0
+        hero_hp = (
+            0
+            if hero_defeated
+            else min(
+                base_hero_max_hp,
+                round(effective_hero_hp / hp_multiplier),
+            )
+        )
         defeats = int(current["defeats"]) + (1 if hero_defeated else 0)
         boss_waiting = int(current.get("boss_waiting", 0))
         new_boss_active = int(boss_active)
