@@ -9,7 +9,7 @@ import sqlite3
 import time
 from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Body, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from combat_effects import (
@@ -24,7 +24,13 @@ from combat_effects import (
 from equipment_stats import (
     SECONDARY_STATS, aggregate_secondary_stats, build_score,
     comparison_breakdown, generate_secondary_stats, normalize_item,
+    reroll_secondary_stat,
     public_secondary_stats,
+)
+from loot_progression import (
+    CHEST_LEVEL_CAP, RARITY_INDEX, RARITY_ORDER, chest_progress,
+    chest_xp_required, deterministic_rng, inventory_capacity, rarity_at_or_below,
+    rarity_weights, reroll_cost, salvage_reward, unique_ids,
 )
 from combat_resolver import CombatResolution, CombatResolver
 from damage_types import (
@@ -776,7 +782,7 @@ DAILY_ALL_QUESTS_ID = "daily_complete"
 ENEMY_ATTACK_SPEED = 0.5
 MIN_ENEMY_ATTACK_INTERVAL = 0.5
 STARTER_CHESTS = 3
-MAX_CHEST_LEVEL = 25
+MAX_CHEST_LEVEL = CHEST_LEVEL_CAP
 CHEST_UPGRADE_BASE_COST = 500
 CHEST_UPGRADE_COST_GROWTH = 1.72
 OFFLINE_MAX_SECONDS = 4 * 60 * 60
@@ -925,6 +931,33 @@ LEVEL_STAGE_ANCHORS = (
 )
 
 app = FastAPI(title="Telegram Idle RPG API")
+ACTION_CACHE: dict[tuple[int, str, str], tuple[float, dict]] = {}
+ACTION_CACHE_TTL = 3600
+ACTION_CACHE_MAX = 4096
+
+
+def cached_action(player_id: int, operation: str, action_id: object) -> dict | None:
+    if not action_id:
+        return None
+    now = time.time()
+    key = (int(player_id), operation, str(action_id))
+    entry = ACTION_CACHE.get(key)
+    if entry and now - entry[0] <= ACTION_CACHE_TTL:
+        return {**entry[1], "duplicate_request": True}
+    return None
+
+
+def remember_action(player_id: int, operation: str, action_id: object, result: dict) -> None:
+    if not action_id:
+        return
+    now = time.time()
+    if len(ACTION_CACHE) >= ACTION_CACHE_MAX:
+        expired = [key for key, value in ACTION_CACHE.items() if now - value[0] > ACTION_CACHE_TTL]
+        for key in expired:
+            ACTION_CACHE.pop(key, None)
+        if len(ACTION_CACHE) >= ACTION_CACHE_MAX:
+            ACTION_CACHE.pop(next(iter(ACTION_CACHE)))
+    ACTION_CACHE[(int(player_id), operation, str(action_id))] = (now, dict(result))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://kuba092.github.io"],
@@ -971,6 +1004,41 @@ def parse_json_object(value: object) -> dict:
     except (TypeError, ValueError, json.JSONDecodeError):
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def parse_json_list(value: object) -> list:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def normalized_inventory(player: dict) -> list[dict]:
+    return [normalize_item(item) for item in parse_json_list(player.get("inventory_json"))
+            if isinstance(item, dict)]
+
+
+def item_identifier(item: dict) -> str:
+    return str(item.get("item_id", item.get("id", "")))
+
+
+def public_loot_item(item: dict, player: dict, equipped: bool = False) -> dict:
+    item = normalize_item(item)
+    comparison = compare_loot(player, item) if item.get("slot") in GEAR_SLOTS else {}
+    cost = reroll_cost(item.get("rarity"), item.get("reroll_count", 0))
+    secondary = item.get("secondary_stats", {})
+    salvage = salvage_reward(item, player.get("chest_level", 1),
+                             player.get("highest_stage", player.get("stage", 1)))
+    return {**item, "item_id": item_identifier(item), "raw_power": int(item.get("power", 0) or 0),
+            "build_score": build_score(item, str(player.get("comparison_profile", "balanced"))),
+            "comparison": comparison, "salvage_value": salvage,
+            "reroll_cost": cost, "can_reroll": bool(secondary) and cost["available"],
+            "can_salvage": not equipped and not item.get("locked", False),
+            "equipped": equipped,
+            "reroll_history_summary": list(item.get("reroll_history", []))[-5:]}
 
 
 def calculate_enemy_hp(stage: int, boss: bool = False) -> int:
@@ -1268,73 +1336,7 @@ def calculate_chest_upgrade_cost(chest_level: int) -> int | None:
 
 
 def chest_rarity_weights(chest_level: int) -> list[float]:
-    chest_level = clamp_int(chest_level, 1, MAX_CHEST_LEVEL)
-
-    if chest_level <= 3:
-        return [79, 20, 1, 0, 0, 0, 0, 0, 0]
-
-    if chest_level <= 7:
-        return [63, 29, 7, 0.9, 0.1, 0, 0, 0, 0]
-
-    if chest_level <= 12:
-        return [48, 31, 16, 4.2, 0.7, 0.1, 0, 0, 0]
-
-    if chest_level <= 16:
-        return [38, 30, 22, 8, 1.7, 0.28, 0.02, 0, 0]
-
-    if chest_level <= 19:
-        return [30, 29, 25, 12, 3.2, 0.7, 0.1, 0, 0]
-
-    if chest_level <= 22:
-        return [
-            23.75,
-            28,
-            28,
-            15.5,
-            3.2,
-            1.2,
-            0.3,
-            0.05,
-            0,
-        ]
-
-    if chest_level == 23:
-        return [
-            20.475,
-            27.5,
-            29.5,
-            17.75,
-            2.8,
-            1.5,
-            0.4,
-            0.07,
-            0.005,
-        ]
-
-    if chest_level == 24:
-        return [
-            18.77,
-            26.5,
-            30,
-            19.02,
-            3,
-            2,
-            0.6,
-            0.1,
-            0.01,
-        ]
-
-    return [
-        17.015,
-        25.5,
-        29.5,
-        21.315,
-        3.2,
-        2.5,
-        0.8,
-        0.15,
-        0.02,
-    ]
+    return list(rarity_weights(chest_level))
 
 
 
@@ -1350,9 +1352,9 @@ def chest_rarity_chances(chest_level: int) -> dict:
     }
 
 
-def choose_rarity(chest_level: int) -> dict:
+def choose_rarity(chest_level: int, rng: random.Random | object = random) -> dict:
     weights = chest_rarity_weights(chest_level)
-    chosen_index = random.choices(
+    chosen_index = rng.choices(
         list(range(len(RARITIES))),
         weights=weights,
         k=1,
@@ -1360,13 +1362,13 @@ def choose_rarity(chest_level: int) -> dict:
     return RARITIES[chosen_index]
 
 
-def generate_loot(stage: int, chest_level: int) -> dict:
-    slot_key = random.choice(list(GEAR_SLOTS))
+def generate_loot(stage: int, chest_level: int, rng: random.Random | object = random) -> dict:
+    slot_key = rng.choice(list(GEAR_SLOTS))
     slot = GEAR_SLOTS[slot_key]
     stage = clamp_int(stage, 1, MAX_STAGE)
     chest_level = clamp_int(chest_level, 1, MAX_CHEST_LEVEL)
-    rarity = choose_rarity(chest_level)
-    random_bonus = random.randint(0, max(2, stage // 20 + chest_level))
+    rarity = choose_rarity(chest_level, rng)
+    random_bonus = rng.randint(0, max(2, stage // 20 + chest_level))
     base_roll = stage * 1.35 + chest_level * 2.5 + random_bonus
     chest_power_multiplier = 1 + (chest_level - 1) * 0.06
     item_power = clamp_int(
@@ -1391,10 +1393,10 @@ def generate_loot(stage: int, chest_level: int) -> dict:
         MAX_SAFE_STAT,
     )
     secondary_stats = generate_secondary_stats(
-        rarity["key"], chest_level, stage, slot["focus"]
+        rarity["key"], chest_level, stage, slot["focus"], rng
     )
     return {
-        "id": f"{random.getrandbits(64):016x}",
+        "id": f"{rng.getrandbits(64):016x}",
         "slot": slot_key,
         "slot_name": slot["name"],
         "icon": slot["icon"],
@@ -1409,6 +1411,11 @@ def generate_loot(stage: int, chest_level: int) -> dict:
         "sell_price": sell_price,
         "stage_found": stage,
         "chest_level_found": chest_level,
+        "slot_focus": slot["focus"],
+        "locked": False,
+        "reroll_count": 0,
+        "item_version": 1,
+        "reroll_history": [],
     }
 
 
@@ -2976,6 +2983,12 @@ def build_player_response(player: dict, **extra) -> dict:
     chest_step = max(0, int(player.get("chest_upgrade_step", 0)))
     steps_required = chest_upgrade_steps_required(chest_level)
     pending_loot = public_pending_loot(player)
+    inventory = normalized_inventory(player)
+    progression = chest_progress(player)
+    capacity = inventory_capacity(chest_level)
+    progression.update({"available_rerolls": sum(
+        1 for item in inventory if reroll_cost(item.get("rarity"), item.get("reroll_count", 0))["available"]
+    ), "inventory_count": len(inventory), "inventory_capacity": capacity})
 
     skill_collection = normalize_skill_collection(
         player.get("skills_collection_json")
@@ -3171,6 +3184,7 @@ def build_player_response(player: dict, **extra) -> dict:
 
     hidden_fields = {
         "equipment_json",
+        "inventory_json",
         "pending_loot_json",
         "skills_collection_json",
         "skill_slots_json",
@@ -3199,14 +3213,19 @@ def build_player_response(player: dict, **extra) -> dict:
     }
     response = {
         **public_player,
-        "equipment": equipment,
+        "equipment": {slot: (public_loot_item(item, player, equipped=True) if item else None)
+                      for slot, item in equipment.items()},
+        "inventory": [public_loot_item(item, player) for item in inventory],
+        "inventory_count": len(inventory),
+        "inventory_capacity": capacity,
+        "loot_progression": progression,
         "secondary_stat_catalog": SECONDARY_STATS,
         "comparison_profiles": {"damage": "Урон", "defense": "Защита", "balanced": "Баланс"},
         "comparison_profile": str(player.get("comparison_profile", "balanced")),
         "quests": build_daily_quests(player),
         "chest_boss": build_chest_boss_state(player),
         "gem_boss": build_gem_boss_state(player),
-        "pending_loot": pending_loot,
+        "pending_loot": public_loot_item(pending_loot, player) if pending_loot else None,
         "pending_loot_comparison": (
             compare_loot(player, pending_loot) if pending_loot else None
         ),
@@ -3560,6 +3579,12 @@ def create_database() -> None:
         ("chest_level", "INTEGER NOT NULL DEFAULT 1"),
         ("chest_upgrade_step", "INTEGER NOT NULL DEFAULT 0"),
         ("equipment_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ("inventory_json", "TEXT NOT NULL DEFAULT '[]'"),
+        ("salvage_dust", "INTEGER NOT NULL DEFAULT 0"),
+        ("refinement_crystal", "INTEGER NOT NULL DEFAULT 0"),
+        ("chest_xp", "INTEGER NOT NULL DEFAULT 0"),
+        ("auto_salvage_enabled", "INTEGER NOT NULL DEFAULT 0"),
+        ("auto_salvage_max_rarity", "TEXT NOT NULL DEFAULT 'off'"),
         ("comparison_profile", "TEXT NOT NULL DEFAULT 'balanced'"),
         ("pending_loot_json", "TEXT NOT NULL DEFAULT ''"),
         ("experience", "INTEGER NOT NULL DEFAULT 0"),
@@ -6656,8 +6681,213 @@ def leave_gem_boss(
     )
 
 
+def _equipped_item_ids(player: dict) -> set[str]:
+    return {item_identifier(item) for item in parse_json_object(player.get("equipment_json")).values()
+            if isinstance(item, dict)}
+
+
+def _salvage_inventory_item(current: dict, inventory: list[dict], index: int) -> tuple[dict, dict]:
+    item = inventory[index]
+    reward = salvage_reward(item, current.get("chest_level", 1),
+                            current.get("highest_stage", current.get("stage", 1)))
+    del inventory[index]
+    return item, reward
+
+
+@app.post("/inventory/salvage")
+def salvage_inventory(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data)
+    player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    action_id = payload.get("client_action_id")
+    cached = cached_action(telegram_id, "salvage", action_id)
+    if cached:
+        return cached
+    target = str(payload.get("item_id", ""))
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = load_player(connection, telegram_id)
+        inventory = normalized_inventory(current)
+        if target in _equipped_item_ids(current):
+            connection.rollback()
+            raise HTTPException(status_code=409, detail="Экипированный предмет нельзя разобрать")
+        index = next((i for i, item in enumerate(inventory) if item_identifier(item) == target), None)
+        if index is None:
+            connection.rollback()
+            result = {"salvaged_item_id": target, "dust_gained": 0, "crystals_gained": 0,
+                      "new_salvage_dust": int(current.get("salvage_dust", 0)),
+                      "new_refinement_crystal": int(current.get("refinement_crystal", 0)),
+                      "inventory_count": len(inventory), "duplicate_request": False,
+                      "stale_item": True, "transaction_completed": False}
+            remember_action(telegram_id, "salvage", action_id, result)
+            return result
+        item = inventory[index]
+        expected = payload.get("expected_item_version")
+        if expected is not None and int(expected) != int(item.get("item_version", 1)):
+            connection.rollback()
+            return {"salvaged_item_id": target, "dust_gained": 0, "crystals_gained": 0,
+                    "inventory_count": len(inventory), "duplicate_request": False,
+                    "stale_item": True, "transaction_completed": False}
+        if item.get("locked", False):
+            connection.rollback()
+            raise HTTPException(status_code=409, detail="Заблокированный предмет нельзя разобрать")
+        item, reward = _salvage_inventory_item(current, inventory, index)
+        dust = int(current.get("salvage_dust", 0)) + reward["dust"]
+        crystals = int(current.get("refinement_crystal", 0)) + reward["crystals"]
+        pending = public_pending_loot(current)
+        pending_json = "" if pending and item_identifier(pending) == target else current.get("pending_loot_json", "")
+        connection.execute("UPDATE players SET inventory_json=?, pending_loot_json=?, salvage_dust=?, refinement_crystal=?, chest_xp=chest_xp+?, updated_at=? WHERE telegram_id=?",
+                           (json.dumps(inventory, ensure_ascii=False), pending_json, dust, crystals, reward["chest_xp"],
+                            int(time.time()), telegram_id))
+        connection.commit()
+        result = {"salvaged_item_id": target, "rarity": reward["rarity"],
+                  "dust_gained": reward["dust"], "crystals_gained": reward["crystals"],
+                  "chest_xp_gained": reward["chest_xp"], "new_salvage_dust": dust,
+                  "new_refinement_crystal": crystals, "inventory_count": len(inventory),
+                  "duplicate_request": False, "stale_item": False, "transaction_completed": True}
+    except HTTPException:
+        raise
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+    remember_action(telegram_id, "salvage", action_id, result)
+    return result
+
+
+@app.post("/inventory/salvage-bulk")
+def salvage_inventory_bulk(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data); player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"])
+    requested_input = payload.get("item_ids")
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); current = load_player(connection, telegram_id)
+        inventory = normalized_inventory(current); equipped_ids = _equipped_item_ids(current)
+        ids = unique_ids(requested_input, 100) if isinstance(requested_input, list) else [
+            item_identifier(item) for item in inventory
+            if rarity_at_or_below(item.get("rarity"), payload.get("max_rarity", "off"))][:100]
+        known = {item_identifier(item): item for item in inventory}; missing = [value for value in ids if value not in known]
+        skipped_equipped, skipped_locked, skipped_upgrade, selected = [], [], [], []
+        equipment = parse_json_object(current.get("equipment_json")); profile = str(current.get("comparison_profile", "balanced"))
+        for item_id in ids:
+            item = known.get(item_id)
+            if not item: continue
+            if item_id in equipped_ids: skipped_equipped.append(item_id); continue
+            if item.get("locked", False): skipped_locked.append(item_id); continue
+            equipped = equipment.get(str(item.get("slot")))
+            if payload.get("exclude_build_upgrades", True) and build_score(item, profile) > build_score(equipped, profile):
+                skipped_upgrade.append(item_id); continue
+            selected.append(item_id)
+        total_dust = total_crystals = total_xp = 0; results = []
+        kept = []
+        for item in inventory:
+            item_id = item_identifier(item)
+            if item_id not in selected: kept.append(item); continue
+            reward = salvage_reward(item, current.get("chest_level", 1), current.get("highest_stage", 1))
+            total_dust += reward["dust"]; total_crystals += reward["crystals"]; total_xp += reward["chest_xp"]
+            results.append({"item_id": item_id, **reward})
+        pending = public_pending_loot(current)
+        pending_json = "" if pending and item_identifier(pending) in selected else current.get("pending_loot_json", "")
+        connection.execute("UPDATE players SET inventory_json=?,pending_loot_json=?,salvage_dust=salvage_dust+?,refinement_crystal=refinement_crystal+?,chest_xp=chest_xp+?,updated_at=? WHERE telegram_id=?",
+                           (json.dumps(kept, ensure_ascii=False), pending_json, total_dust, total_crystals, total_xp, int(time.time()), telegram_id))
+        connection.commit()
+    except Exception:
+        connection.rollback(); raise
+    finally: connection.close()
+    return {"requested_count": len(ids), "salvaged_count": len(results),
+            "skipped_equipped": skipped_equipped, "skipped_locked": skipped_locked,
+            "skipped_build_upgrade": skipped_upgrade, "missing_items": missing,
+            "total_dust": total_dust, "total_crystals": total_crystals, "results": results,
+            "transaction_completed": True}
+
+
+@app.post("/inventory/item-lock")
+def lock_inventory_item(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data); player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"]); target = str(payload.get("item_id", ""))
+    cached = cached_action(telegram_id, "item-lock", payload.get("client_action_id"))
+    if cached: return cached
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); current = load_player(connection, telegram_id)
+        inventory = normalized_inventory(current); equipment = parse_json_object(current.get("equipment_json")); found = None
+        for item in inventory:
+            if item_identifier(item) == target: found = item; break
+        location = "inventory"
+        if found is None:
+            for item in equipment.values():
+                if isinstance(item, dict) and item_identifier(normalize_item(item)) == target: found = item; location = "equipment"; break
+        if found is None: connection.rollback(); raise HTTPException(status_code=404, detail="Предмет не найден")
+        normalized = normalize_item(found); expected = payload.get("expected_item_version")
+        if expected is not None and int(expected) != normalized["item_version"]:
+            connection.rollback(); return {"item_id": target, "stale_item": True, "transaction_completed": False}
+        normalized["locked"] = bool(payload.get("locked")); normalized["item_version"] += 1
+        if location == "inventory": inventory[inventory.index(found)] = normalized
+        else: equipment[str(normalized.get("slot"))] = normalized
+        pending = public_pending_loot(current)
+        pending_json = json.dumps(normalized, ensure_ascii=False) if pending and item_identifier(pending) == target else current.get("pending_loot_json", "")
+        connection.execute("UPDATE players SET inventory_json=?,equipment_json=?,pending_loot_json=?,updated_at=? WHERE telegram_id=?",
+                           (json.dumps(inventory, ensure_ascii=False), json.dumps(equipment, ensure_ascii=False), pending_json, int(time.time()), telegram_id))
+        connection.commit(); result = {"item_id": target, "locked": normalized["locked"],
+                                       "item_version": normalized["item_version"], "stale_item": False,
+                                       "transaction_completed": True, "duplicate_request": False}
+    except HTTPException: raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+    remember_action(telegram_id, "item-lock", payload.get("client_action_id"), result); return result
+
+
+@app.post("/inventory/reroll-secondary")
+def reroll_inventory_secondary(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    user = validate_telegram_data(x_telegram_init_data); player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"]); target = str(payload.get("item_id", "")); stat_key = str(payload.get("stat_key", ""))
+    cached = cached_action(telegram_id, "reroll", payload.get("client_action_id"))
+    if cached: return cached
+    connection = get_database()
+    try:
+        connection.execute("BEGIN IMMEDIATE"); current = load_player(connection, telegram_id)
+        inventory = normalized_inventory(current); equipment = parse_json_object(current.get("equipment_json")); item = None; location = "inventory"
+        index = next((i for i, value in enumerate(inventory) if item_identifier(value) == target), None)
+        if index is not None: item = inventory[index]
+        else:
+            for slot, value in equipment.items():
+                if isinstance(value, dict) and item_identifier(normalize_item(value)) == target: item = normalize_item(value); index = slot; location = "equipment"; break
+        if item is None: connection.rollback(); raise HTTPException(status_code=404, detail="Предмет не найден")
+        expected = payload.get("expected_item_version")
+        if expected is None or int(expected) != int(item.get("item_version", 1)):
+            connection.rollback(); return {"item_id": target, "stale_item": True, "transaction_completed": False}
+        if stat_key not in item.get("secondary_stats", {}): connection.rollback(); raise HTTPException(status_code=409, detail="Свойство не найдено")
+        cost = reroll_cost(item.get("rarity"), item.get("reroll_count", 0))
+        if not cost["available"]: connection.rollback(); raise HTTPException(status_code=409, detail="Этот предмет нельзя переработать")
+        if int(current.get("salvage_dust", 0)) < cost["dust"] or int(current.get("refinement_crystal", 0)) < cost["crystals"]:
+            connection.rollback(); raise HTTPException(status_code=409, detail="Недостаточно материалов")
+        old_value = item["secondary_stats"][stat_key]; old_raw = int(item.get("power", 0)); profile = str(current.get("comparison_profile", "balanced"))
+        changed = reroll_secondary_stat(item, stat_key, int(current.get("chest_level", 1)), int(current.get("highest_stage", 1)))
+        new_key = next(key for key in changed["secondary_stats"] if key not in item["secondary_stats"])
+        if location == "inventory": inventory[int(index)] = changed
+        else: equipment[str(index)] = changed
+        pending = public_pending_loot(current)
+        pending_json = json.dumps(changed, ensure_ascii=False) if pending and item_identifier(pending) == target else current.get("pending_loot_json", "")
+        connection.execute("UPDATE players SET inventory_json=?,equipment_json=?,pending_loot_json=?,salvage_dust=salvage_dust-?,refinement_crystal=refinement_crystal-?,updated_at=? WHERE telegram_id=?",
+                           (json.dumps(inventory, ensure_ascii=False), json.dumps(equipment, ensure_ascii=False), pending_json, cost["dust"], cost["crystals"], int(time.time()), telegram_id))
+        if location == "equipment": sync_player_stats(connection, telegram_id)
+        connection.commit()
+        result = {"item_id": target, "old_stat": stat_key, "new_stat": new_key, "old_value": old_value,
+                  "new_value": changed["secondary_stats"][new_key], "dust_spent": cost["dust"], "crystals_spent": cost["crystals"],
+                  "reroll_count": changed["reroll_count"], "item_version": changed["item_version"], "raw_power": old_raw,
+                  "build_score": build_score(changed, profile), "comparison": compare_loot(current, changed),
+                  "stale_item": False, "transaction_completed": True, "duplicate_request": False}
+    except HTTPException: raise
+    except Exception: connection.rollback(); raise
+    finally: connection.close()
+    remember_action(telegram_id, "reroll", payload.get("client_action_id"), result); return result
+
+
 @app.post("/chest/upgrade")
-def upgrade_chest(x_telegram_init_data: str = Header(...)) -> dict:
+def upgrade_chest(payload: dict = Body(default={}), x_telegram_init_data: str = Header(...)) -> dict:
     user = validate_telegram_data(x_telegram_init_data)
     player_data = get_or_create_player(user)
     telegram_id = int(player_data["telegram_id"])
@@ -6665,65 +6895,39 @@ def upgrade_chest(x_telegram_init_data: str = Header(...)) -> dict:
     try:
         connection.execute("BEGIN IMMEDIATE")
         current = load_player(connection, telegram_id)
+        cached = cached_action(telegram_id, "chest-upgrade", payload.get("client_action_id"))
+        if cached:
+            connection.rollback()
+            return cached
         chest_level = clamp_int(current["chest_level"], 1, MAX_CHEST_LEVEL)
-        current_step = max(0, int(current.get("chest_upgrade_step", 0)))
-        upgrade_cost = calculate_chest_upgrade_cost(chest_level)
-        if upgrade_cost is None:
+        xp = max(0, int(current.get("chest_xp", 0)))
+        if chest_level >= MAX_CHEST_LEVEL:
             connection.commit()
-            return build_player_response(
-                current,
-                upgraded=False,
-                max_level=True,
-                message="Сундук уже максимального уровня",
-            )
-        gold = max(0, int(current["gold"]))
-        if gold < upgrade_cost:
+            return {"old_level": chest_level, "new_level": chest_level, "xp_spent": 0,
+                    "chest_xp_remaining": xp, "next_required": 0, "cap_reached": True,
+                    "transaction_completed": False}
+        required = chest_xp_required(chest_level)
+        if xp < required:
             connection.commit()
-            return build_player_response(
-                current,
-                upgraded=False,
-                not_enough_gold=True,
-                missing_gold=upgrade_cost - gold,
-                message="Недостаточно золота для улучшения сундука",
-            )
-        steps_required = chest_upgrade_steps_required(chest_level)
-        next_step = current_step + 1
-        new_level = chest_level
-        level_completed = next_step >= steps_required
-        if level_completed:
-            new_level = min(MAX_CHEST_LEVEL, chest_level + 1)
-            next_step = 0
+            return {"old_level": chest_level, "new_level": chest_level, "xp_spent": 0,
+                    "chest_xp_remaining": xp, "next_required": required,
+                    "cap_reached": False, "transaction_completed": False,
+                    "not_enough_xp": True}
+        new_level = chest_level + 1
+        remaining = xp - required
         connection.execute(
-            """
-            UPDATE players
-            SET chest_level = ?, chest_upgrade_step = ?,
-                gold = ?, updated_at = ?
-            WHERE telegram_id = ?
-            """,
-            (
-                new_level,
-                next_step,
-                gold - upgrade_cost,
-                int(time.time()),
-                telegram_id,
-            ),
+            "UPDATE players SET chest_level=?, chest_xp=?, chest_upgrade_step=0, updated_at=? WHERE telegram_id=?",
+            (new_level, remaining, int(time.time()), telegram_id),
         )
         connection.commit()
-        updated = load_player(connection, telegram_id)
     finally:
         connection.close()
-    if level_completed:
-        message = f"⬆️ Сундук улучшен до {new_level} уровня"
-    else:
-        message = f"🔨 Улучшение {next_step}/{steps_required}"
-    return build_player_response(
-        updated,
-        upgraded=True,
-        level_completed=level_completed,
-        previous_chest_level=chest_level,
-        upgrade_cost_paid=upgrade_cost,
-        message=message,
-    )
+    result = {"old_level": chest_level, "new_level": new_level, "xp_spent": required,
+              "chest_xp_remaining": remaining,
+              "next_required": 0 if new_level >= MAX_CHEST_LEVEL else chest_xp_required(new_level),
+              "cap_reached": new_level >= MAX_CHEST_LEVEL, "transaction_completed": True}
+    remember_action(telegram_id, "chest-upgrade", payload.get("client_action_id"), result)
+    return result
 
 
 def open_loot_transaction(
@@ -6754,6 +6958,8 @@ def open_loot_transaction(
     )
     comparison = compare_loot(current, loot)
     now = int(time.time())
+    inventory = normalized_inventory(current)
+    capacity = inventory_capacity(int(current.get("chest_level", 1)))
 
     chest_experience_reward = chest_exp_reward(
         int(current["chest_level"])
@@ -6767,6 +6973,27 @@ def open_loot_transaction(
         previous_level,
         level_from_total_exp(total_exp),
     )
+    auto_threshold = str(current.get("auto_salvage_max_rarity", "off"))
+    auto_salvage = (bool(int(current.get("auto_salvage_enabled", 0)))
+                    and rarity_at_or_below(loot.get("rarity"), auto_threshold)
+                    and RARITY_INDEX.get(str(loot.get("rarity")), 0) < RARITY_INDEX["legendary"]
+                    and not loot.get("locked", False) and not comparison["is_improvement"])
+    if auto_salvage:
+        reward = salvage_reward(loot, current.get("chest_level", 1), current.get("highest_stage", 1))
+        connection.execute(
+            "UPDATE players SET chests=chests-1,daily_chests_opened=daily_chests_opened+1,"
+            "salvage_dust=salvage_dust+?,refinement_crystal=refinement_crystal+?,chest_xp=chest_xp+?,"
+            "experience=?,level=?,updated_at=? WHERE telegram_id=?",
+            (reward["dust"], reward["crystals"], 1 + reward["chest_xp"], total_exp, new_level, now, telegram_id))
+        sync_player_stats(connection, telegram_id); updated = load_player(connection, telegram_id)
+        return updated, {"opened": True, "auto_salvaged": True, "auto_salvage_rewards": reward,
+                         "item_kept": False, "loot": loot, "comparison": comparison,
+                         "chest_xp_gained": 1 + reward["chest_xp"], "experience_reward": chest_experience_reward,
+                         "inventory_full": False, "message": f"♻️ {loot['name']} автоматически разобран"}
+    if len(inventory) >= capacity and not (auto_mode and not comparison["is_improvement"]):
+        return current, {"opened": False, "inventory_full": True, "loot": loot,
+                         "item_kept": False, "auto_salvaged": False,
+                         "message": "Инвентарь заполнен — разберите ненужные предметы"}
     if auto_mode and not comparison["is_improvement"]:
         sell_price = max(0, int(loot.get("sell_price", 0)))
         connection.execute(
@@ -6777,6 +7004,7 @@ def open_loot_transaction(
                 gold = gold + ?,
                 experience = ?,
                 level = ?,
+                chest_xp = chest_xp + 1,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -6798,15 +7026,21 @@ def open_loot_transaction(
             "comparison": comparison,
             "sell_price": sell_price,
             "experience_reward": chest_experience_reward,
+            "chest_xp_gained": 1,
+            "auto_salvaged": False,
+            "item_kept": False,
             "level_up": new_level > previous_level,
             "message": f"💰 {loot['name']} продан за {sell_price}",
         }
+    inventory.append(normalize_item(loot))
     connection.execute(
         """
         UPDATE players
         SET chests = chests - 1,
             daily_chests_opened = daily_chests_opened + 1,
             pending_loot_json = ?,
+            inventory_json = ?,
+            chest_xp = chest_xp + 1,
             experience = ?,
             level = ?,
             updated_at = ?
@@ -6814,6 +7048,7 @@ def open_loot_transaction(
         """,
         (
             json.dumps(loot, ensure_ascii=False),
+            json.dumps(inventory, ensure_ascii=False),
             total_exp,
             new_level,
             now,
@@ -6825,6 +7060,10 @@ def open_loot_transaction(
     return updated, {
         "opened": True,
         "auto_sold": False,
+        "auto_salvaged": False,
+        "auto_salvage_rewards": None,
+        "item_kept": True,
+        "chest_xp_gained": 1,
         "paused": auto_mode,
         "loot": loot,
         "comparison": comparison,
@@ -6928,6 +7167,22 @@ def disable_auto_open(x_telegram_init_data: str = Header(...)) -> dict:
     updated = load_player(connection, telegram_id)
     connection.close()
     return build_player_response(updated, auto_enabled=False, message="Авто выключено")
+
+
+@app.post("/loot/auto-salvage")
+def configure_auto_salvage(payload: dict = Body(...), x_telegram_init_data: str = Header(...)) -> dict:
+    threshold = str(payload.get("auto_salvage_max_rarity", "off")).lower()
+    if threshold not in {"off", "common", "uncommon", "rare", "epic"}:
+        raise HTTPException(status_code=400, detail="Недопустимый порог авторазбора")
+    enabled = bool(payload.get("auto_salvage_enabled", threshold != "off")) and threshold != "off"
+    user = validate_telegram_data(x_telegram_init_data); player_data = get_or_create_player(user)
+    telegram_id = int(player_data["telegram_id"]); connection = get_database()
+    try:
+        connection.execute("UPDATE players SET auto_salvage_enabled=?,auto_salvage_max_rarity=?,updated_at=? WHERE telegram_id=?",
+                           (int(enabled), threshold, int(time.time()), telegram_id))
+        connection.commit(); updated = load_player(connection, telegram_id)
+    finally: connection.close()
+    return build_player_response(updated, auto_salvage_saved=True)
 
 
 
@@ -7723,14 +7978,15 @@ def equip_loot(x_telegram_init_data: str = Header(...)) -> dict:
         if not loot:
             raise HTTPException(status_code=409, detail="Нет предмета для экипировки")
         comparison = compare_loot(current, loot)
+        inventory = normalized_inventory(current)
+        inventory = [item for item in inventory if item_identifier(item) != item_identifier(loot)]
         equipment = parse_json_object(current["equipment_json"])
         slot_key = str(loot["slot"])
         replaced_item = equipment.get(slot_key)
         replaced_reward = 0
         gold = int(current["gold"])
         if isinstance(replaced_item, dict):
-            replaced_reward = max(0, int(replaced_item.get("sell_price", 0)))
-            gold += replaced_reward
+            inventory.append(normalize_item(replaced_item))
         equipment[slot_key] = loot
         old_max_hp = max(1, int(current["hero_max_hp"]))
         old_hp = max(0, int(current["hero_hp"]))
@@ -7742,7 +7998,7 @@ def equip_loot(x_telegram_init_data: str = Header(...)) -> dict:
         connection.execute(
             """
             UPDATE players
-            SET equipment_json = ?, pending_loot_json = '',
+            SET equipment_json = ?, inventory_json = ?, pending_loot_json = '',
                 gold = ?, power = ?, damage = ?,
                 hero_max_hp = ?, hero_hp = ?,
                 updated_at = ?
@@ -7750,6 +8006,7 @@ def equip_loot(x_telegram_init_data: str = Header(...)) -> dict:
             """,
             (
                 json.dumps(equipment, ensure_ascii=False),
+                json.dumps(inventory, ensure_ascii=False),
                 gold,
                 stats["power"],
                 stats["damage"],
@@ -7789,15 +8046,19 @@ def sell_loot(x_telegram_init_data: str = Header(...)) -> dict:
         loot = public_pending_loot(current)
         if not loot:
             raise HTTPException(status_code=409, detail="Нет предмета для продажи")
+        if loot.get("locked", False):
+            raise HTTPException(status_code=409, detail="Заблокированный предмет нельзя продать")
+        inventory = [item for item in normalized_inventory(current)
+                     if item_identifier(item) != item_identifier(loot)]
         sell_price = max(0, int(loot.get("sell_price", 0)))
         connection.execute(
             """
             UPDATE players
-            SET pending_loot_json = '',
+            SET pending_loot_json = '', inventory_json = ?,
                 gold = gold + ?, updated_at = ?
             WHERE telegram_id = ?
             """,
-            (sell_price, int(time.time()), telegram_id),
+            (json.dumps(inventory, ensure_ascii=False), sell_price, int(time.time()), telegram_id),
         )
         connection.commit()
         updated = load_player(connection, telegram_id)

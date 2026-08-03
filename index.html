@@ -6425,6 +6425,11 @@ id="companionSummonChances"
 <button class="loot-action equip" id="equipLootButton" type="button">НАДЕТЬ</button>
 <button class="loot-action sell" id="sellLootButton" type="button">ПРОДАТЬ</button>
 </div>
+<div class="loot-actions">
+<button class="loot-action" id="lockLootButton" type="button">🔓 ЗАБЛОКИРОВАТЬ</button>
+<button class="loot-action" id="salvageLootButton" type="button">♻️ РАЗОБРАТЬ</button>
+</div>
+<div class="loot-actions"><select id="rerollStatSelect"></select><button class="loot-action" id="rerollLootButton" type="button">ПЕРЕРАБОТАТЬ</button></div>
 </div>
 </div>
 <div class="game-modal hidden" id="skillSummonModal">
@@ -6460,16 +6465,19 @@ id="companionSummonChances"
 <div class="modal-title">🧰 Сундук</div>
 <div class="chest-summary-row">
 <div><span>УРОВЕНЬ</span><strong id="chestModalLevel">1 / 25</strong></div>
-<div><span>СУНДУКИ</span><strong id="chestModalCount">0</strong></div>
-<div><span>ЗОЛОТО</span><strong id="chestModalGold">0</strong></div>
+<div><span>ПЫЛЬ / КРИСТАЛЛЫ</span><strong><span id="salvageDust">0</span> / <span id="refinementCrystals">0</span></strong></div>
+<div><span>ИНВЕНТАРЬ</span><strong id="inventoryCapacityText">0 / 50</strong></div>
 </div>
-<div class="upgrade-copy" id="chestUpgradeText">Улучшение 0/1</div>
+<div class="upgrade-copy" id="chestUpgradeText">Опыт сундука 0 / 20</div>
 <div class="upgrade-track"><div id="chestUpgradeBar"></div></div>
 <div class="chest-main-actions">
 <button class="primary-game-button" id="openChestButton" type="button">ОТКРЫТЬ СУНДУК</button>
 <button class="secondary-game-button" id="upgradeChestButton" type="button">УЛУЧШИТЬ</button>
 </div>
-<div class="upgrade-cost" id="chestUpgradeCost">Стоимость: 0 золота</div>
+<div class="upgrade-cost" id="chestUpgradeCost">Нужен опыт сундука</div>
+<div class="rarity-title">Инвентарь</div>
+<div class="loot-actions"><select id="bulkSalvageRarity"><option value="common">Обычные</option><option value="uncommon">До необычных</option><option value="rare">До редких</option><option value="epic">До эпических</option></select><button class="loot-action sell" id="bulkSalvageButton" type="button">МАССОВЫЙ РАЗБОР</button></div>
+<div class="rarity-chances" id="inventoryLootList"></div>
 <div class="rarity-title">Шансы редкости</div>
 <div class="rarity-chances" id="rarityChances"></div>
 </div>
@@ -6701,7 +6709,7 @@ id="companionSummonChances"
     }
 
     // FAST_START_LOADER_V1
-    async function apiRequest(path, method = "GET") {
+    async function apiRequest(path, method = "GET", body = null) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
 
@@ -6711,8 +6719,10 @@ id="companionSummonChances"
           cache: "no-store",
           signal: controller.signal,
           headers: {
-            "X-Telegram-Init-Data": telegram.initData
-          }
+            "X-Telegram-Init-Data": telegram.initData,
+            ...(body ? {"Content-Type": "application/json"} : {})
+          },
+          ...(body ? {body: JSON.stringify(body)} : {})
         });
 
         let data;
@@ -6852,16 +6862,18 @@ id="companionSummonChances"
     function renderChestModal() {
       if (!player) return;
       setText("chestModalLevel", `${player.chest_level} / ${player.chest_max_level}`);
-      setText("chestModalCount", formatNumber(player.chests));
-      setText("chestModalGold", formatNumber(player.gold));
-      const required = Number(player.chest_upgrade_steps_required || 0);
-      const step = Number(player.chest_upgrade_step || 0);
+      const lootProgress = player.loot_progression || {};
+      setText("salvageDust", formatNumber(lootProgress.salvage_dust || 0));
+      setText("refinementCrystals", formatNumber(lootProgress.refinement_crystal || 0));
+      setText("inventoryCapacityText", `${lootProgress.inventory_count || 0} / ${lootProgress.inventory_capacity || 50}`);
+      const required = Number(lootProgress.chest_xp_required || 0);
+      const step = Number(lootProgress.chest_xp_current || 0);
       const maxed = Number(player.chest_level) >= Number(player.chest_max_level);
-      setText("chestUpgradeText", maxed ? "Максимальный уровень" : `Улучшение ${step}/${required}`);
+      setText("chestUpgradeText", maxed ? "Максимальный уровень" : `Опыт сундука ${step}/${required}`);
       $("chestUpgradeBar").style.width = maxed ? "100%" : `${required ? Math.min(100, step / required * 100) : 0}%`;
-      setText("chestUpgradeCost", maxed ? "Сундук полностью улучшен" : `Следующий шаг: ${formatNumber(player.chest_upgrade_cost)} золота`);
+      setText("chestUpgradeCost", maxed ? "Сундук полностью улучшен" : lootProgress.chest_upgrade_ready ? "Улучшение готово" : "Открывайте и разбирайте предметы");
       $("openChestButton").disabled = Number(player.chests) <= 0 || Boolean(player.pending_loot);
-      $("upgradeChestButton").disabled = maxed || Number(player.gold) < Number(player.chest_upgrade_cost || 0);
+      $("upgradeChestButton").disabled = maxed || !lootProgress.chest_upgrade_ready;
       $("upgradeChestButton").textContent = maxed ? "МАКС. УРОВЕНЬ" : "УЛУЧШИТЬ";
       const rarityBox = $("rarityChances"); rarityBox.innerHTML = "";
       Object.entries(player.chest_rarity_chances || {}).forEach(([key, chance]) => {
@@ -6870,6 +6882,8 @@ id="companionSummonChances"
         row.innerHTML = `<span style="color:${RARITY_COLORS[key] || '#fff'}">${RARITY_NAMES[key] || key}</span><strong>${chance}%</strong>`;
         rarityBox.appendChild(row);
       });
+      const inventoryBox = $("inventoryLootList");
+      inventoryBox.innerHTML = (player.inventory || []).map((item) => `<div class="rarity-row" style="opacity:${item.locked || item.comparison?.is_improvement ? .55 : 1}"><span>${item.locked ? "🔒 " : ""}${escapeHtml(item.name || "Предмет")}</span><strong>♻️ ${formatNumber(item.salvage_value?.dust || 0)}</strong></div>`).join("") || "Инвентарь пуст";
     }
 
     function battleSkillCatalog() {
@@ -7338,8 +7352,14 @@ id="companionSummonChances"
             return `<div class="${delta > 0 ? "better" : delta < 0 ? "worse" : "equal"}">${escapeHtml(stat.name)}: ${escapeHtml(stat.formatted)}${escapeHtml(deltaText)}</div>`;
           }).join("")
         : "Вторичные характеристики: нет";
-      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} золота`);
+      const salvage = loot.salvage_value || {};
+      const reroll = loot.reroll_cost || {};
+      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} • Разбор: ${formatNumber(salvage.dust || 0)} пыли • Переработок: ${Number(loot.reroll_count || 0)} • Цена: ${formatNumber(reroll.dust || 0)} пыли / ${formatNumber(reroll.crystals || 0)} крист.`);
       $("sellLootButton").textContent = `ПРОДАТЬ +${formatNumber(loot.sell_price)}`;
+      $("lockLootButton").textContent = loot.locked ? "🔒 РАЗБЛОКИРОВАТЬ" : "🔓 ЗАБЛОКИРОВАТЬ";
+      $("salvageLootButton").disabled = Boolean(loot.locked);
+      $("rerollLootButton").disabled = !loot.can_reroll && !secondary.length;
+      $("rerollStatSelect").innerHTML = secondary.map((stat) => `<option value="${escapeHtml(stat.key)}">${escapeHtml(stat.name)}</option>`).join("");
       modalShow("lootOverlay");
     }
     async function setComparisonProfile(profile) {
@@ -7359,9 +7379,31 @@ id="companionSummonChances"
     }
     async function upgradeChest() {
       $("upgradeChestButton").disabled = true;
-      try { player = await apiRequest("/chest/upgrade", "POST"); renderPlayer(); setMessage(player.message); }
+      try { const result = await apiRequest("/chest/upgrade", "POST", {client_action_id: crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); setMessage(result.transaction_completed ? `⬆️ Сундук улучшен до ${result.new_level} уровня` : "Недостаточно опыта сундука"); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
       finally { renderChestModal(); }
+    }
+    async function salvageCurrentLoot() {
+      const item = player?.pending_loot; if (!item) return;
+      try { const result = await apiRequest("/inventory/salvage", "POST", {item_id:item.item_id || item.id, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); modalHide("lootOverlay"); setMessage(`♻️ +${result.dust_gained} пыли, +${result.crystals_gained} крист.`); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+    async function lockCurrentLoot() {
+      const item = player?.pending_loot; if (!item) return;
+      try { await apiRequest("/inventory/item-lock", "POST", {item_id:item.item_id || item.id, locked:!item.locked, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); showLootModal(); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+    async function rerollCurrentLoot() {
+      const item = player?.pending_loot; const statKey = $("rerollStatSelect").value; if (!item || !statKey) return;
+      try { await apiRequest("/inventory/reroll-secondary", "POST", {item_id:item.item_id || item.id, stat_key:statKey, expected_item_version:item.item_version, client_action_id:crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); showLootModal(); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+    async function bulkSalvage() {
+      const threshold = $("bulkSalvageRarity").value;
+      const count = (player?.inventory || []).filter((item) => !item.locked && !item.comparison?.is_improvement).length;
+      if (!confirm(`Разобрать подходящие предметы (до ${count})?`)) return;
+      try { const result = await apiRequest("/inventory/salvage-bulk", "POST", {max_rarity:threshold, exclude_locked:true, exclude_build_upgrades:true}); player = await apiRequest("/player"); renderPlayer(); renderChestModal(); setMessage(`♻️ Разобрано: ${result.salvaged_count}, пыль: +${result.total_dust}`); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
     async function resolveLoot(path) {
       $("equipLootButton").disabled = true; $("sellLootButton").disabled = true;
@@ -9662,6 +9704,10 @@ id="companionSummonChances"
       button.addEventListener("click", () => setComparisonProfile(button.dataset.comparisonProfile));
     });
     $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
+    $("salvageLootButton").addEventListener("click", salvageCurrentLoot);
+    $("lockLootButton").addEventListener("click", lockCurrentLoot);
+    $("rerollLootButton").addEventListener("click", rerollCurrentLoot);
+    $("bulkSalvageButton").addEventListener("click", bulkSalvage);
     elements.autoToggle.addEventListener("click", toggleAuto);
     elements.skillsAutoButton.addEventListener("click", toggleSkillsAuto);
     elements.skillButtons.forEach((button) => {

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import random
+import time
 from typing import Any, Mapping
+
+from loot_progression import deterministic_rng, normalize_item_progression
 
 
 SECONDARY_STATS = {
@@ -83,10 +86,55 @@ def normalize_secondary_stats(value: Any) -> dict[str, float]:
 
 def normalize_item(item: Any) -> dict:
     if not isinstance(item, Mapping):
-        return {}
-    result = dict(item)
+        item = {}
+    result = normalize_item_progression(item)
     result["secondary_stats"] = normalize_secondary_stats(item.get("secondary_stats"))
     result["secondary_stats_public"] = public_secondary_stats(result["secondary_stats"])
+    return result
+
+
+def reroll_secondary_stat(item: Any, stat_key: str, chest_level: int,
+                          effective_stage: int, rng: random.Random | Any = None) -> dict:
+    """Return a rerolled copy; callers own payment and persistence."""
+    result = normalize_item(item)
+    old_stats = dict(result["secondary_stats"])
+    if stat_key not in old_stats:
+        raise ValueError("secondary stat does not exist")
+    available = [key for key in SECONDARY_STATS if key not in old_stats or key == stat_key]
+    available = [key for key in available if key != stat_key]
+    if not available:
+        raise ValueError("no unique secondary stat available")
+    focus = str(result.get("slot_focus", result.get("focus", "mixed")))
+    if focus not in SLOT_STAT_WEIGHTS:
+        focus = "mixed"
+    rng = rng or deterministic_rng("reroll-v1", result.get("item_id"),
+                                   result.get("item_version"), stat_key)
+    weights = SLOT_STAT_WEIGHTS[focus]
+    new_key = rng.choices(available, weights=[weights[key] for key in available], k=1)[0]
+    generated = generate_secondary_stats(result.get("rarity", "common"), chest_level,
+                                         effective_stage, focus, rng)
+    # Generation may select a different key; retain its magnitude scaling but
+    # apply the cap of the actual weighted replacement.
+    if generated:
+        magnitude = next(iter(generated.values()))
+        source_key = next(iter(generated))
+        ratio = magnitude / max(.01, BASE_ROLL[source_key])
+    else:
+        rarity_scale = RARITY_SCALE.get(str(result.get("rarity")), .6)
+        progress = 1 + min(1.5, max(0, effective_stage - 1) / 800 + max(0, chest_level - 1) / 48)
+        ratio = rarity_scale * progress * rng.uniform(.85, 1.15)
+    new_value = round(min(SECONDARY_STATS[new_key]["max"], BASE_ROLL[new_key] * ratio), 2)
+    old_value = old_stats.pop(stat_key)
+    old_stats[new_key] = new_value
+    history = list(result.get("reroll_history", []))
+    history.append({"old_stat": stat_key, "new_stat": new_key,
+                    "old_value": old_value, "new_value": new_value,
+                    "at": int(time.time())})
+    result["secondary_stats"] = old_stats
+    result["secondary_stats_public"] = public_secondary_stats(old_stats)
+    result["reroll_count"] = int(result.get("reroll_count", 0)) + 1
+    result["item_version"] = int(result.get("item_version", 1)) + 1
+    result["reroll_history"] = history[-5:]
     return result
 
 
