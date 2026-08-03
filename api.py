@@ -35,11 +35,11 @@ SPORE_STRIKE_UNLOCK_LEVEL = 5
 SPORE_STRIKE_DAMAGE_MULTIPLIER = 2.0
 SPORE_STRIKE_COOLDOWN_SECONDS = 8.0
 MUSHROOM_SHIELD_UNLOCK_LEVEL = 20
-MUSHROOM_SHIELD_HP_RATIO = 0.35
+MUSHROOM_SHIELD_HP_RATIO = 0.30
 MUSHROOM_SHIELD_COOLDOWN_SECONDS = 15.0
 MUSHROOM_SHIELD_AUTO_HP_RATIO = 0.60
 POISON_CLOUD_UNLOCK_LEVEL = 40
-POISON_CLOUD_DAMAGE_MULTIPLIER = 0.50
+POISON_CLOUD_DAMAGE_MULTIPLIER = 0.45
 POISON_CLOUD_DURATION_SECONDS = 5.0
 POISON_CLOUD_TICK_SECONDS = 1.0
 POISON_CLOUD_COOLDOWN_SECONDS = 20.0
@@ -148,52 +148,53 @@ COMPANION_CATALOG = {
         "icon": "🌿",
         "rarity": "common",
         "implemented": True,
-        "description": "Увеличивает итоговый урон героя на 3% за уровень.",
+        "description": "Увеличивает итоговый урон героя на 1,3% за уровень.",
     },
     "baby_slime": {
         "name": "Маленький слизень",
         "icon": "🟢",
         "rarity": "common",
         "implemented": True,
-        "description": "Увеличивает максимальный HP героя на 5% за уровень.",
+        "description": "Увеличивает максимальный HP героя на 1,5% за уровень.",
     },
     "spore_beetle": {
         "name": "Споровый жук",
         "icon": "🪲",
         "rarity": "rare",
         "implemented": True,
-        "description": "Добавляет к обычной атаке 2% базового урона за уровень.",
+        "description": "Добавляет к обычной атаке 2,8% базового урона за уровень.",
     },
     "mushroom_owl": {
         "name": "Грибная сова",
         "icon": "🦉",
         "rarity": "rare",
         "implemented": True,
-        "description": "Снижает перезарядку навыков на 2% за уровень (до 30%).",
+        "description": "Снижает перезарядку навыков на 1,5% за уровень (до 30%).",
     },
     "thorn_wolf": {
         "name": "Шипастый волк",
         "icon": "🐺",
         "rarity": "epic",
         "implemented": True,
-        "description": "Увеличивает шанс критического удара на 0,5 п.п. за уровень.",
+        "description": "Даёт +0,75 п.п. к шансу крита и +1% к критическому урону за уровень.",
     },
     "ancient_entling": {
         "name": "Древний энтёнок",
         "icon": "🌳",
         "rarity": "legendary",
         "implemented": True,
-        "description": "Лечит на 1% максимального HP за уровень после победы (вдвое больше после босса).",
+        "description": "Лечит на 0,6% максимального HP за уровень после победы (вдвое больше после босса).",
     },
 }
 
-COMPANION_DAMAGE_PER_LEVEL = 0.03
-COMPANION_HP_PER_LEVEL = 0.05
-COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL = 0.02
-COMPANION_SKILL_COOLDOWN_REDUCTION_PER_LEVEL = 0.02
+COMPANION_DAMAGE_PER_LEVEL = 0.013
+COMPANION_HP_PER_LEVEL = 0.015
+COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL = 0.028
+COMPANION_SKILL_COOLDOWN_REDUCTION_PER_LEVEL = 0.015
 COMPANION_SKILL_COOLDOWN_MAX_REDUCTION = 0.30
-COMPANION_CRIT_CHANCE_PER_LEVEL = 0.5
-COMPANION_HEALING_PER_LEVEL = 0.01
+COMPANION_CRIT_CHANCE_PER_LEVEL = 0.75
+COMPANION_CRIT_DAMAGE_PER_LEVEL = 1.0
+COMPANION_HEALING_PER_LEVEL = 0.006
 
 SKILL_SYSTEM_UNLOCK_LEVEL = 5
 SKILL_SLOT_UNLOCK_LEVELS = (5, 15, 30)
@@ -657,7 +658,10 @@ def calculate_hero_attack_damage(
     critical = random.random() < crit_chance / 100
     damage = base_damage * max(0.0, float(damage_multiplier))
     if critical:
-        damage *= float(stats["crit_damage"]) / 100
+        damage *= (
+            float(stats["crit_damage"])
+            + float(companion_effects["crit_damage_bonus"])
+        ) / 100
     return max(1, round(damage)), critical
 
 
@@ -1228,37 +1232,52 @@ def calculate_companion_effects(player: dict) -> dict:
         "extra_attack": 0.0,
         "skill_cooldown_reduction": 0.0,
         "crit_chance": 0.0,
+        "crit_damage": 0.0,
         "healing": 0.0,
     }
     active_effects = []
     definitions = {
         "forest_sprite": (
             "damage", COMPANION_DAMAGE_PER_LEVEL,
-            "Увеличивает итоговый урон героя на 3% за уровень.",
+            "Увеличивает итоговый урон героя на 1,3% за уровень.",
         ),
         "baby_slime": (
             "hp", COMPANION_HP_PER_LEVEL,
-            "Увеличивает максимальный HP героя на 5% за уровень.",
+            "Увеличивает максимальный HP героя на 1,5% за уровень.",
         ),
         "spore_beetle": (
             "extra_attack", COMPANION_EXTRA_ATTACK_DAMAGE_PER_LEVEL,
-            "Добавляет к обычной атаке 2% базового урона героя за уровень.",
+            "Добавляет к обычной атаке 2,8% базового урона героя за уровень.",
         ),
         "mushroom_owl": (
             "skill_cooldown_reduction",
             COMPANION_SKILL_COOLDOWN_REDUCTION_PER_LEVEL,
-            "Снижает время перезарядки всех навыков на 2% за уровень (до 30%).",
-        ),
-        "thorn_wolf": (
-            "crit_chance", COMPANION_CRIT_CHANCE_PER_LEVEL,
-            "Увеличивает шанс критического удара на 0,5 процентного пункта за уровень.",
+            "Снижает время перезарядки всех навыков на 1,5% за уровень (до 30%).",
         ),
         "ancient_entling": (
             "healing", COMPANION_HEALING_PER_LEVEL,
-            "Восстанавливает 1% максимального HP за уровень после победы и вдвое больше после босса.",
+            "Восстанавливает 0,6% максимального HP за уровень после победы и вдвое больше после босса.",
         ),
     }
     for companion_id in slots[:unlocked_count]:
+        if companion_id == "thorn_wolf":
+            companion_level = int(collection[companion_id]["level"])
+            bonuses["crit_chance"] += (
+                COMPANION_CRIT_CHANCE_PER_LEVEL * companion_level
+            )
+            bonuses["crit_damage"] += (
+                COMPANION_CRIT_DAMAGE_PER_LEVEL * companion_level
+            )
+            active_effects.append({
+                "companion_id": companion_id,
+                "name": COMPANION_CATALOG[companion_id]["name"],
+                "level": companion_level,
+                "description": "Даёт +0,75 п.п. к шансу крита и +1% к критическому урону за уровень.",
+                "crit_damage_bonus": round(
+                    COMPANION_CRIT_DAMAGE_PER_LEVEL * companion_level, 4
+                ),
+            })
+            continue
         definition = definitions.get(companion_id)
         if definition is None:
             continue
@@ -1289,6 +1308,7 @@ def calculate_companion_effects(player: dict) -> dict:
             4,
         ),
         "crit_chance_bonus": round(bonuses["crit_chance"], 4),
+        "crit_damage_bonus": round(bonuses["crit_damage"], 4),
         "victory_healing_ratio": round(bonuses["healing"], 4),
         "active_effects": active_effects,
     }
@@ -3785,7 +3805,10 @@ def attack(
                 1,
                 round(
                     poison_damage
-                    * float(equipment_stats["crit_damage"])
+                    * (
+                        float(equipment_stats["crit_damage"])
+                        + float(companion_effects["crit_damage_bonus"])
+                    )
                     / 100
                 ),
             )

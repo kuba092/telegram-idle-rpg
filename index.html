@@ -7937,7 +7937,7 @@ id="companionSummonChances"
         effectsBox.innerHTML = activeEffects.length
           ? `<strong>Активные эффекты:</strong><br>${activeEffects
               .map((effect) =>
-                `${escapeHtml(effect.name)} (ур. ${Number(effect.level || 1)}): ${escapeHtml(effect.description)}`
+                `${escapeHtml(effect.name)} (ур. ${Number(effect.level || 1)}): ${escapeHtml(effect.description)}${Number(effect.crit_damage_bonus || 0) > 0 ? ` Текущий бонус крит. урона: +${Number(effect.crit_damage_bonus)}%.` : ""}`
               )
               .join("<br>")}`
           : "Активных боевых эффектов нет.";
