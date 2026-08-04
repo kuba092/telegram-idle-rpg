@@ -5356,11 +5356,59 @@
     .combat-log{display:grid;gap:2px;max-height:72px;overflow:hidden;margin-top:5px;font-size:10px;color:var(--text_secondary)}.combat-event{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.combat-event.damage{color:#ffb0a6}.combat-event.heal{color:var(--success)}.combat-event.crit{color:var(--warning)}.combat-event.poison{color:#b8e66b}.combat-event.reward{color:var(--premium)}.combat-event.blocked{color:#9fc9ff}
     @media(max-width:359px){.shell-nav button{font-size:8px}.shell-nav-icon{font-size:18px}.resource-pill{display:none}.top-hud{gap:3px}.quick-grid{grid-template-columns:1fr}}
     @media(min-width:700px){.shell-screen{padding:20px}.screen-stack{grid-template-columns:repeat(2,minmax(0,1fr))}.priority-card{grid-column:1/-1}.resource-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.equipment-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+    /* BATTLE_FIRST_MOBILE_V3 */
+    .shell-nav{grid-template-columns:repeat(5,minmax(0,1fr));height:calc(70px + env(safe-area-inset-bottom));padding:4px max(4px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px,env(safe-area-inset-left))}.shell-nav button{font-size:11px;line-height:1.2;white-space:normal}
+    .shell-nav-icon{display:grid;place-items:center;height:25px;font-size:0}.shell-nav-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.nav-badge{right:auto;left:calc(50% + 9px);border:2px solid #0b1814;line-height:12px}
+    .growth-center-button,#progressionLaunchers,.game-nav{display:none!important}.growth-center-modal{display:grid!important}.growth-center-modal.hidden{display:none!important}
+    #battlefield{min-height:100dvh;padding-top:calc(66px + env(safe-area-inset-top));padding-bottom:calc(176px + env(safe-area-inset-bottom));overflow:hidden}.battle-bottom{bottom:176px}.equipment-dock{display:none}.skill-dock{bottom:223px}.auto-toggle,.normal-attack{display:none}.fighters-layer{bottom:264px}.enemy-hud{top:calc(74px + env(safe-area-inset-top))}
+    .battle-growth{position:absolute;z-index:34;top:calc(143px + env(safe-area-inset-top));left:12px;right:12px;display:flex;align-items:center;gap:8px;min-height:34px;padding:6px 10px;border:1px solid #d6b85b55;border-radius:11px;background:#13271fe8;color:#f9e5a3;font-size:12px}.battle-growth strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.battle-growth button{margin-left:auto;min-height:28px;border:0;border-radius:8px;background:#f4c95d;color:#172113;font-weight:900;padding:3px 9px}
+    .companion-strip{position:absolute;z-index:33;left:50%;bottom:276px;display:flex;gap:6px;transform:translateX(-50%)}.companion-chip{display:grid;place-items:center;width:34px;height:34px;border:1px solid #8bd45066;border-radius:10px;background:#11261ee8;color:#bce59c;font-size:10px;font-weight:900}
+    .combat-panel{position:absolute;z-index:40;left:8px;right:8px;bottom:calc(74px + env(safe-area-inset-bottom));display:grid;grid-template-columns:88px repeat(4,minmax(0,1fr));gap:5px;height:94px;padding:7px;border:1px solid var(--border);border-radius:16px;background:#0d1d17f2;box-shadow:0 -8px 30px #0007}.combat-chest,.combat-quick{position:relative;min-width:0;border:0;border-radius:11px;color:var(--text_primary);font-size:10px;font-weight:850;line-height:1.2}.combat-chest{background:linear-gradient(180deg,#e6b94e,#9a631c);color:#201506;font-size:13px}.combat-quick{background:var(--surface_alt)}.combat-quick svg,.combat-chest svg{display:block;width:24px;height:24px;margin:0 auto 4px;fill:none;stroke:currentColor;stroke-width:1.8}.pending-badge{position:absolute;top:4px;right:4px;min-width:18px;padding:2px 4px;border-radius:9px;background:var(--danger);color:#fff;font-size:9px}
+    @media(max-width:430px){.app{width:100%;max-width:none;border-radius:0}.top-hud{max-width:none}.hero-top-avatar{width:46px!important;height:46px!important;flex-basis:46px!important}.resource-pill{min-width:56px;padding:3px}.resource-label{display:none}.resource-value{font-size:12px}.hud-actions .icon-button{width:36px;min-width:36px;min-height:40px}.fighters-layer{bottom:260px}.enemy-hud{left:8px;right:8px}.battle-growth{left:8px;right:8px}.skill-dock{bottom:218px}.companion-strip{bottom:267px}.combat-panel{grid-template-columns:82px repeat(4,minmax(0,1fr))}}
+    @media(max-width:359px){.top-hud{padding-left:5px;padding-right:5px}.hero-top-bm{display:none}.resource-pill{min-width:46px}.hud-actions{gap:2px}.hud-actions .icon-button{width:32px;min-width:32px}.combat-panel{left:4px;right:4px;grid-template-columns:72px repeat(4,minmax(0,1fr));gap:3px;padding:5px}.combat-quick{font-size:9px}.battle-growth{font-size:11px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 </style>
+<style>
+  /* APPROVED_BATTLE_UI_INTEGRATION_V1 */
+  :root{--ab-nav:60px;--ab-safe-b:env(safe-area-inset-bottom,0px);--ab-safe-t:env(safe-area-inset-top,0px);--ab-gold:#f3c75f;--ab-green:#8edf63;--ab-muted:#a9bdb2;--ab-panel:#10251d}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07120e}
+  .app>.top-hud,.app>.shell-screen,.app>#battlefield,.app>#shellNavigation{display:none!important}
+  .app>.game-screen:not(.hidden){position:fixed;z-index:260;inset:0;max-width:520px;margin:auto}
+  .approved-game{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;width:100%;max-width:520px;height:100dvh;margin:auto;padding-bottom:calc(var(--ab-nav) + var(--ab-safe-b) + 5px);overflow-x:hidden;overflow-y:auto;background:linear-gradient(#06140f33,#06140f 72%),url("assets/forest_bg.png?v=9") center/cover no-repeat;color:#f5fbf7;font:14px/1.3 Inter,system-ui,-apple-system,sans-serif}
+  .approved-game button{font:inherit;color:inherit;touch-action:manipulation}.approved-game button:focus-visible{outline:2px solid var(--ab-gold);outline-offset:2px}
+  .approved-hud{position:relative;z-index:5;display:grid;flex:0 0 calc(64px + var(--ab-safe-t));grid-template-columns:44px minmax(0,1fr) 82px;gap:7px;align-items:center;height:calc(64px + var(--ab-safe-t));padding:calc(4px + var(--ab-safe-t)) 8px 4px;border-bottom:1px solid #ffffff16;background:#071610eb;backdrop-filter:blur(12px)}
+  .approved-avatar{width:44px;height:44px;object-fit:contain;border:1px solid #8edf6370;border-radius:13px;background:#173528}.approved-identity{min-width:0}.approved-identity-top{display:flex;gap:5px;align-items:baseline;white-space:nowrap}.approved-identity-top strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.approved-identity-top small{color:var(--ab-muted);font-size:11px}.approved-power{display:block;color:var(--ab-gold);font-size:11px;font-weight:850}.approved-hp-label{display:flex;justify-content:space-between;color:#c7d7cf;font-size:11px;line-height:12px}.approved-bar{height:6px;overflow:hidden;border-radius:4px;background:#020806aa}.approved-bar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#4dcf73,#b7ef68)}
+  .approved-currencies{display:grid;gap:2px}.approved-currency{display:flex;justify-content:flex-end;gap:4px;color:var(--ab-gold);font-size:12px;font-weight:900;white-space:nowrap}.approved-currency:last-child{color:#a9efff}
+  .approved-stage{position:relative;z-index:5;display:block;flex:0 0 58px;height:58px;padding:4px 9px;border-bottom:1px solid #ffffff12;background:#0a1b15e8}.approved-enemy-copy{min-width:0;text-align:center}.approved-enemy-title{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px}.approved-elite{padding:2px 5px;border-radius:6px;background:#a46cff;font-size:9px}.approved-enemy-hp-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;max-width:410px;margin:3px auto 0}.approved-enemy-bar{width:100%;height:7px;overflow:hidden;border-radius:4px;background:#030806}.approved-enemy-bar i{display:block;height:100%;background:linear-gradient(90deg,#e84656,#ff9a65)}.approved-enemy-hp-value{color:#f4f8f6;font-size:10px;font-weight:850;white-space:nowrap}.approved-stage-meta{display:block;overflow:hidden;margin-top:2px;color:var(--ab-muted);font-size:10px;white-space:nowrap;text-overflow:ellipsis}
+  .approved-battle{position:relative;z-index:1;flex:1 0 clamp(210px,32dvh,350px);min-height:210px;overflow:hidden}.approved-battle:after{content:"";position:absolute;inset:auto 0 0;height:30%;background:linear-gradient(transparent,#06110ddd);pointer-events:none}.approved-ground{position:absolute;left:6%;right:6%;bottom:26px;height:28px;border-radius:50%;background:#0007;filter:blur(5px)}.approved-fighter{position:absolute;z-index:2;bottom:32px;width:38%;height:62%;object-fit:contain;filter:drop-shadow(0 12px 8px #0008)}.approved-hero{left:7%}.approved-enemy{right:7%;transform:scaleX(-1)}.approved-damage{position:absolute;z-index:5;top:37%;right:27%;display:none;color:#fff1a4;font-size:22px;font-weight:950;text-shadow:0 2px 0 #8b2d1d}.approved-damage.visible{display:block;animation:approved-float 1.2s ease-out}.approved-message{position:absolute;z-index:5;left:8%;right:8%;bottom:1px;height:24px;padding:4px 9px;overflow:hidden;border-radius:7px;background:#03100bd1;color:#d7e5de;font-size:11px;line-height:16px;text-align:center;white-space:nowrap;text-overflow:ellipsis;backdrop-filter:blur(4px);pointer-events:none}
+  @keyframes approved-float{from{opacity:0;transform:translateY(8px)}35%{opacity:1}to{opacity:0;transform:translateY(-24px)}}
+  .approved-dock{position:relative;z-index:4;display:flex;flex:0 0 36px;align-items:center;justify-content:center;gap:5px;height:36px;padding:2px 6px;border-block:1px solid #ffffff0b;background:linear-gradient(#0b1c15f5,#0a1813)}.approved-skill{position:relative;display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;min-height:30px;padding:0;border:1px solid #ffffff1c;border-radius:8px;background:linear-gradient(#1a3328,#10231c);font-size:15px}.approved-skill small{position:absolute;right:1px;bottom:1px;padding:0 2px;border-radius:4px;background:#06100bd9;font-size:7px;line-height:9px}.approved-skill.locked{opacity:.45}.approved-skill.cooldown:after{content:attr(data-cooldown);position:absolute;inset:0;display:grid;place-items:center;border-radius:7px;background:#06100be6;font-size:9px}.approved-skill.companion{border-color:#55dce2;background:linear-gradient(#153b3b,#102522)}
+  .approved-lower{position:absolute;z-index:3;left:0;right:0;bottom:calc(var(--ab-nav) + var(--ab-safe-b) + 5px);padding:2px 8px 0;background:#0b1c16}.approved-chest{position:relative;display:grid;grid-template-columns:30px minmax(58px,1fr) auto auto;align-items:center;gap:5px;height:46px;padding:3px 6px;border-radius:9px 9px 3px 3px;background:linear-gradient(100deg,#192b20,#10251d);box-shadow:inset 2px 0 0 #f3c75f8c}.approved-chest-icon{display:grid;place-items:center;width:30px;height:30px;min-height:30px;border:0;border-radius:8px;background:#2c2213}.approved-chest-copy{min-width:0}.approved-chest-title{font-size:10px;font-weight:900}.approved-chest-title strong{color:var(--ab-gold)}.approved-chest-xp{height:2px;margin-top:3px;overflow:hidden;border-radius:3px;background:#06100b}.approved-chest-xp i{display:block;height:100%;background:var(--ab-gold)}.approved-chest-open{min-height:34px;padding:0 8px;border:0;border-radius:8px;background:var(--ab-gold);color:#231704;font-size:10px;font-weight:950}.approved-chest-auto{min-height:34px;padding:0 6px;border:0;border-radius:8px;background:#173a27;color:#baf299;font-size:8px;font-weight:900}.approved-pending{position:absolute;top:1px;right:1px;min-width:15px;padding:0 3px;border-radius:8px;background:#ff6d73;font-size:7px;line-height:12px;text-align:center}.approved-pending[hidden]{display:none}
+  .approved-equipment-head{display:flex;align-items:center;gap:5px;height:44px;padding:0 4px;background:var(--ab-panel);font-size:11px;font-weight:900}.approved-equipment-head span{margin-left:auto;color:#b8c9c0}.approved-inventory{min-width:82px;min-height:44px;padding:0 8px;border:0;border-radius:8px;background:#ffffff0d;font-size:9px}.approved-equipment{display:grid;grid-template-columns:repeat(5,44px);grid-auto-rows:44px;justify-content:center;column-gap:8px;row-gap:8px;height:108px;padding:6px 0 2px;border-radius:0 0 9px 9px;background:var(--ab-panel)}.approved-gear{position:relative;width:44px;height:44px;min-height:44px;padding:4px;border:1px solid #ffffff24;border-radius:8px;background:linear-gradient(145deg,#193025,#10221b);font-size:19px}.approved-gear.rare{border-color:#5ba8ff99}.approved-gear.epic{border-color:#b779ff99}.approved-gear.legendary{border-color:#ffb84d99}.approved-gear.empty{border-color:#26372f;background:#09140f;color:#52645a}.approved-gear-level{position:absolute;right:2px;bottom:2px;min-width:14px;padding:0 2px;border-radius:4px;background:#07110dcc;font-size:8px;line-height:10px}.approved-ticker{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;height:30px;min-height:30px;margin-top:4px;padding:0 7px 0 8px;overflow:hidden;border:0;border-left:2px solid var(--ab-gold);border-radius:5px;background:#0d1d17;color:#cbdad2;text-align:left}.approved-ticker-copy{overflow:hidden;font-size:10px;white-space:nowrap;text-overflow:ellipsis}.approved-ticker-badge{padding:2px 5px;border:1px solid #f3c75f4d;border-radius:8px;color:#f3d985;font-size:8px;font-weight:900}
+  .approved-nav{position:fixed;z-index:180;left:50%;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);width:min(100%,520px);height:calc(var(--ab-nav) + var(--ab-safe-b));padding:2px 4px var(--ab-safe-b);transform:translateX(-50%);border-top:1px solid #ffffff12;background:#07150ff5;backdrop-filter:blur(14px)}.approved-nav button{position:relative;min-width:0;min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--ab-muted);font-size:11px;font-weight:800}.approved-nav svg{display:block;width:25px;height:25px;margin:0 auto 1px;fill:none;stroke:currentColor;stroke-width:1.7}.approved-nav .active{transform:translateY(-5px);color:var(--ab-gold)}.approved-nav .active:before{content:"";position:absolute;top:4px;left:31%;right:31%;height:1px;background:var(--ab-gold)}
+  .approved-sheet-wrap{position:fixed;z-index:350;inset:0;display:grid;align-items:end;background:#0009;overflow:hidden}.approved-sheet-wrap[hidden]{display:none}.approved-sheet{display:flex;flex-direction:column;width:min(100%,520px);height:min(88dvh,760px);max-height:88dvh;margin:0 auto;padding:0;overflow:hidden;border:1px solid #315643;border-bottom:0;border-radius:22px 22px 0 0;background:#10231c}.approved-sheet-head{position:sticky;z-index:3;top:0;flex:0 0 auto;background:#10231c}.approved-sheet-titlebar{display:flex;align-items:center;gap:8px;padding:9px 12px 6px}.approved-sheet-head h2{min-width:0;margin:0;font-size:18px}.approved-sheet-close,.approved-sheet-back{display:grid;place-items:center;flex:0 0 44px;min-height:44px;padding:0;border:1px solid #315643;border-radius:11px;background:#183328;color:#eef8f2}.approved-sheet-close{margin-left:auto}.approved-sheet-tabs{display:flex;gap:6px;padding:4px 12px 9px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}.approved-sheet-tabs::-webkit-scrollbar{display:none}.approved-sheet-tab{flex:0 0 auto;min-height:36px;padding:7px 11px;border:1px solid #315643;border-radius:999px;background:#132b22;color:#aabeb5;font-size:11px;white-space:nowrap}.approved-sheet-tab.active{border-color:#cfae54;background:#2b2a19;color:#fff0a1}.approved-sheet-scroll{min-height:0;flex:1 1 auto;padding:0 12px calc(16px + var(--ab-safe-b));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}.approved-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}.approved-sheet-card{min-height:58px;padding:9px;border:0;border-radius:12px;background:#183328;text-align:left}.approved-sheet-card strong,.approved-sheet-card small{display:block}.approved-sheet-card small{color:var(--ab-muted)}
+  .approved-skill-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 0}.approved-skill-card{display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto 1fr auto;gap:3px 7px;min-width:0;height:104px;padding:9px;overflow:hidden;border:1px solid #294b3b;border-radius:13px;background:linear-gradient(145deg,#193329,#11271f);color:#edf7f1;text-align:left}.approved-skill-card.active{border-color:#cfae54;box-shadow:inset 0 0 0 1px #cfae5438}.approved-skill-card:disabled{opacity:.52}.approved-skill-card-icon{grid-row:1/3;display:grid;place-items:center;width:42px;height:42px;overflow:hidden;border-radius:10px;background:#0b1d16;font-size:22px}.approved-skill-card-main{min-width:0}.approved-skill-card-name{display:-webkit-box;max-height:30px;overflow:hidden;font-size:12px;font-weight:900;line-height:15px;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2}.approved-skill-card-meta{overflow:hidden;color:#aebfb7;font-size:9px;line-height:13px;text-overflow:ellipsis;white-space:nowrap}.approved-skill-card-slot{grid-column:1/3;min-width:0;overflow:hidden;color:#d9e6df;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.approved-skill-badges{grid-column:1/3;display:flex;min-width:0;gap:3px;overflow:hidden}.approved-skill-badge{min-width:0;padding:2px 4px;overflow:hidden;border-radius:5px;font-size:7px;font-weight:900;text-overflow:ellipsis;white-space:nowrap}.approved-skill-badge.upgrade{background:#1e5b39;color:#b9ffd0}.approved-skill-badge.rank{background:#4b3268;color:#e3c7ff}.approved-skill-badge.awaken{background:#22546b;color:#c1eeff}.approved-skill-empty-badge{color:#71877d;font-size:8px}.approved-skill-detail{min-width:0;padding-top:10px}.approved-skill-detail-head{display:grid;grid-template-columns:46px minmax(0,1fr);gap:9px;align-items:center;margin-bottom:9px}.approved-skill-detail-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;background:#0b1d16;font-size:24px}.approved-skill-detail-title{min-width:0}.approved-skill-detail-title strong{display:block;overflow:hidden;font-size:15px;overflow-wrap:anywhere}.approved-skill-detail-title small{color:#aebfb7}.approved-skill-section{margin:7px 0;padding:10px;border:1px solid #29483a;border-radius:12px;background:#142c23}.approved-skill-section h3{margin:0 0 7px;color:#fff0a1;font-size:11px}.approved-skill-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.approved-skill-fact{min-width:0;padding:6px;border-radius:8px;background:#0c2119;color:#aebfb7;font-size:9px;overflow-wrap:anywhere}.approved-skill-fact strong{display:block;margin-top:2px;color:#f1f7f3;font-size:11px}.approved-skill-copy{margin:0;color:#c4d4cc;font-size:10px;line-height:1.5;overflow-wrap:anywhere}.approved-awakening-more{margin-top:7px;min-height:36px;border:1px solid #35604c;border-radius:9px;background:#19372b;color:#dbeae2}.approved-skill-actions{position:sticky;z-index:2;bottom:0;flex:0 0 auto;display:grid;gap:6px;padding:8px 12px calc(8px + var(--ab-safe-b));border-top:1px solid #315643;background:#10231cf5;box-shadow:0 -10px 22px #07110d}.approved-skill-action-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.approved-skill-action{min-width:0;min-height:44px;padding:7px;border:1px solid #426d58;border-radius:10px;background:#1c3d30;color:#f2f8f4;font-weight:850;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.approved-skill-action.primary{border-color:#947b36;background:#51441e;color:#fff0a1}.approved-skill-action:disabled{border-color:#263d33;background:#14251e;color:#64776e;opacity:.75}.approved-slot-modal{position:fixed;z-index:370;inset:0;display:grid;place-items:end center;padding:12px;background:#000b}.approved-slot-modal[hidden]{display:none}.approved-slot-dialog{width:min(100%,430px);max-height:70dvh;padding:13px calc(13px + env(safe-area-inset-right)) calc(13px + var(--ab-safe-b)) calc(13px + env(safe-area-inset-left));overflow:auto;border:1px solid #416b57;border-radius:18px;background:#10231c}.approved-slot-dialog h3{margin:0 0 9px}.approved-slot-options{display:grid;gap:7px}.approved-slot-option{display:grid;grid-template-columns:32px minmax(0,1fr);gap:8px;align-items:center;min-height:52px;padding:8px;border:1px solid #315643;border-radius:10px;background:#183328;color:#eaf4ef;text-align:left}.approved-slot-option:disabled{opacity:.45}.approved-slot-option small{display:block;color:#9db1a7}.approved-slot-cancel{width:100%;min-height:44px;margin-top:9px;border:1px solid #315643;border-radius:10px;background:#142a22;color:#d9e7e0}
+  .approved-sheet-scroll.has-skill-actions{padding-bottom:24px}
+  @media(max-width:359px){.approved-skill-list{grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:7px}.approved-skill-card{grid-template-columns:38px minmax(0,1fr);height:100px;padding:8px}.approved-skill-card-icon{width:38px;height:38px}.approved-sheet-scroll{padding-inline:9px}.approved-skill-actions{padding-inline:9px}}
+  @media(max-width:359px){.approved-hud{height:calc(62px + var(--ab-safe-t));grid-template-columns:40px minmax(0,1fr) 66px;padding-inline:5px}.approved-avatar{width:40px;height:40px}.approved-stage{top:calc(62px + var(--ab-safe-t));height:46px;padding-inline:6px}.approved-battle{top:calc(108px + var(--ab-safe-t));height:clamp(270px,39dvh,290px);min-height:270px}.approved-dock{top:calc(108px + var(--ab-safe-t) + clamp(270px,39dvh,290px));grid-template-columns:repeat(6,28px);gap:4px;height:32px}.approved-skill{width:28px;height:28px;min-height:28px}.approved-lower{padding-inline:5px}.approved-equipment{grid-template-columns:repeat(5,40px);grid-auto-rows:40px;column-gap:4px;row-gap:6px;height:98px}.approved-gear{width:40px;height:40px;min-height:40px}.approved-inventory{min-width:44px;font-size:0}.approved-inventory:after{content:"≡";font-size:15px}.approved-message{left:10%;right:10%}}
+  .approved-lower{position:relative;z-index:3;left:auto;right:auto;bottom:auto;flex:0 0 auto}
+  @media(max-width:359px){.approved-hud{height:calc(62px + var(--ab-safe-t));flex-basis:calc(62px + var(--ab-safe-t))}.approved-stage{top:auto;height:58px;flex-basis:58px}.approved-battle{top:auto;height:auto;min-height:200px;flex-basis:clamp(200px,30dvh,270px)}.approved-dock{top:auto;grid-template-columns:none;height:36px;flex-basis:36px}.approved-message{left:7%;right:7%}}
+  @media(max-height:719px){.approved-ticker{display:grid}}
+  @media(prefers-reduced-motion:reduce){.approved-game *, .approved-game *:before,.approved-game *:after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
 </head>
 <body>
+<main class="approved-game" id="approvedBattleShell" aria-label="Бой">
+  <header class="approved-hud"><img class="approved-avatar" id="approvedHeroAvatar" src="assets/hero.png?v=9" alt="Аватар героя"><div class="approved-identity"><div class="approved-identity-top"><strong id="approvedPlayerName">Игрок</strong><small id="approvedPlayerLevel">ур. 1</small></div><span class="approved-power" id="approvedPower">Сила 0</span><div class="approved-hp-label"><span>HP</span><span><b id="approvedHeroHp">100</b> / <b id="approvedHeroMaxHp">100</b></span></div><div class="approved-bar"><i id="approvedHeroHpBar" style="width:100%"></i></div></div><div class="approved-currencies"><div class="approved-currency">● <span id="approvedGold">0</span></div><div class="approved-currency">◆ <span id="approvedCrystals">0</span></div></div></header>
+  <section class="approved-stage"><div class="approved-enemy-copy"><div class="approved-enemy-title"><strong id="approvedEnemyName">Слизень</strong><span class="approved-elite" id="approvedElite" hidden>Элита</span><span class="approved-elite" id="approvedBoss" hidden>Босс</span></div><div class="approved-enemy-hp-row"><div class="approved-enemy-bar"><i id="approvedEnemyHpBar" style="width:100%"></i></div><span class="approved-enemy-hp-value"><b id="approvedEnemyHp">30</b> / <b id="approvedEnemyMaxHp">30</b></span></div><small class="approved-stage-meta" id="approvedStageMeta">Этап 1 · 0/10 · Страж · слабость: —</small></div></section>
+  <section class="approved-battle" aria-label="Активный бой"><div class="approved-ground"></div><img class="approved-fighter approved-hero" id="approvedHeroSprite" src="assets/hero.png?v=9" alt="Герой"><img class="approved-fighter approved-enemy" id="approvedEnemySprite" src="assets/slime.png?v=9" alt="Враг"><span class="approved-damage" id="approvedDamage">−0</span><div class="approved-message" id="approvedCombatMessage" aria-live="polite">Подключаемся к серверу…</div></section>
+  <section class="approved-dock" id="approvedSkillDock" aria-label="Навыки и спутники"></section>
+  <section class="approved-lower"><div class="approved-chest"><button class="approved-chest-icon" id="approvedChestInfo" type="button" aria-label="Информация о сундуке">🧰</button><div class="approved-chest-copy"><div class="approved-chest-title">Ур. <span id="approvedChestLevel">1</span> <strong>×<span id="approvedChestCount">0</span></strong></div><div class="approved-chest-xp"><i id="approvedChestXp" style="width:0%"></i></div></div><button class="approved-chest-open" id="approvedChestOpen" type="button">Открыть</button><button class="approved-chest-auto" id="approvedChestAuto" type="button" aria-label="Автооткрытие сундука" aria-pressed="false">Авто</button><b class="approved-pending" id="approvedPendingBadge" hidden>1</b></div><div class="approved-equipment-head">Экипировка <span id="approvedEquipmentCount">0/10</span><button class="approved-inventory" id="approvedInventory" type="button">Инвентарь</button></div><section class="approved-equipment equipment-grid" id="approvedEquipmentGrid" aria-label="Экипировка героя"></section><button class="approved-ticker" id="approvedTicker" type="button"><span aria-hidden="true">◎</span><span class="approved-ticker-copy" id="approvedTickerCopy">Рекомендации загружаются…</span><span class="approved-ticker-badge" id="approvedTickerBadge">Ещё</span></button></section>
+</main>
+<nav class="approved-nav" id="approvedNavigation" aria-label="Основная навигация"><button data-approved-nav="hero" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg>Герой</button><button data-approved-nav="trials" type="button"><svg viewBox="0 0 24 24"><path d="M4 21V9l4-4 4 4 4-4 4 4v12M8 21v-5h8v5"/></svg>Испытания</button><button class="active" data-approved-nav="battle" type="button" aria-current="page"><svg viewBox="0 0 24 24"><path d="m5 4 14 16M19 4 5 20M8 7 5 10M16 7l3 3"/></svg>Бой</button><button data-approved-nav="shop" type="button"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1 12H5zM8 9V7a4 4 0 0 1 8 0v2"/></svg>Магазин</button><button data-approved-nav="more" type="button"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Ещё</button></nav>
+<div class="approved-sheet-wrap" id="approvedSheetWrap" hidden><section class="approved-sheet" role="dialog" aria-modal="true" aria-labelledby="approvedSheetTitle"><header class="approved-sheet-head"><div class="approved-sheet-titlebar"><button class="approved-sheet-back" id="approvedSheetBack" type="button" aria-label="Назад" hidden>‹</button><h2 id="approvedSheetTitle">Раздел</h2><button class="approved-sheet-close" id="approvedSheetClose" type="button" aria-label="Закрыть панель">×</button></div><nav class="approved-sheet-tabs" id="approvedHeroTabs" aria-label="Разделы героя" hidden><button class="approved-sheet-tab" data-approved-hero-tab="inventory" type="button">Снаряжение</button><button class="approved-sheet-tab" data-approved-hero-tab="skills" type="button">Навыки</button><button class="approved-sheet-tab" data-approved-hero-tab="companions" type="button">Спутники</button><button class="approved-sheet-tab" data-approved-hero-tab="hero-stats" type="button">Характеристики</button><button class="approved-sheet-tab" data-approved-hero-tab="awakening" type="button">Пробуждение</button></nav></header><div class="approved-sheet-scroll" id="approvedSheetScroll"><div class="approved-sheet-grid" id="approvedSheetContent"></div></div><div class="approved-skill-actions" id="approvedSkillActions" hidden></div></section></div>
+<div class="approved-slot-modal" id="approvedSkillSlotModal" role="dialog" aria-modal="true" aria-labelledby="approvedSkillSlotTitle" hidden><section class="approved-slot-dialog"><h3 id="approvedSkillSlotTitle">Выберите слот</h3><div class="approved-slot-options" id="approvedSkillSlotOptions"></div><button class="approved-slot-cancel" id="approvedSkillSlotCancel" type="button">Отмена</button></section></div>
 <main class="app">
 <section class="top-hud">
 <div class="level-card hero-top-card">
@@ -5431,19 +5479,6 @@
 <button aria-label="Открыть настройки" class="icon-button" id="settingsButton" type="button">⚙️</button>
 </div>
 </section>
-<section aria-label="Главная" class="shell-screen" data-main-screen="home" id="homeScreen">
-  <div class="screen-stack">
-    <article class="ui-card priority-card" id="homePriority"><div class="skeleton" aria-label="Загрузка приоритетного действия"></div></article>
-    <article class="ui-card"><div class="eyebrow">Сегодня</div><h2>Ежедневный маршрут</h2><div id="homeDailyFlow" class="growth-flow"></div></article>
-    <article class="ui-card"><div class="eyebrow">Следующий шаг</div><h2>Рекомендации</h2><div id="homeRecommendations"></div></article>
-    <article class="ui-card"><div class="eyebrow">Быстрые действия</div><div class="quick-grid">
-      <button class="quick-link" data-quick-action="offline">🌙 Офлайн-награда<small id="homeOfflineHint">Проверить накопление</small></button>
-      <button class="quick-link" data-open-screen="quests">📋 Задания<small id="homeQuestHint">Доступные награды</small></button>
-      <button class="quick-link" data-open-screen="summon">🔮 Призыв<small id="homeSummonHint">Билеты и гарантии</small></button>
-      <button class="quick-link" data-open-screen="equipment">🧰 Сундук<small id="homeChestHint">Добыча и инвентарь</small></button>
-    </div></article>
-  </div>
-</section>
 <section aria-label="Снаряжение" class="shell-screen" data-main-screen="equipment" id="equipmentScreen" hidden>
   <div class="screen-stack">
     <article class="ui-card"><div class="eyebrow">Текущий сундук</div><h2>Добыча</h2><p id="equipmentChestSummary">Сундуки, прогресс и шансы редкости.</p><button class="primary-action" data-quick-action="chest">Открыть сундук и инвентарь</button></article>
@@ -5463,9 +5498,11 @@
   <div class="screen-stack"><article class="ui-card priority-card"><div class="eyebrow">Знамя призыва</div><h2>Навыки и спутники</h2><p>Реальные шансы, pity и баланс показываются непосредственно из ответа сервера.</p><button class="primary-action" data-quick-action="summon">Открыть знамя</button></article><article class="ui-card"><h2>История</h2><div class="empty-state">История появится после загрузки знамени.</div></article></div>
 </section>
 <section aria-label="Задания" class="shell-screen" data-main-screen="quests" id="questsScreen" hidden>
-  <div class="screen-stack"><article class="ui-card priority-card"><div class="eyebrow">Активность</div><h2>Задания и награды</h2><p>Ежедневные, недельные и достижения с прогрессом и таймером сброса.</p><button class="primary-action" data-quick-action="quests">Открыть список заданий</button></article><article class="ui-card"><div class="empty-state" id="questsEmptyState">Нет загруженных заданий — откройте список для обновления.</div></article></div>
+  <div class="screen-stack"><article class="ui-card"><div class="eyebrow">Активность · сброс по UTC</div><h2>Задания</h2><div class="subtabs" aria-label="Тип заданий"><button class="subtab active" type="button">Ежедневные</button><button class="subtab" type="button">Недельные</button><button class="subtab" type="button">Достижения</button></div><div class="quest-progress-track" aria-label="Прогресс активности"><div class="quest-progress-fill" style="width:0%"></div></div></article><article class="ui-card"><div class="empty-state" id="questsEmptyState">Задания загружаются автоматически…</div></article></div>
 </section>
-<section aria-label="Бой" class="battlefield" data-main-screen="battle" id="battlefield" hidden>
+<!-- Forest Chest: battle-first loot action -->
+<section aria-label="Бой" class="battlefield" data-main-screen="battle" id="battlefield">
+<div class="battle-growth"><span aria-hidden="true">◆</span><strong id="battleGrowthPriority">Следующее усиление загружается…</strong><button aria-label="Открыть рекомендации развития" id="battleGrowthOpen" type="button">Подробнее</button></div>
 <div class="enemy-hud">
 <div class="enemy-panel">
 <div class="enemy-hud-row">
@@ -5527,6 +5564,7 @@
 <div class="damage-number" id="damageNumber">-10</div>
 <div class="hero-hit-flash" id="heroHitFlash"></div>
 </div>
+<div aria-label="Активные спутники" class="companion-strip" id="battleCompanions"><span class="companion-chip">I</span><span class="companion-chip">II</span><span class="companion-chip">III</span></div>
 <div class="battle-bottom">
 <div class="battle-message" id="message">
           Подключаемся к серверу…
@@ -5602,6 +5640,7 @@
 </button>
 </div>
 </div><button aria-label="Обычная атака" class="normal-attack" id="normalAttackButton" type="button">⚔️ АТАКА</button><button aria-pressed="false" class="auto-toggle" id="autoToggle" type="button">АВТО</button>
+<div aria-label="Быстрые боевые действия" class="combat-panel"><button aria-label="Открыть лесной сундук" class="combat-chest" id="battleChestAction" type="button"><svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 7h18v4H3zM12 7v13"/></svg>Лесной сундук<span class="pending-badge" id="battlePendingLoot">0</span></button><button aria-label="Забрать офлайн-награду" class="combat-quick" data-quick-action="offline"><svg viewBox="0 0 24 24"><path d="M19 15a7 7 0 1 1-10-10 8 8 0 0 0 10 10z"/></svg>Офлайн</button><button aria-label="Открыть задания" class="combat-quick" data-open-screen="quests"><svg viewBox="0 0 24 24"><path d="M7 5h13M7 12h13M7 19h13M3 5h.01M3 12h.01M3 19h.01"/></svg>Задания</button><button aria-label="Открыть развитие" class="combat-quick" data-open-screen="progression"><svg viewBox="0 0 24 24"><path d="M12 21V10M12 14c-5 0-7-3-7-7 4 0 7 2 7 7zm0-3c4 0 6-2 6-6-3 0-6 2-6 6z"/></svg>Усилить</button><button aria-label="Открыть призыв" class="combat-quick" data-open-screen="summon"><svg viewBox="0 0 24 24"><path d="m12 3 2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg>Призыв</button></div>
 <nav aria-label="Основные игровые разделы" class="game-nav">
 <button aria-label="Герой" class="game-nav-button" data-screen="hero" type="button">
 <span class="game-nav-icon">🍄</span>
@@ -6615,12 +6654,11 @@ id="companionSummonChances"
 </section>
 </main>
 <nav aria-label="Основная навигация" class="shell-nav" id="shellNavigation">
-  <button class="active" data-open-screen="home" type="button"><span class="shell-nav-icon">🍄</span>Главная<span class="nav-badge" data-badge="home"></span></button>
-  <button data-open-screen="battle" type="button"><span class="shell-nav-icon">⚔️</span>Бой<span class="nav-badge" data-badge="battle"></span></button>
-  <button data-open-screen="equipment" type="button"><span class="shell-nav-icon">🧰</span>Снаряж.<span class="nav-badge" data-badge="equipment"></span></button>
-  <button data-open-screen="progression" type="button"><span class="shell-nav-icon">🌿</span>Развитие<span class="nav-badge" data-badge="progression"></span></button>
-  <button data-open-screen="summon" type="button"><span class="shell-nav-icon">🔮</span>Призыв<span class="nav-badge" data-badge="summon"></span></button>
-  <button data-open-screen="quests" type="button"><span class="shell-nav-icon">📋</span>Задания<span class="nav-badge" data-badge="quests"></span></button>
+  <button aria-label="Бой" class="active" data-open-screen="battle" type="button"><span class="shell-nav-icon"><svg viewBox="0 0 24 24"><path d="m5 4 14 16M19 4 5 20M8 7 5 10M16 7l3 3"/></svg></span>Бой<span class="nav-badge" data-badge="battle"></span></button>
+  <button aria-label="Снаряжение" data-open-screen="equipment" type="button"><span class="shell-nav-icon"><svg viewBox="0 0 24 24"><path d="M4 9h16v11H4zM8 9V6h8v3M4 13h16M10 13v2h4v-2"/></svg></span>Снаряжение<span class="nav-badge" data-badge="equipment"></span></button>
+  <button aria-label="Развитие" data-open-screen="progression" type="button"><span class="shell-nav-icon"><svg viewBox="0 0 24 24"><path d="M12 21V10M12 14c-5 0-7-3-7-7 4 0 7 2 7 7zm0-3c4 0 6-2 6-6-3 0-6 2-6 6z"/></svg></span>Развитие<span class="nav-badge" data-badge="progression"></span></button>
+  <button aria-label="Призыв" data-open-screen="summon" type="button"><span class="shell-nav-icon"><svg viewBox="0 0 24 24"><path d="m12 3 2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg></span>Призыв<span class="nav-badge" data-badge="summon"></span></button>
+  <button aria-label="Задания" data-open-screen="quests" type="button"><span class="shell-nav-icon"><svg viewBox="0 0 24 24"><path d="M8 5h12M8 12h12M8 19h12M3 5h1M3 12h1M3 19h1"/></svg></span>Задания<span class="nav-badge" data-badge="quests"></span></button>
 </nav>
 <aside aria-labelledby="resourceDrawerTitle" class="resource-drawer" id="resourceDrawer" hidden>
   <div class="drawer-panel" role="dialog" aria-modal="true"><div class="drawer-head"><h2 id="resourceDrawerTitle">Все ресурсы</h2><button aria-label="Закрыть ресурсы" class="icon-button" id="resourceDrawerClose">×</button></div><div class="resource-grid" id="resourceDrawerGrid"></div></div>
@@ -6713,6 +6751,17 @@ id="companionSummonChances"
       legendary:"#ffb84e", mythic:"#ff627c", ancient:"#47e6d0",
       divine:"#fff08b", celestial:"#d2ecff"
     };
+    const DAMAGE_TYPE_NAMES = Object.freeze({
+      physical:"физический урон", nature:"природный урон",
+      poison:"ядовитый урон", arcane:"магический урон", true:"чистый урон"
+    });
+    function damageTypeName(value) {
+      const key = String(value ?? "").toLowerCase();
+      return DAMAGE_TYPE_NAMES[key] || String(value ?? "");
+    }
+    function localizeDamageTypes(value) {
+      return String(value ?? "").replace(/\b(physical|nature|poison|arcane|true)\b/gi, match => damageTypeName(match));
+    }
 
     telegram.ready();
     telegram.expand();
@@ -6786,6 +6835,199 @@ id="companionSummonChances"
     let battleRunning = false;
     let requestInProgress = false;
     let enemyRequestInProgress = false;
+    let approvedSkillView = "list";
+    let approvedSelectedSkillId = null;
+    let approvedAwakeningExpanded = false;
+
+    const APPROVED_SLOT_ICONS = {helmet:"🪖",armor:"🛡️",gloves:"🧤",pants:"👖",boots:"🥾",weapon:"🗡️",necklace:"📿",ring:"💍",belt:"🧷",talisman:"🔮"};
+    const approvedSheetActions = {
+      hero: [
+        ["Снаряжение","Предметы, сравнение и сборка","inventory"],
+        ["Навыки","Активные и пассивные навыки","skills"],
+        ["Спутники","Активная команда героя","companions"],
+        ["Характеристики","Урон, HP и защита","hero-stats"],
+        ["Rank / awakening","Ранги и пробуждение","awakening"]
+      ],
+      trials: [
+        ["Текущий босс","Продолжить серверный boss flow","boss"],
+        ["Элитный противник","Текущее состояние этапа","elite"],
+        ["Подземелья","Скоро","soon"],
+        ["Башня","Скоро","soon"]
+      ],
+      shop: [
+        ["Призыв навыков","Шансы, pity и история","summon-skills"],
+        ["Призыв спутников","Шансы, pity и история","summon-companions"],
+        ["Премиальный призыв","С подтверждением расхода","summon-premium"]
+      ],
+      more: [
+        ["Задания","Ежедневные, недельные и достижения","quests"],
+        ["Офлайн-награда","Серверный накопленный прогресс","offline"],
+        ["Центр развития","Приоритет и рекомендации","growth"],
+        ["Ресурсы","Все валюты и материалы","resources"],
+        ["Настройки","Звук и интерфейс","settings"]
+      ]
+    };
+
+    function approvedPercent(value, maximum) {
+      const max = Math.max(1, Number(maximum || 1));
+      return Math.max(0, Math.min(100, Number(value || 0) / max * 100));
+    }
+
+    function openApprovedSheet(name, rows) {
+      $("approvedSheetTitle").textContent = name;
+      $("approvedHeroTabs").hidden = name !== "Герой";
+      $("approvedSheetBack").hidden = true;
+      $("approvedSkillActions").hidden = true;
+      $("approvedSheetScroll").classList.remove("has-skill-actions");
+      $("approvedSheetContent").className = "approved-sheet-grid";
+      $("approvedSheetContent").innerHTML = rows.map(([titleText, note, action]) => `<button class="approved-sheet-card" type="button" data-approved-action="${escapeHtml(action)}"><strong>${escapeHtml(titleText)}</strong><small>${escapeHtml(note)}</small></button>`).join("");
+      $("approvedSheetWrap").hidden = false;
+      frontendState.modal = `approved:${name}`;
+    }
+
+    function openApprovedHeroSheet(tab = "inventory") {
+      openApprovedSheet("Герой", approvedSheetActions.hero);
+      $("approvedHeroTabs").hidden = false;
+      $("approvedHeroTabs").querySelectorAll("[data-approved-hero-tab]").forEach(button => button.classList.toggle("active", button.dataset.approvedHeroTab === tab));
+      if (tab === "skills") renderApprovedSkillList();
+    }
+
+    function approvedSkillData(skillId) {
+      const system = player?.skill_system || {};
+      const skill = (system.catalog || []).find(item => String(item.id) === String(skillId));
+      if (!skill) return null;
+      const entry = system.collection?.[skill.id] || {};
+      const slotIndex = (system.slots || []).findIndex(slot => String(slot?.skill_id || "") === String(skill.id));
+      return {system, skill, entry, slotIndex, owned:Boolean(entry.owned)};
+    }
+
+    function renderApprovedSkillList() {
+      approvedSkillView = "list"; approvedSelectedSkillId = null; approvedAwakeningExpanded = false;
+      $("approvedSheetTitle").textContent = "Герой"; $("approvedSheetBack").hidden = true; $("approvedSkillActions").hidden = true;
+      $("approvedSheetScroll").classList.remove("has-skill-actions");
+      const content = $("approvedSheetContent"); content.className = "approved-skill-list";
+      const system = player?.skill_system || {}; const catalog = Array.isArray(system.catalog) ? system.catalog : [];
+      if (!catalog.length) { content.innerHTML = '<div class="empty-state">Навыки пока недоступны.</div>'; return; }
+      content.innerHTML = catalog.map(skill => {
+        const entry = system.collection?.[skill.id] || {}; const owned = Boolean(entry.owned);
+        const slotIndex = (system.slots || []).findIndex(slot => String(slot?.skill_id || "") === String(skill.id));
+        const badges = [entry.upgrade_available && '<span class="approved-skill-badge upgrade">Можно улучшить</span>', entry.rank_up_available && '<span class="approved-skill-badge rank">Доступен ранг</span>', entry.awakening_available && '<span class="approved-skill-badge awaken">Пробуждение</span>'].filter(Boolean).join("") || '<span class="approved-skill-empty-badge">Нет доступных улучшений</span>';
+        return `<button class="approved-skill-card ${slotIndex >= 0 ? "active" : ""}" type="button" data-approved-skill-card="${escapeHtml(skill.id)}" ${owned ? "" : "disabled"}><span class="approved-skill-card-icon">${escapeHtml(skill.icon || "")}</span><span class="approved-skill-card-main"><span class="approved-skill-card-name">${escapeHtml(owned ? skill.name : "Неизвестный навык")}</span><span class="approved-skill-card-meta">${escapeHtml(skill.rarity_name || skill.rarity || "Обычный")} · ур. ${Number(entry.level || 1)} · ранг ${Number(entry.rank || 0)} · ★ ${Number(entry.rank_stars || 0)}</span></span><span class="approved-skill-card-slot">${slotIndex >= 0 ? `Активен · слот ${slotIndex + 1}` : "Не установлен"}</span><span class="approved-skill-badges">${badges}</span></button>`;
+      }).join("");
+      $("approvedSheetScroll").scrollTop = 0;
+    }
+
+    function renderApprovedSkillDetail(skillId = approvedSelectedSkillId) {
+      const data = approvedSkillData(skillId); if (!data) return renderApprovedSkillList();
+      const {skill, entry, slotIndex, owned} = data; approvedSkillView = "detail"; approvedSelectedSkillId = String(skill.id);
+      $("approvedSheetBack").hidden = false; $("approvedSheetBack").setAttribute("aria-label", "Назад к навыкам");
+      const fragments = Number(entry.fragments || 0); const required = entry.next_fragment_cost ?? entry.fragments_required ?? "MAX";
+      const nodes = Array.isArray(entry.awakening_nodes) ? entry.awakening_nodes : []; const activeNodes = nodes.filter(node => node.unlocked); const nextNode = nodes.find(node => !node.unlocked);
+      const shownNodes = approvedAwakeningExpanded ? nodes : [...activeNodes, ...(nextNode ? [nextNode] : [])];
+      const nodeCopy = shownNodes.length ? shownNodes.map(node => `<p class="approved-skill-copy"><strong>${node.unlocked ? "Активно" : "Следующий"}: ${escapeHtml(localizeDamageTypes(node.title || "Узел"))}</strong><br>${escapeHtml(localizeDamageTypes(node.effect_summary || node.description || ""))}</p>`).join("") : '<p class="approved-skill-copy">Нет доступных узлов.</p>';
+      const content = $("approvedSheetContent"); content.className = "approved-skill-detail";
+      content.innerHTML = `<div class="approved-skill-detail-head"><span class="approved-skill-detail-icon">${escapeHtml(skill.icon || "")}</span><div class="approved-skill-detail-title"><strong>${escapeHtml(skill.name || "Навык")}</strong><small>${escapeHtml(skill.rarity_name || skill.rarity || "Обычный")} · ${slotIndex >= 0 ? `слот ${slotIndex + 1}` : "Не установлен"}</small></div></div><section class="approved-skill-section"><h3>Прогресс</h3><div class="approved-skill-facts"><div class="approved-skill-fact">Уровень<strong>${Number(entry.level || 1)}${entry.max_level ? " · MAX" : ""}</strong></div><div class="approved-skill-fact">Ранг и звёзды<strong>${Number(entry.rank || 0)} · ★ ${Number(entry.rank_stars || 0)}/5</strong></div><div class="approved-skill-fact">Пробуждение<strong>Тир ${Number(entry.awakening_tier || 0)}</strong></div><div class="approved-skill-fact">Фрагменты<strong>${fragments}/${required}</strong></div></div></section><section class="approved-skill-section"><h3>Эффект</h3><p class="approved-skill-copy">${escapeHtml(localizeDamageTypes(skill.short_description || skill.description || "Описание эффекта недоступно."))}</p><div class="approved-skill-facts"><div class="approved-skill-fact">Множитель<strong>×${entry.effective_preview ?? skill.effective_multiplier ?? 1}</strong></div><div class="approved-skill-fact">Перезарядка<strong>${skill.cooldown ?? skill.cooldown_seconds ?? 0} с</strong></div><div class="approved-skill-fact">Урон / контроль<strong>${escapeHtml(localizeDamageTypes(entry.damage_preview ?? skill.damage_preview ?? skill.control_preview ?? "—"))}</strong></div><div class="approved-skill-fact">Щит<strong>${escapeHtml(localizeDamageTypes(entry.shield_preview ?? skill.shield_preview ?? "—"))}</strong></div></div></section><section class="approved-skill-section"><h3>Следующее улучшение</h3><p class="approved-skill-copy">Стоимость: ${escapeHtml(String(entry.upgrade_cost ?? entry.next_upgrade_cost ?? required))}<br>Изменение эффекта: ${escapeHtml(localizeDamageTypes(entry.next_effect_preview ?? entry.effect_delta ?? "по данным сервера"))}<br>Следующая веха: ${escapeHtml(localizeDamageTypes(entry.next_milestone ?? "максимальный уровень"))}</p></section><section class="approved-skill-section"><h3>Пробуждение</h3>${nodeCopy}${nodes.length > shownNodes.length ? '<button class="approved-awakening-more" data-approved-awakening-more type="button">Подробнее</button>' : ""}</section>`;
+      const actions = $("approvedSkillActions"); actions.hidden = false;
+      actions.innerHTML = `<div class="approved-skill-action-row"><button class="approved-skill-action primary" data-approved-skill-action="upgrade" type="button" ${!owned || entry.max_level ? "disabled" : ""}>Улучшить</button><button class="approved-skill-action primary" data-approved-skill-action="upgrade10" type="button" ${!owned || entry.max_level ? "disabled" : ""}>Улучшить ×10</button></div><div class="approved-skill-action-row"><button class="approved-skill-action" data-approved-skill-action="equip" type="button" ${!owned || !skill.implemented ? "disabled" : ""}>${slotIndex >= 0 ? "Заменить" : "Установить"}</button><button class="approved-skill-action" data-approved-skill-action="unequip" type="button" ${slotIndex < 0 ? "disabled" : ""}>Снять</button></div>${entry.rank_up_available || entry.awakening_available ? `<div class="approved-skill-action-row"><button class="approved-skill-action" data-approved-skill-action="rank" type="button" ${entry.rank_up_available ? "" : "disabled"}>Повысить ранг</button><button class="approved-skill-action" data-approved-skill-action="awaken" type="button" ${entry.awakening_available ? "" : "disabled"}>Пробудить</button></div>` : ""}`;
+      $("approvedSheetScroll").classList.add("has-skill-actions"); $("approvedSheetScroll").scrollTop = 0;
+    }
+
+    function openApprovedSkillSlotModal(skillId) {
+      const slots = player?.skill_system?.slots || [];
+      $("approvedSkillSlotOptions").innerHTML = slots.map((slot, index) => { const current = approvedSkillData(slot?.skill_id)?.skill; return `<button class="approved-slot-option" type="button" data-approved-equip-slot="${Number(slot.index || index + 1)}" data-approved-equip-skill="${escapeHtml(skillId)}" ${slot.unlocked ? "" : "disabled"}><strong>Слот ${Number(slot.index || index + 1)}</strong><small>${slot.unlocked ? (current ? `Сейчас: ${escapeHtml(current.name)}` : "Свободен") : `Закрыт до уровня ${Number(slot.unlock_level || 0)}`}</small></button>`; }).join("");
+      $("approvedSkillSlotModal").hidden = false;
+    }
+
+    async function equipApprovedSkill(skillId, slot) {
+      try { player = await apiRequest(`/skills/equip?slot=${slot}&skill_id=${encodeURIComponent(skillId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderSkillLoadout(); renderApprovedSkills(); renderApprovedSkillDetail(skillId); setMessage("Навык установлен"); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+
+    function closeApprovedSheet() {
+      $("approvedSheetWrap").hidden = true;
+      frontendState.modal = null;
+    }
+
+    function approvedTickerState() {
+      const root = growthCenter?.growth_center;
+      const critical = (root?.notifications?.items || []).find(item => item.severity === "critical");
+      if (critical) return {text:critical.title || critical.message || "Важное действие в Центре развития", badge:"Центр", action:"growth"};
+      if (Number(root?.counters?.claimable_quests || 0) > 0) return {text:`Доступны награды заданий: ${root.counters.claimable_quests}`, badge:"Задания", action:"quests"};
+      const offline = player?.offline_progression || player?.offline_progress || player?.offline_reward;
+      if (offline?.claimable || Number(offline?.offline_seconds_rewarded || offline?.seconds || offline?.elapsed_seconds || 0) > 0) return {text:"Накоплена офлайн-награда",badge:"Забрать",action:"offline"};
+      if (player?.loot_progression?.chest_upgrade_ready || player?.chest_upgrade_ready) return {text:"Доступно улучшение сундука",badge:"Сундук",action:"inventory"};
+      const rankNotice = (root?.notifications?.items || []).find(item => /rank|ранг|пробуж/i.test(`${item.title || ""} ${item.category || ""}`));
+      if (rankNotice) return {text:rankNotice.title || "Доступно развитие ранга",badge:"Развитие",action:"awakening"};
+      if (player?.stage_objective?.text) return {text:player.stage_objective.text,badge:"Бой",action:"battle"};
+      const priority = root?.priority_action || {};
+      return {text:priority.title || priority.description || priority.reason || player?.stage_progress_label || "Продолжайте бой для следующей награды",badge:"Ещё",action:priority.target_route ? "growth" : "battle"};
+    }
+
+    function renderApprovedSkills() {
+      const dock = $("approvedSkillDock");
+      if (!dock || !player) return;
+      const system = player.skill_system || {};
+      const slots = Array.isArray(system.slots) ? system.slots : [];
+      const catalog = Object.fromEntries((system.catalog || []).map(skill => [String(skill.id), skill]));
+      const collection = system.collection || {};
+      const buttons = [];
+      slots.forEach((slot, index) => {
+        const skillId = String(slot.skill_id || "");
+        const definition = catalog[skillId] || {};
+        const state = player.skills?.[skillId] || {};
+        const cooldown = skillId ? skillCooldownRemaining(skillId, state) : 0;
+        const locked = !slot.unlocked || !skillId || !definition.implemented || !state.available;
+        buttons.push(`<button class="approved-skill ${locked ? "locked" : ""} ${cooldown > 0 ? "cooldown" : ""}" type="button" data-approved-skill="${escapeHtml(skillId)}" data-cooldown="${cooldown > 0 ? `${cooldown.toFixed(1)}с` : ""}" ${locked ? "disabled" : ""} aria-label="${escapeHtml(definition.name || `Слот навыка ${index + 1}`)}"><span>${escapeHtml(definition.icon || (slot.unlocked ? "＋" : "🔒"))}</span>${skillId ? `<small>ур. ${Number(collection[skillId]?.level || 1)}</small>` : ""}</button>`);
+      });
+      const companionSystem = player.companion_system || {};
+      const companionCatalog = Object.fromEntries((companionSystem.catalog || []).map(entry => [String(entry.id), entry]));
+      const companionSlots = Array.isArray(companionSystem.slots) ? companionSystem.slots : [];
+      companionSlots.forEach((slot, index) => {
+        const companion = companionCatalog[String(slot.companion_id || "")] || {};
+        buttons.push(`<button class="approved-skill companion ${!slot.unlocked || !slot.companion_id ? "locked" : ""}" type="button" data-approved-action="companions" aria-label="${escapeHtml(companion.name || `Слот спутника ${index + 1}`)}"><span>${escapeHtml(companion.icon || (slot.unlocked ? "＋" : "🔒"))}</span>${slot.companion_id ? `<small>ур. ${Number(companionSystem.collection?.[slot.companion_id]?.level || 1)}</small>` : ""}</button>`);
+      });
+      dock.innerHTML = buttons.join("");
+    }
+
+    function renderApprovedEquipment() {
+      const grid = $("approvedEquipmentGrid");
+      if (!grid || !player) return;
+      let equipped = 0;
+      grid.innerHTML = Object.keys(SLOT_NAMES).map(slot => {
+        const item = player.equipment?.[slot];
+        if (item) equipped += 1;
+        const rarity = String(item?.rarity || "common");
+        const level = item?.level ?? item?.item_level ?? item?.power;
+        const improvement = item?.comparison?.is_improvement || item?.is_build_upgrade;
+        return `<button class="approved-gear ${item ? escapeHtml(rarity) : "empty"}" type="button" data-approved-slot="${escapeHtml(slot)}" aria-label="${escapeHtml(item?.name || `${SLOT_NAMES[slot]}: пусто`)}">${APPROVED_SLOT_ICONS[slot] || "◇"}${improvement ? `<span aria-label="Улучшение сборки">↑</span>` : ""}${item && level != null ? `<span class="approved-gear-level">${escapeHtml(formatNumber(level))}</span>` : ""}</button>`;
+      }).join("");
+      $("approvedEquipmentCount").textContent = `${equipped}/10`;
+    }
+
+    function renderApprovedBattleShell() {
+      if (!player || !$("approvedBattleShell")) return;
+      setText("approvedPlayerName", player.first_name || player.name || "Игрок");
+      setText("approvedPlayerLevel", `ур. ${player.level || 1}`);
+      setText("approvedPower", `Сила ${formatNumber(player.power || 0)}`);
+      setText("approvedHeroHp", formatNumber(player.hero_hp || 0)); setText("approvedHeroMaxHp", formatNumber(player.hero_max_hp || 0));
+      $("approvedHeroHpBar").style.width = `${approvedPercent(player.hero_hp, player.hero_max_hp)}%`;
+      setText("approvedGold", formatNumber(player.gold || 0)); setText("approvedCrystals", formatNumber(player?.progression_resources?.premium_crystals ?? player.gems ?? 0));
+      setText("approvedEnemyName", player.enemy_name || currentMonster?.name || "Враг"); setText("approvedEnemyHp", formatNumber(player.enemy_hp || 0)); setText("approvedEnemyMaxHp", formatNumber(player.enemy_max_hp || 0));
+      $("approvedEnemyHpBar").style.width = `${approvedPercent(player.enemy_hp, player.enemy_max_hp)}%`;
+      const archetypeNames = {brute:"Громила",mystic:"Мистик",toxic:"Ядовитый",guardian:"Страж"};
+      const weakness = player.weakness?.damage_type || player.weakness || "—";
+      const stageLabel = player.stage_progress_label || `Этап ${player.stage || 1} · ${player.kills_in_stage ?? player.wave ?? 0}/10`;
+      setText("approvedStageMeta", `${stageLabel} · ${archetypeNames[player.enemy_archetype] || archetypeNames.guardian} · слабость: ${damageTypeName(weakness)}`);
+      $("approvedElite").hidden = !player.elite; $("approvedBoss").hidden = !(player.boss_active || player.boss || player.boss_waiting);
+      $("approvedEnemySprite").src = currentMonster?.idle || elements.enemySprite.src; $("approvedEnemySprite").alt = player.enemy_name || currentMonster?.name || "Враг";
+      $("approvedHeroSprite").src = HERO_ASSETS.idle; $("approvedHeroSprite").alt = player.first_name || "Герой";
+      setText("approvedChestLevel", player.chest_level || 1); setText("approvedChestCount", formatNumber(player.chests || 0));
+      const loot = player.loot_progression || {}; $("approvedChestXp").style.width = `${approvedPercent(loot.chest_xp_current ?? player.chest_xp, loot.chest_xp_required ?? player.chest_xp_required)}%`;
+      $("approvedPendingBadge").hidden = !player.pending_loot; $("approvedChestOpen").disabled = Boolean(player.pending_loot) || Number(player.chests || 0) <= 0 || Boolean(loot.inventory_full);
+      const chestAuto = Boolean(Number(player.auto_open_enabled)); $("approvedChestAuto").classList.toggle("active", chestAuto); $("approvedChestAuto").setAttribute("aria-pressed", String(chestAuto));
+      renderApprovedSkills(); renderApprovedEquipment();
+      const ticker = approvedTickerState(); setText("approvedTickerCopy", ticker.text); setText("approvedTickerBadge", ticker.badge); $("approvedTicker").dataset.approvedAction = ticker.action;
+    }
     let enemyDefeating = false;
     let heroDefeated = false;
     let heroAttackTimer = null;
@@ -6798,7 +7040,7 @@ id="companionSummonChances"
 
     // Server payloads remain the only source of gameplay truth. This state is UI-only.
     const frontendState = {
-      activeScreen: "home",
+      activeScreen: "battle",
       activeSubtab: { progression:"skills", summon:"skills", quests:"daily" },
       modal: null,
       lastPlayerPayload: null,
@@ -6843,19 +7085,21 @@ id="companionSummonChances"
     }
 
     function openMainScreen(name) {
-      const valid = ["home", "battle", "equipment", "progression", "summon", "quests"];
+      const valid = ["battle", "equipment", "progression", "summon", "quests"];
       if (!valid.includes(name)) return;
-      frontendState.activeScreen = name;
-      document.body.dataset.activeScreen = name;
-      document.querySelectorAll("[data-main-screen]").forEach(section => { section.hidden = section.dataset.mainScreen !== name; });
+      frontendState.activeScreen = "battle";
+      document.body.dataset.activeScreen = "battle";
+      document.querySelectorAll("[data-main-screen]").forEach(section => { section.hidden = section.dataset.mainScreen !== "battle"; });
       document.querySelectorAll("#shellNavigation [data-open-screen]").forEach(button => {
         const active = button.dataset.openScreen === name;
         button.classList.toggle("active", active);
         button.setAttribute("aria-current", active ? "page" : "false");
       });
       if (name === "battle") openBattleScreen();
-      if (name === "equipment") renderEquipmentHub();
-      if (name === "progression") renderProgressionSummary();
+      if (name === "equipment") $("lootButton").click();
+      if (name === "progression") openEnhancementsScreen();
+      if (name === "summon") $("summonOpen").click();
+      if (name === "quests") elements.questsBattleButton.click();
     }
 
     function renderEquipmentHub() {
@@ -6913,13 +7157,12 @@ id="companionSummonChances"
       ).join("");
       const best = root.summaries?.better_items?.best_item;
       const blockers = (root.blockers || []).slice(0, 4).map(item => escapeHtml(item.message)).join(" · ");
-      $("homePriority").innerHTML = `<div class="eyebrow">Приоритетное действие</div>${warning}<h2>${escapeHtml(priority.title || "Маршрут завершён")}</h2><p>${escapeHtml(priority.description || priority.reason || "Все важные действия выполнены.")}</p>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}<div class="growth-badges">${badges}</div>`;
-      $("homeRecommendations").innerHTML = recommendations || `<div class="empty-state">Новых рекомендаций нет.</div>${best ? `<p>🏆 Лучший предмет: ${escapeHtml(best.slot)} · +${best.build_score_delta} build score</p>` : ""}${blockers ? `<p>${blockers}</p>` : ""}`;
-      $("homeDailyFlow").innerHTML = steps || `<div class="empty-state">Маршрут на сегодня пуст.</div>`;
-      setNavBadge("home", root.notifications?.total_count);
+      setText("battleGrowthPriority", priority.title || priority.reason || "Все важные действия выполнены");
+      $("growthCenterContent").innerHTML = `${warning}<div class="growth-priority"><strong>${escapeHtml(priority.title || "Маршрут завершён")}</strong><div class="growth-meta">${escapeHtml(priority.description || priority.reason || "Все важные действия выполнены.")}</div>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}</div><div class="growth-flow">${steps}</div>${recommendations}<div class="growth-badges">${badges}</div>${best ? `<p>Лучший предмет: ${escapeHtml(best.slot)} · +${best.build_score_delta} БМ</p>` : ""}${blockers ? `<p>${blockers}</p>` : ""}`;
       setNavBadge("equipment", root.counters?.inventory_free === 0 ? 1 : 0);
       setNavBadge("quests", root.counters?.claimable_quests || 0);
       setNavBadge("summon", root.counters?.summon_tickets || 0);
+      renderApprovedBattleShell();
     }
 
     async function refreshGrowthCenter() {
@@ -6935,18 +7178,22 @@ id="companionSummonChances"
       if (route.includes("skill") || route.includes("companion")) return openMainScreen("progression");
       if (route.includes("loot") || route.includes("inventory") || route.includes("chest")) return openMainScreen("equipment");
       if (route === "/boss/start") return openMainScreen("battle");
-      openMainScreen("home");
+      openMainScreen("battle");
     }
 
     $("growthCenterOpen").addEventListener("click", async () => { $("growthCenterModal").classList.remove("hidden"); try { await refreshGrowthCenter(); } catch (error) { setMessage(`❌ ${error.message}`, true); } });
     $("growthCenterClose").addEventListener("click", () => $("growthCenterModal").classList.add("hidden"));
     $("growthCenterContent").addEventListener("click", event => { const button = event.target.closest("[data-growth-route]"); if (button) openGrowthTarget(button.dataset.growthRoute); });
-    $("homeScreen").addEventListener("click", event => { const button = event.target.closest("[data-growth-route]"); if (button) openGrowthTarget(button.dataset.growthRoute); });
-    const compactNumber = new Intl.NumberFormat("ru-RU", { notation:"compact", maximumFractionDigits:1 });
     const fullNumber = new Intl.NumberFormat("ru-RU");
     function formatNumber(value) {
       const number = Number(value || 0);
-      return Math.abs(number) < 10000 ? fullNumber.format(number) : compactNumber.format(number);
+      const absolute = Math.abs(number);
+      if (absolute < 10000) return fullNumber.format(number);
+      const units = [[1e12,"T"],[1e9,"B"],[1e6,"M"],[1e3,"K"]];
+      const [divider, suffix] = units.find(([threshold]) => absolute >= threshold) || [1,""];
+      const scaled = number / divider;
+      const digits = Math.abs(scaled) < 10 ? 2 : 1;
+      return `${scaled.toFixed(digits).replace(/\.0+$|(?<=\.[0-9])0$/u, "").replace(".", ",")}${suffix}`;
     }
 
     function preloadImage(source, timeout = 5000) {
@@ -7365,12 +7612,11 @@ id="companionSummonChances"
       const enemyPercent = Number(player.enemy_max_hp) > 0 ? Number(player.enemy_hp) / Number(player.enemy_max_hp) * 100 : 0;
       elements.heroHpBar.style.width = `${Math.max(0, Math.min(100, heroPercent))}%`;
       elements.enemyHpBar.style.width = `${Math.max(0, Math.min(100, enemyPercent))}%`;
-      const resistanceNames = {physical:"физ.", nature:"природа", poison:"яд", arcane:"магия"};
       const resistanceText = Object.entries(player.resistances || {}).map(
-        ([kind, value]) => `${resistanceNames[kind] || kind} ${Number(value || 0) >= 0 ? "+" : ""}${Math.round(Number(value || 0) * 100)}%`
+        ([kind, value]) => `${damageTypeName(kind)} ${Number(value || 0) >= 0 ? "+" : ""}${Math.round(Number(value || 0) * 100)}%`
       ).join(" · ");
       const weakType = player.weakness?.damage_type;
-      elements.enemyDamageProfile.textContent = `${player.enemy_archetype || "guardian"} · атака: ${player.enemy_attack_type || "physical"} · ${resistanceText}${weakType ? ` · слабость: ${resistanceNames[weakType] || weakType}` : ""}`;
+      elements.enemyDamageProfile.textContent = `${player.enemy_archetype || "guardian"} · атака: ${damageTypeName(player.enemy_attack_type || "physical")} · ${resistanceText}${weakType ? ` · слабость: ${damageTypeName(weakType)}` : ""}`;
       elements.eliteBadge.textContent = player.elite
         ? `★ ${player.elite_modifier}: ${player.elite_description}${player.elite_silenced ? " · подавлено" : ""}`
         : "";
@@ -7379,11 +7625,12 @@ id="companionSummonChances"
         .filter((effect) => effect.target === target)
         .map((effect) => {
           const ticks = effect.ticks_remaining ? ` · ${effect.ticks_remaining} тиков` : "";
-          return `${statusNames[effect.effect_type] || effect.effect_type} ${Number(effect.remaining_seconds || 0).toFixed(1)}с${ticks}`;
+          return localizeDamageTypes(`${statusNames[effect.effect_type] || effect.effect_type} ${Number(effect.remaining_seconds || 0).toFixed(1)}с${ticks}`);
         }).join(" · ");
       elements.enemyStatusEffects.textContent = renderStatuses("enemy");
       elements.heroStatusEffects.textContent = renderStatuses("hero");
       elements.chestCount.textContent = formatNumber(player.chests);
+      setText("battlePendingLoot", player.pending_loot ? 1 : player.chests || 0);
       elements.chestLevelBadge.textContent = `УР. ${player.chest_level}`;
       const autoEnabled = Boolean(Number(player.auto_open_enabled));
       elements.autoToggle.classList.toggle("active", autoEnabled);
@@ -7401,11 +7648,14 @@ id="companionSummonChances"
       setNavBadge("equipment", player.pending_loot ? 1 : 0);
       setNavBadge("battle", player.boss_button_visible ? 1 : 0);
       if (frontendState.activeScreen === "equipment") renderEquipmentHub();
+      renderApprovedBattleShell();
       scheduleAutoOpen();
     }
 
     function setMessage(text, isError = false) {
+      text = localizeDamageTypes(text);
       elements.message.classList.toggle("error", isError); elements.message.textContent = text;
+      if ($("approvedCombatMessage")) { $("approvedCombatMessage").textContent = text; $("approvedCombatMessage").classList.toggle("error", isError); }
       const log = $("combatLog");
       if (log && text) {
         const event = document.createElement("div");
@@ -7420,6 +7670,8 @@ id="companionSummonChances"
     function showDamage(amount, critical = false) {
       elements.damageNumber.textContent = critical ? `КРИТ -${formatNumber(amount)}` : `-${formatNumber(amount)}`;
       restartAnimation(elements.damageNumber, "fx-damage");
+      const approved = $("approvedDamage");
+      if (approved) { approved.textContent = critical ? `−${formatNumber(amount)} CRIT` : `−${formatNumber(amount)}`; restartAnimation(approved, "visible"); }
     }
     function animateHeroAttack(useSkill) {
       if (useSkill) {
@@ -7460,7 +7712,7 @@ id="companionSummonChances"
         parts.push(damageEvents.filter(event => !event.skipped_after_kill).map(event => {
           const delta = Number(event.resistance_reduction || 0);
           const note = delta > 0 ? `Сопротивление уменьшило урон на ${delta}` : delta < 0 ? `Слабость увеличила урон на ${Math.abs(delta)}` : "";
-          return `${event.damage_type || "physical"}${note ? `: ${note}` : ""}`;
+          return `${damageTypeName(event.damage_type || "physical")}${note ? `: ${note}` : ""}`;
         }).join("; "));
       }
       const owlStacks = effects.owl_repeat_stacks || {};
@@ -8628,13 +8880,13 @@ id="companionSummonChances"
 
               <div class="collection-skill-description">
                 ${owned
-                  ? escapeHtml(companion.description)
+                  ? escapeHtml(localizeDamageTypes(companion.description))
                   : "Получите этого спутника через призыв."}
               </div>
 
               <div class="collection-skill-progress">
                 ${owned
-                  ? `Уровень ${level}/50 · Ранг ${entry.rank || 0} · ★ ${entry.rank_stars || 0}/5 · Пробуждение ${entry.awakening_tier || 0}/3<br>Фрагменты: ${fragments}/${entry.next_fragment_cost ?? "MAX"} · Итоговый эффект ×${entry.effective_preview || 1}<br>${(entry.awakening_nodes || []).map(node => `${node.unlocked ? "✅" : "🔒"} ${node.title}: ${node.effect_summary}`).join("<br>")}`
+                  ? `Уровень ${level}/50 · Ранг ${entry.rank || 0} · ★ ${entry.rank_stars || 0}/5 · Пробуждение ${entry.awakening_tier || 0}/3<br>Фрагменты: ${fragments}/${entry.next_fragment_cost ?? "MAX"} · Итоговый эффект ×${entry.effective_preview || 1}<br>${(entry.awakening_nodes || []).map(node => `${node.unlocked ? "✅" : "🔒"} ${escapeHtml(localizeDamageTypes(node.title))}: ${escapeHtml(localizeDamageTypes(node.effect_summary))}`).join("<br>")}`
                   : "Не получен"}
               </div>
 
@@ -8933,12 +9185,12 @@ id="companionSummonChances"
 
               <div class="collection-skill-description">
                 ${owned
-                  ? escapeHtml(skill.description)
+                  ? escapeHtml(localizeDamageTypes(skill.description))
                   : "Получите этот навык в магазине."}
               </div>
 
               <div class="collection-skill-progress">
-                ${escapeHtml(progressText)} · Ранг ${entry.rank || 0} · ★ ${entry.rank_stars || 0}/5 · Пробуждение ${entry.awakening_tier || 0}/3<br>Фрагменты: ${fragments}/${entry.next_fragment_cost ?? "MAX"} · Итоговый эффект ×${entry.effective_preview || 1}<br>${(entry.awakening_nodes || []).map(node => `${node.unlocked ? "✅" : "🔒"} ${node.title}: ${node.effect_summary}`).join("<br>")}
+                ${escapeHtml(localizeDamageTypes(progressText))} · Ранг ${entry.rank || 0} · ★ ${entry.rank_stars || 0}/5 · Пробуждение ${entry.awakening_tier || 0}/3<br>Фрагменты: ${fragments}/${entry.next_fragment_cost ?? "MAX"} · Итоговый эффект ×${entry.effective_preview || 1}<br>${(entry.awakening_nodes || []).map(node => `${node.unlocked ? "✅" : "🔒"} ${escapeHtml(localizeDamageTypes(node.title))}: ${escapeHtml(localizeDamageTypes(node.effect_summary))}`).join("<br>")}
               </div>
 
               ${
@@ -9002,7 +9254,8 @@ id="companionSummonChances"
         : {[`${kind}_id`]: id, expected_level: Number((kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id])?.level || 1), client_action_id: crypto.randomUUID()};
       try {
         await apiRequest(`/${plural}/upgrade${levels > 1 ? "-bulk" : ""}`, "POST", body);
-        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout();
+        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
+        if (kind === "skill" && approvedSkillView === "detail" && String(approvedSelectedSkillId) === String(id)) renderApprovedSkillDetail(id);
         setMessage(levels > 1 ? "Прогрессия улучшена" : "Уровень повышен");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
@@ -9016,7 +9269,9 @@ id="companionSummonChances"
       if (steps > 1 && !confirmed) return confirmAction("Повысить несколько рангов?", "Будут списаны показанные сервером фрагменты.", () => rankProgression(kind, id, steps, true));
       try {
         await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/rank-up${steps > 1 ? "-bulk" : ""}`, "POST", {entity_id:id, steps, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
-        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); setMessage("Ранг повышен");
+        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
+        if (kind === "skill" && approvedSkillView === "detail" && String(approvedSelectedSkillId) === String(id)) renderApprovedSkillDetail(id);
+        setMessage("Ранг повышен");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
     async function awakenProgression(kind, id, confirmed = false) {
@@ -9024,7 +9279,9 @@ id="companionSummonChances"
       if (!confirmed) return confirmAction("Пробудить сущность?", "Пробуждение потратит показанные сервером ресурсы.", () => awakenProgression(kind, id, true));
       try {
         await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/awaken`, "POST", {entity_id:id, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
-        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); setMessage("Пробуждение повышено");
+        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
+        if (kind === "skill" && approvedSkillView === "detail" && String(approvedSelectedSkillId) === String(id)) renderApprovedSkillDetail(id);
+        setMessage("Пробуждение повышено");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
 
@@ -10267,8 +10524,105 @@ id="companionSummonChances"
       else if (!$("resourceDrawer").hidden) $("resourceDrawerClose").click();
       else document.querySelectorAll(".game-modal:not(.hidden),.loot-overlay:not(.hidden)").forEach(modal => modal.classList.add("hidden"));
     });
-    document.body.dataset.activeScreen = "home";
-    openMainScreen("home");
+    $("battleChestAction").addEventListener("click", () => $("lootButton").click());
+    $("battleGrowthOpen").addEventListener("click", async () => {
+      $("growthCenterModal").classList.remove("hidden");
+      try { await refreshGrowthCenter(); } catch (error) { showToast(error.message, "error"); }
+    });
+    $("approvedSheetClose").addEventListener("click", closeApprovedSheet);
+    $("approvedSheetBack").addEventListener("click", () => approvedSkillView === "detail" ? renderApprovedSkillList() : closeApprovedSheet());
+    $("approvedHeroTabs").addEventListener("click", event => {
+      const tab = event.target.closest("[data-approved-hero-tab]")?.dataset.approvedHeroTab; if (!tab) return;
+      $("approvedHeroTabs").querySelectorAll("[data-approved-hero-tab]").forEach(button => button.classList.toggle("active", button.dataset.approvedHeroTab === tab));
+      if (tab === "skills") return renderApprovedSkillList();
+      const row = approvedSheetActions.hero.find(item => item[2] === tab); openApprovedSheet("Герой", row ? [row] : approvedSheetActions.hero); $("approvedHeroTabs").hidden = false;
+    });
+    $("approvedSkillSlotCancel").addEventListener("click", () => $("approvedSkillSlotModal").hidden = true);
+    $("approvedSkillSlotModal").addEventListener("click", event => { if (event.target === $("approvedSkillSlotModal")) $("approvedSkillSlotModal").hidden = true; });
+    $("approvedSkillSlotOptions").addEventListener("click", event => {
+      const button = event.target.closest("[data-approved-equip-slot]"); if (!button || button.disabled) return;
+      const slot = Number(button.dataset.approvedEquipSlot); const skillId = button.dataset.approvedEquipSkill;
+      const occupied = (player?.skill_system?.slots || []).find(item => Number(item.index) === slot)?.skill_id;
+      if (occupied && String(occupied) !== String(skillId)) return confirmAction("Заменить навык?", "Текущий навык в этом слоте будет заменён.", () => equipApprovedSkill(skillId, slot));
+      equipApprovedSkill(skillId, slot);
+    });
+    $("approvedSheetWrap").addEventListener("click", event => { if (event.target === $("approvedSheetWrap")) closeApprovedSheet(); });
+    $("approvedChestInfo").addEventListener("click", () => $("lootButton").click());
+    $("approvedInventory").addEventListener("click", () => $("lootButton").click());
+    $("approvedChestOpen").addEventListener("click", () => player?.pending_loot ? showLootModal() : openChest());
+    $("approvedPendingBadge").addEventListener("click", () => showLootModal());
+    $("approvedChestAuto").addEventListener("click", toggleAuto);
+    $("approvedSkillDock").addEventListener("click", event => {
+      const skill = event.target.closest("[data-approved-skill]");
+      if (skill && !skill.disabled) return useBattleSkill(String(skill.dataset.approvedSkill || ""));
+      const action = event.target.closest("[data-approved-action]")?.dataset.approvedAction;
+      if (action === "companions") openApprovedSheet("Спутники", approvedSheetActions.hero.filter(row => row[2] === "companions"));
+    });
+    $("approvedEquipmentGrid").addEventListener("click", event => {
+      const button = event.target.closest("[data-approved-slot]");
+      if (!button) return;
+      const slot = button.dataset.approvedSlot;
+      const item = player?.equipment?.[slot];
+      const secondary = (item?.secondary_stats || []).map(stat => `${stat.name || stat.key}: ${stat.formatted_value || stat.value}`).join(" · ") || "Нет вторичных характеристик";
+      const rows = item ? [
+        [item.name || SLOT_NAMES[slot], `${RARITY_NAMES[item.rarity] || item.rarity || "Предмет"} · ${SLOT_NAMES[slot]}`,"noop"],
+        ["Основные stats", `Урон +${formatNumber(item.damage || 0)} · HP +${formatNumber(item.hp || 0)}`,"noop"],
+        ["Вторичные stats", secondary,"noop"],
+        ["Raw power / build score", `${formatNumber(item.power || 0)} / ${formatNumber(item.build_score ?? item.comparison?.build_score ?? 0)}`,"noop"],
+        [item.locked ? "Разблокировать / управление" : "Заблокировать / управление","Lock, reroll, unequip и сравнение","inventory"]
+      ] : [[SLOT_NAMES[slot],"Слот пуст","noop"],["Открыть инвентарь","Выбрать предмет для экипировки","inventory"]];
+      openApprovedSheet("Экипировка", rows);
+    });
+    $("approvedTicker").addEventListener("click", event => {
+      const action = event.currentTarget.dataset.approvedAction || "growth";
+      if (action === "battle") return closeApprovedSheet();
+      document.querySelector(`[data-approved-action="${action}"]`)?.click();
+      if (action === "growth") { $("growthCenterModal").classList.remove("hidden"); refreshGrowthCenter().catch(error => showToast(error.message,"error")); }
+      if (action === "quests") elements.questsBattleButton.click();
+      if (action === "offline") $("offlineOpen").click();
+      if (action === "inventory") $("lootButton").click();
+      if (action === "awakening") openEnhancementsScreen();
+    });
+    $("approvedNavigation").addEventListener("click", event => {
+      const button = event.target.closest("[data-approved-nav]");
+      if (!button) return;
+      const name = button.dataset.approvedNav;
+      $("approvedNavigation").querySelectorAll("button").forEach(entry => { const active = entry === button; entry.classList.toggle("active", active); entry.setAttribute("aria-current", active ? "page" : "false"); });
+      if (name === "battle") { closeApprovedSheet(); document.querySelectorAll(".game-modal:not(.hidden),.loot-overlay:not(.hidden)").forEach(modal => modal.classList.add("hidden")); openBattleScreen(); return; }
+      if (name === "hero") return openApprovedHeroSheet();
+      openApprovedSheet({trials:"Испытания",shop:"Магазин",more:"Ещё"}[name], approvedSheetActions[name] || []);
+    });
+    $("approvedSheetContent").addEventListener("click", event => {
+      const skillCard = event.target.closest("[data-approved-skill-card]");
+      if (skillCard) return renderApprovedSkillDetail(skillCard.dataset.approvedSkillCard);
+      if (event.target.closest("[data-approved-awakening-more]")) { approvedAwakeningExpanded = true; return renderApprovedSkillDetail(); }
+      const action = event.target.closest("[data-approved-action]")?.dataset.approvedAction;
+      if (!action || action === "noop" || action === "soon" || action === "elite") return;
+      closeApprovedSheet();
+      if (action === "inventory") return $("lootButton").click();
+      if (action === "skills") return openApprovedHeroSheet("skills");
+      if (action === "companions") { setEnhancementTab("companions"); return openEnhancementsScreen(); }
+      if (action === "hero-stats") return openHeroScreen();
+      if (action === "awakening") return openEnhancementsScreen();
+      if (action === "boss") return player?.boss_button_visible ? elements.bossButton.click() : openTrialsScreen();
+      if (action.startsWith("summon")) return $("summonOpen").click();
+      if (action === "quests") return elements.questsBattleButton.click();
+      if (action === "offline") return $("offlineOpen").click();
+      if (action === "growth") { $("growthCenterModal").classList.remove("hidden"); return refreshGrowthCenter().catch(error => showToast(error.message,"error")); }
+      if (action === "resources") return $("resourceDrawerOpen").click();
+      if (action === "settings") return $("settingsButton").click();
+    });
+    $("approvedSkillActions").addEventListener("click", async event => {
+      const action = event.target.closest("[data-approved-skill-action]")?.dataset.approvedSkillAction; if (!action || !approvedSelectedSkillId) return;
+      const data = approvedSkillData(approvedSelectedSkillId); if (!data) return;
+      if (action === "equip") return openApprovedSkillSlotModal(approvedSelectedSkillId);
+      if (action === "unequip" && data.slotIndex >= 0) { await unequipSkill(data.slotIndex + 1); renderApprovedSkills(); return renderApprovedSkillDetail(); }
+      if (action === "upgrade" || action === "upgrade10") { await upgradeProgression("skill", approvedSelectedSkillId, action === "upgrade10" ? 10 : 1); renderApprovedSkills(); return renderApprovedSkillDetail(); }
+      if (action === "rank") { await rankProgression("skill", approvedSelectedSkillId, 1); renderApprovedSkills(); return renderApprovedSkillDetail(); }
+      if (action === "awaken") return awakenProgression("skill", approvedSelectedSkillId);
+    });
+    document.body.dataset.activeScreen = "battle";
+    openMainScreen("battle");
     startGame();
 
 
