@@ -339,12 +339,57 @@ class FrontendUiContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, HTML)
 
+    def test_progression_mutations_use_server_state_and_release_mutex(self):
+        renderer = HTML.split("async function upgradeProgression", 1)[1].split("function bindRankActions", 1)[0]
+        self.assertIn("expected_level: expectedLevel", renderer)
+        self.assertIn("player = result", renderer)
+        self.assertNotIn('apiRequest("/player")', renderer)
+        self.assertIn("progressionMutations.has(mutationKey)", renderer)
+        self.assertIn("finally { progressionMutations.delete(mutationKey)", renderer)
+
+    def test_companions_have_separate_mobile_list_detail_and_slot_flow(self):
+        for marker in (
+            "function renderApprovedCompanionList()",
+            "function renderApprovedCompanionDetail",
+            "data-approved-companion-card=",
+            "data-approved-companion-action=",
+            "function openApprovedCompanionSlotModal",
+            'confirmAction("Заменить спутника?"',
+        ):
+            self.assertIn(marker, HTML)
+
+    def test_progression_max_level_is_compared_not_used_as_boolean(self):
+        for renderer_name in ("renderApprovedSkillDetail", "renderApprovedCompanionDetail"):
+            renderer = HTML.split(f"function {renderer_name}", 1)[1].split("function ", 1)[0]
+            self.assertIn("Number(rawEntry.level || 1) >= Number(rawEntry.max_level || 50)", renderer)
+            self.assertNotIn("entry:rawEntry, slotIndex", renderer.split("const entry =", 1)[1])
+
+    def test_cooldown_uses_server_remaining_with_monotonic_elapsed_time(self):
+        renderer = HTML.split("function skillCooldownRemaining", 1)[1].split("function renderSkills", 1)[0]
+        self.assertIn("state?.cooldown_remaining", renderer)
+        self.assertIn("performance.now()", renderer)
+        self.assertIn("player?._client_received_at", renderer)
+
     def test_no_duplicate_ids(self):
         self.assertEqual(len(self.parser.id_occurrences), len(set(self.parser.id_occurrences)))
 
     def test_compact_number_formatter_uses_approved_suffixes(self):
         self.assertIn('[[1e12,"T"],[1e9,"B"],[1e6,"M"],[1e3,"K"]]', HTML)
         self.assertIn('.replace(".", ",")', HTML)
+
+    def test_api_errors_preserve_server_detail_and_recover_from_timeout(self):
+        self.assertIn("function apiErrorDetail(detail", HTML)
+        self.assertIn("const detail = apiErrorDetail(data.detail)", HTML)
+        self.assertIn('error?.name === "AbortError"', HTML)
+        self.assertIn("Нет связи с сервером", HTML)
+        helper = HTML.split("function apiErrorDetail", 1)[1].split("async function apiRequest", 1)[0]
+        self.assertIn("Array.isArray(detail)", helper)
+        self.assertNotIn("[object Object]", helper)
+
+    def test_growth_badge_ignores_legacy_inventory_capacity(self):
+        renderer = HTML.split("function renderGrowthCenter()", 1)[1].split("async function refreshGrowthCenter", 1)[0]
+        self.assertIn('setNavBadge("equipment", player?.pending_loot ? 1 : 0)', renderer)
+        self.assertNotIn("inventory_free === 0", renderer)
 
 
 if __name__ == "__main__":

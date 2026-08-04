@@ -26,13 +26,24 @@ class GrowthCenterTest(unittest.TestCase):
             skill_catalog=self.skill_catalog, companion_catalog=self.companion_catalog,
             inventory=inventory or [], equipment=equipment or {}, now=now)
 
-    def test_inventory_full_is_highest_and_crystals_are_not_recommended(self):
+    def test_legacy_inventory_never_creates_a_false_critical_action(self):
         inventory = [{"item_id": str(i), "slot": "weapon"} for i in range(50)]
-        center = self.build(inventory=inventory)["growth_center"]
-        self.assertEqual("inventory_full", center["priority_action"]["action_id"])
+        center = self.build(player={**self.player, "chests": 1}, inventory=inventory)["growth_center"]
+        self.assertNotEqual("inventory_full", center["priority_action"]["action_id"])
         self.assertFalse(any("crystal" in item["action_id"] for item in center["recommended_actions"]))
-        full = next(item for item in center["notifications"]["items"] if item["type"] == "inventory_full")
-        self.assertEqual("critical", full["severity"])
+        self.assertFalse(any(item["type"].startswith("inventory_") for item in center["notifications"]["items"]))
+        self.assertFalse(any(item["resource"] == "inventory_space" for item in center["blockers"]))
+        open_chest = next(item for item in center["quick_actions"] if item["action_id"] == "open_chest")
+        self.assertTrue(open_chest["available"])
+
+    def test_pending_loot_is_highest_priority_and_blocks_only_next_open(self):
+        player = {**self.player, "pending_loot": {"item_id": "pending-1", "slot": "weapon"}, "chests": 2}
+        center = self.build(player=player)["growth_center"]
+        self.assertEqual("resolve_pending_loot", center["priority_action"]["action_id"])
+        pending = next(item for item in center["notifications"]["items"] if item["type"] == "pending_loot")
+        self.assertEqual("critical", pending["severity"])
+        open_chest = next(item for item in center["quick_actions"] if item["action_id"] == "open_chest")
+        self.assertFalse(open_chest["available"])
 
     def test_ticket_summon_precedes_battle_and_order_is_stable(self):
         player = {**self.player, "skill_summon_scrolls": 1}

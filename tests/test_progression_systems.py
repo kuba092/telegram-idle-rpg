@@ -1,4 +1,5 @@
 import unittest
+import inspect
 from copy import deepcopy
 
 import api
@@ -11,6 +12,13 @@ from progression_systems import (
 
 
 class ProgressionSystemsTest(unittest.TestCase):
+    def test_upgrade_requires_expected_level_for_single_and_bulk(self):
+        source = inspect.getsource(api._upgrade_progression)
+        self.assertIn('payload.get("expected_level")', source)
+        self.assertIn('detail="expected_level обязателен"', source)
+        self.assertNotIn("if not bulk and expected", source)
+        self.assertIn("build_player_response(updated, **result)", source)
+
     def test_costs_grow(self):
         self.assertGreater(skill_upgrade_cost(20), skill_upgrade_cost(1))
         self.assertGreater(companion_upgrade_cost(20), companion_upgrade_cost(1))

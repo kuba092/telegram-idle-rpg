@@ -29,7 +29,7 @@ _CACHE_LOCK = threading.RLock()
 URGENCY = {"low": 10, "normal": 30, "info": 40, "attention": 70, "critical": 100}
 ROUTES = {
     "offline": "/offline/claim", "quests": "/quests/claim-all", "chest": "/chest/upgrade",
-    "inventory": "/loot/equip", "skill_upgrade": "/skills/upgrade", "companion_upgrade": "/companions/upgrade",
+    "pending_loot": "/loot/equip", "skill_upgrade": "/skills/upgrade", "companion_upgrade": "/companions/upgrade",
     "skill_rank": "/skills/rank-up", "companion_rank": "/companions/rank-up",
     "skill_awakening": "/skills/awaken", "companion_awakening": "/companions/awaken",
     "summon_skill": "/summon/skill", "summon_companion": "/summon/companion",
@@ -196,6 +196,8 @@ class GrowthCenter:
         quests = public_quest_block(p, self.now); offline = public_offline_status(p, now_i)
         chest = chest_progress(p); capacity = inventory_capacity(_int(p.get("chest_level"), 1))
         inv_count, inv_free = len(self.inventory), max(0, capacity - len(self.inventory))
+        pending_loot = p.get("pending_loot")
+        has_pending_loot = isinstance(pending_loot, Mapping) and bool(pending_loot)
         profile = str(p.get("comparison_profile", "balanced"))
         better = detect_better_items(self.inventory, self.equipment, profile)
         skills = _entity_candidates("skill", self.skills, {x for x in self.skill_slots if x}, self.skill_catalog,
@@ -217,7 +219,7 @@ class GrowthCenter:
             "inventory_free": inv_free, "better_items": better["count"], "offline_claimable": bool(offline["claimable"]),
             "chest_upgrade_ready": bool(chest["chest_upgrade_ready"])}
         recommendations = []
-        if inv_free == 0: recommendations.append(_recommendation("inventory_full", "inventory", True, "Инвентарь заполнен", "critical", 1000))
+        if has_pending_loot: recommendations.append(_recommendation("resolve_pending_loot", "pending_loot", True, "Решите судьбу найденного предмета", "critical", 1000))
         if offline["claimable"]: recommendations.append(_recommendation("claim_offline", "offline", True, "Офлайн-награда готова", "attention", 950))
         if daily_claim + weekly_claim + achievements + daily_miles + weekly_miles:
             recommendations.append(_recommendation("claim_quest_rewards", "quests", True, "Есть награды заданий", "attention", 900))
@@ -229,7 +231,6 @@ class GrowthCenter:
                 c=data["best_upgrade"]; recommendations.append(_recommendation(f"upgrade_{kind}", f"{kind}_upgrade", True, "Доступно улучшение", "info", 700 if kind=="skill" else 680, c["cost"], p, candidate=c))
         if skill_tickets: recommendations.append(_recommendation("summon_skill_ticket", "summon_skill", True, "Есть свиток призыва", "info", 620, {"skill_summon_scrolls": SUMMON_COSTS[1]["ticket"]}, p))
         if companion_tickets: recommendations.append(_recommendation("summon_companion_ticket", "summon_companion", True, "Есть контракт призыва", "info", 610, {"companion_summon_contracts": SUMMON_COSTS[1]["ticket"]}, p))
-        if better["best_item"]: recommendations.append(_recommendation("review_better_item", "loot_compare", True, "Найден предмет лучше надетого", "info", 560, candidate=better["best_item"]))
         boss_available = bool(_int(p.get("boss_waiting"))) and not bool(_int(p.get("game_completed")))
         if boss_available: recommendations.append(_recommendation("start_boss", "boss", True, "Босс этапа доступен", "info", 500))
         can_battle = _int(p.get("hero_hp"), 1) > 0 and not bool(_int(p.get("game_completed"))) and not boss_available
@@ -238,8 +239,7 @@ class GrowthCenter:
         notifications = []
         def add(t,c,s,title,msg,section,category):
             if c: notifications.append(_notification(t, int(c), s, title, msg, section, ROUTES[category]))
-        add("inventory_full", inv_free == 0, "critical", "Инвентарь заполнен", "Освободите место перед получением добычи", "inventory", "inventory")
-        add("inventory_near_full", inv_free > 0 and inv_free <= max(1, capacity//10), "attention", "Инвентарь почти заполнен", f"Осталось мест: {inv_free}", "inventory", "inventory")
+        add("pending_loot", has_pending_loot, "critical", "Нужно решить предмет", "Наденьте или продайте найденный предмет", "equipment", "pending_loot")
         add("offline_claimable", offline["claimable"], "attention", "Офлайн-награда", "Награда готова к получению", "offline", "offline")
         # Premium quest rewards are represented by their period badge, once per type.
         for qtype, block, ntype in (("daily", quests["daily"], "daily_quest_claimable"),("weekly", quests["weekly"], "weekly_quest_claimable"),("achievement", quests["achievements"], "achievement_claimable")):
@@ -249,7 +249,6 @@ class GrowthCenter:
         add("daily_milestone_claimable", daily_miles, "attention" if any(m["completed"] and not m["claimed"] and m["reward"].get("premium_crystals") for m in quests["daily"]["milestones"]) else "info", "Дневная веха", "Награда вехи готова", "quests", "quests")
         add("weekly_milestone_claimable", weekly_miles, "attention" if any(m["completed"] and not m["claimed"] and m["reward"].get("premium_crystals") for m in quests["weekly"]["milestones"]) else "info", "Недельная веха", "Награда вехи готова", "quests", "quests")
         add("chest_upgrade_ready", chest["chest_upgrade_ready"], "attention", "Сундук можно улучшить", "Золота достаточно", "chest", "chest")
-        add("better_item_available", better["count"], "info", "Есть предмет сильнее", "Сравните его с экипировкой", "inventory", "loot_compare")
         for kind,data in (("skill",skills),("companion",companions)):
             label="навыка" if kind=="skill" else "спутника"
             add(f"{kind}_upgrade_available", data["affordable_count"], "info", f"Улучшение {label}", "Ресурсов достаточно", kind+"s", f"{kind}_upgrade")
@@ -261,12 +260,11 @@ class GrowthCenter:
         add("elite_active", bool(_int(p.get("elite_active"))), "attention", "Элитный противник", "Элитный противник активен", "battle", "elite")
         notifications.sort(key=lambda x: (-URGENCY[x["severity"]], x["notification_id"]))
         priority = recommendations[0] if recommendations else _recommendation("no_action", "battle", False, "Нет доступных действий", "low", 0)
-        titles={"inventory_full":"Освободить инвентарь","claim_offline":"Забрать офлайн-награду","claim_quest_rewards":"Забрать награды","upgrade_chest":"Улучшить сундук"}
+        titles={"resolve_pending_loot":"Решить предмет","claim_offline":"Забрать офлайн-награду","claim_quest_rewards":"Забрать награды","upgrade_chest":"Улучшить сундук"}
         priority_action={k:priority[k] for k in ("action_id","category","available","reason","target_route")}
         priority_action.update({"title":titles.get(priority["action_id"], priority["reason"]), "description":priority["reason"],
                                 "urgency":priority["urgency"], "estimated_value":priority.get("candidate") or {}})
         blockers=[]
-        if inv_free == 0: blockers.append(blocker("inventory_space",1,0,"inventory_full"))
         for kind,data in (("skill",skills),("companion",companions)):
             collection = self.skills if kind=="skill" else self.companions
             if data["affordable_count"] == 0 and any(v.get("owned",True) and _int(v.get("level"),1)<MAX_PROGRESSION_LEVEL for v in collection.values()):
@@ -314,7 +312,7 @@ class GrowthCenter:
           ("claim_weekly_quests","Еженедельные задания",weekly>0,weekly==0,True,"quests",ROUTES["quests"]),
           ("claim_achievements","Достижения",ach>0,ach==0,True,"quests",ROUTES["quests"]),
           ("upgrade_chest","Улучшить сундук",bool(c["chest_upgrade_ready"]),not c["chest_upgrade_ready"],True,"chest",ROUTES["chest"]),
-          ("review_inventory","Проверить инвентарь",c["better_items"]>0,c["better_items"]==0,False,"inventory",ROUTES["inventory"]),
+          ("resolve_pending_loot","Решить предмет",bool(self.player.get("pending_loot")),not bool(self.player.get("pending_loot")),False,"equipment",ROUTES["pending_loot"]),
           ("upgrade_skills","Улучшить навыки",skills["affordable_count"]>0,skills["affordable_count"]==0,True,"skills",ROUTES["skill_upgrade"]),
           ("upgrade_companions","Улучшить спутников",companions["affordable_count"]>0,companions["affordable_count"]==0,True,"companions",ROUTES["companion_upgrade"]),
           ("summon","Призыв",c["skill_ticket_summons"]+c["companion_ticket_summons"]>0,c["skill_ticket_summons"]+c["companion_ticket_summons"]==0,True,"summon",ROUTES["summon_skill"]),
@@ -342,8 +340,7 @@ class GrowthCenter:
           ("claim_all_weekly","Забрать недельные",c["claimable_quests"]>0,ROUTES["quests"],{"quest_type":"weekly","client_action_id":"<uuid>"},False),
           ("claim_all_achievements","Забрать достижения",c["claimable_achievements"]>0,ROUTES["quests"],{"quest_type":"achievement","client_action_id":"<uuid>"},False),
           ("upgrade_chest","Улучшить сундук",c["chest_upgrade_ready"],ROUTES["chest"],{"client_action_id":"<uuid>"},True),
-          ("open_chest","Открыть сундук",_int(self.player.get("chests"))>0 and c["inventory_free"]>0,"/loot/open",{},True),
-          ("salvage_weak_items","Разобрать слабые",c["inventory_count"]>0,"/inventory/salvage-bulk",{"item_ids":[]},True),
+          ("open_chest","Открыть сундук",_int(self.player.get("chests"))>0 and not bool(self.player.get("pending_loot")),"/loot/open",{},True),
           ("upgrade_best_skill","Улучшить навык",bool(skills["best_upgrade"]),ROUTES["skill_upgrade"],{"skill_id":skills["best_upgrade"]["entity_id"] if skills["best_upgrade"] else None,"expected_level":skills["best_upgrade"]["level"] if skills["best_upgrade"] else None,"client_action_id":"<uuid>"},True),
           ("upgrade_best_companion","Улучшить спутника",bool(companions["best_upgrade"]),ROUTES["companion_upgrade"],{"companion_id":companions["best_upgrade"]["entity_id"] if companions["best_upgrade"] else None,"expected_level":companions["best_upgrade"]["level"] if companions["best_upgrade"] else None,"client_action_id":"<uuid>"},True),
           ("rank_best_skill","Повысить ранг навыка",bool(skills["best_rank"]),ROUTES["skill_rank"],{"entity_id":skills["best_rank"]["entity_id"] if skills["best_rank"] else None,"expected_rank_version":skills["best_rank"]["rank_version"] if skills["best_rank"] else None,"client_action_id":"<uuid>"},True),
@@ -373,5 +370,5 @@ def compact_summary(growth: Mapping[str, Any]) -> dict:
             "critical_notifications":notifications["critical_count"],
             "claimable_rewards":counters["claimable_quests"]+counters["claimable_milestones"]+counters["claimable_achievements"]+int(counters["offline_claimable"]),
             "available_upgrades":sum(counters[k] for k in ("affordable_skill_upgrades","affordable_companion_upgrades","rankable_skills","rankable_companions","awakenable_skills","awakenable_companions")),
-            "inventory_warning":"full" if counters["inventory_free"]==0 else "near_full" if counters["inventory_free"]<=max(1,counters["inventory_capacity"]//10) else None,
+            "inventory_warning":None,
             "next_daily_step":flow["next_step"]}

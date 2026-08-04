@@ -3524,6 +3524,7 @@ def build_player_response(player: dict, **extra) -> dict:
             and not game_completed
         ),
         "hero_alive": int(player.get("hero_hp", 0)) > 0,
+        "server_time": current_time,
         "game_completed": game_completed,
         "stage_max": MAX_STAGE,
         "wave": current_wave(player),
@@ -4411,7 +4412,8 @@ def _rank_operation(entity_type: str, payload: dict, header: str, *, bulk: bool 
         connection.execute("BEGIN IMMEDIATE"); current = load_player(connection, telegram_id)
         actions = _durable_actions(current)
         if action_key in actions:
-            connection.rollback(); return {**actions[action_key], "duplicate_request": True}
+            connection.rollback()
+            return build_player_response(current, **actions[action_key], duplicate_request=True)
         collection = (normalize_skill_collection(current.get(collection_field)) if entity_type == "skill"
                       else normalize_companion_collection(current.get(collection_field)))
         entry = collection.get(entity_id)
@@ -4437,7 +4439,7 @@ def _rank_operation(entity_type: str, payload: dict, header: str, *, bulk: bool 
                               "next_fragment_cost": star_cost(str(catalog[entity_id].get("rarity", "common")), state),
                               "max_rank_reached": state["rank"] >= MAX_RANK})
                 if bulk: stale["steps"] = []
-            return stale
+            return build_player_response(current, **stale)
         fragments = normalize_fragments(current.get(fragment_field), set(catalog)); balance = fragments.get(entity_id, 0)
         rarity = str(catalog[entity_id].get("rarity", "common")); steps = []
         if awaken:
@@ -4480,7 +4482,10 @@ def _rank_operation(entity_type: str, payload: dict, header: str, *, bulk: bool 
             f"{entity_type}_{'awakened' if awaken else 'ranked_up'}", 1 if awaken else len(steps),
             client_action_id=action_id)
         result.update({"duplicate_request": False, "stale_version": False, "transaction_completed": True})
-        _store_durable_action(connection, telegram_id, action_key, result, actions); connection.commit(); return result
+        _store_durable_action(connection, telegram_id, action_key, result, actions)
+        connection.commit()
+        updated = load_player(connection, telegram_id)
+        return build_player_response(updated, **result)
     except HTTPException: connection.rollback(); raise
     except Exception: connection.rollback(); raise
     finally: connection.close()
@@ -7813,12 +7818,20 @@ def _upgrade_progression(payload: dict, init_data: str, *, kind: str, bulk: bool
             raise HTTPException(status_code=409, detail="Объект прогрессии не разблокирован")
         old_level = int(entry["level"])
         expected = payload.get("expected_level")
-        if not bulk and expected is not None and int(expected) != old_level:
+        if expected is None:
+            connection.rollback()
+            raise HTTPException(status_code=422, detail="expected_level обязателен")
+        try:
+            expected_level = int(expected)
+        except (TypeError, ValueError):
+            connection.rollback()
+            raise HTTPException(status_code=422, detail="expected_level некорректен")
+        if expected_level != old_level:
             connection.rollback()
             result = {f"{kind}_id": object_id, "old_level": old_level, "new_level": old_level,
                       "stale_level": True, "duplicate_request": False, "transaction_completed": False}
             remember_action(telegram_id, operation, action_id, result)
-            return result
+            return build_player_response(current, **result)
         if old_level >= MAX_PROGRESSION_LEVEL:
             connection.rollback()
             raise HTTPException(status_code=409, detail="Достигнут максимальный уровень")
@@ -7859,6 +7872,7 @@ def _upgrade_progression(payload: dict, init_data: str, *, kind: str, bulk: bool
                          mastered=level >= MAX_PROGRESSION_LEVEL)
         tracker.dispatch("gold_spent", spent_gold)
         connection.commit()
+        updated = load_player(connection, telegram_id)
         result = {f"{kind}_id": object_id, "old_level": old_level, "new_level": level,
                   ("tomes_spent" if is_skill else "essence_spent"): spent_resource,
                   "gold_spent": spent_gold, "steps": steps if bulk else steps[:1],
@@ -7873,8 +7887,9 @@ def _upgrade_progression(payload: dict, init_data: str, *, kind: str, bulk: bool
         raise
     finally:
         connection.close()
-    remember_action(telegram_id, operation, action_id, result)
-    return result
+    response = build_player_response(updated, **result)
+    remember_action(telegram_id, operation, action_id, response)
+    return response
 
 
 @app.post("/skills/upgrade")

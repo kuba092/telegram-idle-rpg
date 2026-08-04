@@ -6835,7 +6835,9 @@ id="companionSummonChances"
     let enemyRequestInProgress = false;
     let approvedSkillView = "list";
     let approvedSelectedSkillId = null;
+    let approvedEntityKind = "skill";
     let approvedAwakeningExpanded = false;
+    const progressionMutations = new Set();
 
     const APPROVED_SLOT_ICONS = {helmet:"🪖",armor:"🛡️",gloves:"🧤",pants:"👖",boots:"🥾",weapon:"🗡️",necklace:"📿",ring:"💍",belt:"🧷",talisman:"🔮"};
     const approvedSheetActions = {
@@ -6904,6 +6906,7 @@ id="companionSummonChances"
       $("approvedHeroTabs").hidden = false;
       $("approvedHeroTabs").querySelectorAll("[data-approved-hero-tab]").forEach(button => button.classList.toggle("active", button.dataset.approvedHeroTab === tab));
       if (tab === "skills") renderApprovedSkillList();
+      if (tab === "companions") renderApprovedCompanionList();
     }
 
     function approvedSkillData(skillId) {
@@ -6916,6 +6919,7 @@ id="companionSummonChances"
     }
 
     function renderApprovedSkillList() {
+      approvedEntityKind = "skill";
       approvedSkillView = "list"; approvedSelectedSkillId = null; approvedAwakeningExpanded = false;
       $("approvedSheetTitle").textContent = "Герой"; $("approvedSheetBack").hidden = true; $("approvedSkillActions").hidden = true;
       $("approvedSheetScroll").classList.remove("has-skill-actions");
@@ -6933,12 +6937,15 @@ id="companionSummonChances"
 
     function renderApprovedSkillDetail(skillId = approvedSelectedSkillId) {
       const data = approvedSkillData(skillId); if (!data) return renderApprovedSkillList();
-      const {skill, entry, slotIndex, owned} = data; approvedSkillView = "detail"; approvedSelectedSkillId = String(skill.id);
+      const {skill, entry:rawEntry, slotIndex, owned} = data;
+      const entry = {...rawEntry, max_level:Number(rawEntry.level || 1) >= Number(rawEntry.max_level || 50)};
+      approvedSkillView = "detail"; approvedSelectedSkillId = String(skill.id);
       $("approvedSheetBack").hidden = false; $("approvedSheetBack").setAttribute("aria-label", "Назад к навыкам");
       const fragments = Number(entry.fragments || 0); const required = entry.next_fragment_cost ?? entry.fragments_required ?? "MAX";
       const nodes = Array.isArray(entry.awakening_nodes) ? entry.awakening_nodes : []; const activeNodes = nodes.filter(node => node.unlocked); const nextNode = nodes.find(node => !node.unlocked);
       const shownNodes = approvedAwakeningExpanded ? nodes : [...activeNodes, ...(nextNode ? [nextNode] : [])];
       const nodeCopy = shownNodes.length ? shownNodes.map(node => `<p class="approved-skill-copy"><strong>${node.unlocked ? "Активно" : "Следующий"}: ${escapeHtml(localizeDamageTypes(node.title || "Узел"))}</strong><br>${escapeHtml(localizeDamageTypes(node.effect_summary || node.description || ""))}</p>`).join("") : '<p class="approved-skill-copy">Нет доступных узлов.</p>';
+      const maxed = Number(entry.level || 1) >= Number(entry.max_level || 50);
       const content = $("approvedSheetContent"); content.className = "approved-skill-detail";
       content.innerHTML = `<div class="approved-skill-detail-head"><span class="approved-skill-detail-icon">${escapeHtml(skill.icon || "")}</span><div class="approved-skill-detail-title"><strong>${escapeHtml(skill.name || "Навык")}</strong><small>${escapeHtml(skill.rarity_name || skill.rarity || "Обычный")} · ${slotIndex >= 0 ? `слот ${slotIndex + 1}` : "Не установлен"}</small></div></div><section class="approved-skill-section"><h3>Прогресс</h3><div class="approved-skill-facts"><div class="approved-skill-fact">Уровень<strong>${Number(entry.level || 1)}${entry.max_level ? " · MAX" : ""}</strong></div><div class="approved-skill-fact">Ранг и звёзды<strong>${Number(entry.rank || 0)} · ★ ${Number(entry.rank_stars || 0)}/5</strong></div><div class="approved-skill-fact">Пробуждение<strong>Тир ${Number(entry.awakening_tier || 0)}</strong></div><div class="approved-skill-fact">Фрагменты<strong>${fragments}/${required}</strong></div></div></section><section class="approved-skill-section"><h3>Эффект</h3><p class="approved-skill-copy">${escapeHtml(localizeDamageTypes(skill.short_description || skill.description || "Описание эффекта недоступно."))}</p><div class="approved-skill-facts"><div class="approved-skill-fact">Множитель<strong>×${entry.effective_preview ?? skill.effective_multiplier ?? 1}</strong></div><div class="approved-skill-fact">Перезарядка<strong>${skill.cooldown ?? skill.cooldown_seconds ?? 0} с</strong></div><div class="approved-skill-fact">Урон / контроль<strong>${escapeHtml(localizeDamageTypes(entry.damage_preview ?? skill.damage_preview ?? skill.control_preview ?? "—"))}</strong></div><div class="approved-skill-fact">Щит<strong>${escapeHtml(localizeDamageTypes(entry.shield_preview ?? skill.shield_preview ?? "—"))}</strong></div></div></section><section class="approved-skill-section"><h3>Следующее улучшение</h3><p class="approved-skill-copy">Стоимость: ${escapeHtml(String(entry.upgrade_cost ?? entry.next_upgrade_cost ?? required))}<br>Изменение эффекта: ${escapeHtml(localizeDamageTypes(entry.next_effect_preview ?? entry.effect_delta ?? "по данным сервера"))}<br>Следующая веха: ${escapeHtml(localizeDamageTypes(entry.next_milestone ?? "максимальный уровень"))}</p></section><section class="approved-skill-section"><h3>Пробуждение</h3>${nodeCopy}${nodes.length > shownNodes.length ? '<button class="approved-awakening-more" data-approved-awakening-more type="button">Подробнее</button>' : ""}</section>`;
       const actions = $("approvedSkillActions"); actions.hidden = false;
@@ -6946,14 +6953,70 @@ id="companionSummonChances"
       $("approvedSheetScroll").classList.add("has-skill-actions"); $("approvedSheetScroll").scrollTop = 0;
     }
 
+    function approvedCompanionData(companionId) {
+      const system = player?.companion_system || {};
+      const companion = (system.catalog || []).find(item => String(item.id) === String(companionId));
+      if (!companion) return null;
+      const entry = system.collection?.[companion.id] || {};
+      const slotIndex = (system.slots || []).findIndex(slot => String(slot?.companion_id || "") === String(companion.id));
+      return {system, companion, entry, slotIndex, owned:Boolean(entry.owned)};
+    }
+
+    function renderApprovedCompanionList() {
+      approvedEntityKind = "companion"; approvedSkillView = "list"; approvedSelectedSkillId = null; approvedAwakeningExpanded = false;
+      $("approvedSheetTitle").textContent = "Герой"; $("approvedSheetBack").hidden = true; $("approvedSkillActions").hidden = true;
+      $("approvedSheetScroll").classList.remove("has-skill-actions");
+      const content = $("approvedSheetContent"); content.className = "approved-skill-list";
+      const system = player?.companion_system || {}; const catalog = Array.isArray(system.catalog) ? system.catalog : [];
+      if (!catalog.length) { content.innerHTML = '<div class="empty-state">Спутники пока недоступны.</div>'; return; }
+      content.innerHTML = catalog.map(companion => {
+        const entry = system.collection?.[companion.id] || {}; const owned = Boolean(entry.owned);
+        const slotIndex = (system.slots || []).findIndex(slot => String(slot?.companion_id || "") === String(companion.id));
+        const badges = [entry.upgrade_available && '<span class="approved-skill-badge upgrade">Можно улучшить</span>', entry.rank_up_available && '<span class="approved-skill-badge rank">Доступен ранг</span>', entry.awakening_available && '<span class="approved-skill-badge awaken">Пробуждение</span>'].filter(Boolean).join("") || '<span class="approved-skill-empty-badge">Нет доступных улучшений</span>';
+        return `<button class="approved-skill-card ${slotIndex >= 0 ? "active" : ""}" type="button" data-approved-companion-card="${escapeHtml(companion.id)}" ${owned ? "" : "disabled"}><span class="approved-skill-card-icon">${escapeHtml(owned ? companion.icon || "🐾" : "❔")}</span><span class="approved-skill-card-main"><span class="approved-skill-card-name">${escapeHtml(owned ? companion.name : "Неизвестный спутник")}</span><span class="approved-skill-card-meta">${escapeHtml(companion.rarity_name || companion.rarity || "Обычный")} · ур. ${Number(entry.level || 1)} · ранг ${Number(entry.rank || 0)} · ★ ${Number(entry.rank_stars || 0)}</span></span><span class="approved-skill-card-slot">${slotIndex >= 0 ? `Активен · слот ${slotIndex + 1}` : "Не установлен"}</span><span class="approved-skill-badges">${badges}</span></button>`;
+      }).join("");
+      $("approvedSheetScroll").scrollTop = 0;
+    }
+
+    function renderApprovedCompanionDetail(companionId = approvedSelectedSkillId) {
+      const data = approvedCompanionData(companionId); if (!data) return renderApprovedCompanionList();
+      const {companion, entry:rawEntry, slotIndex, owned} = data;
+      const entry = {...rawEntry, max_level:Number(rawEntry.level || 1) >= Number(rawEntry.max_level || 50)};
+      approvedEntityKind = "companion"; approvedSkillView = "detail"; approvedSelectedSkillId = String(companion.id);
+      $("approvedSheetBack").hidden = false; $("approvedSheetBack").setAttribute("aria-label", "Назад к спутникам");
+      const fragments = Number(entry.fragments || 0); const required = entry.next_fragment_cost ?? entry.fragments_required ?? "MAX";
+      const nodes = Array.isArray(entry.awakening_nodes) ? entry.awakening_nodes : []; const activeNodes = nodes.filter(node => node.unlocked); const nextNode = nodes.find(node => !node.unlocked);
+      const shownNodes = approvedAwakeningExpanded ? nodes : [...activeNodes, ...(nextNode ? [nextNode] : [])];
+      const nodeCopy = shownNodes.length ? shownNodes.map(node => `<p class="approved-skill-copy"><strong>${node.unlocked ? "Активно" : "Следующий"}: ${escapeHtml(localizeDamageTypes(node.title || "Узел"))}</strong><br>${escapeHtml(localizeDamageTypes(node.effect_summary || node.description || ""))}</p>`).join("") : '<p class="approved-skill-copy">Нет доступных узлов.</p>';
+      const maxed = Number(entry.level || 1) >= Number(entry.max_level || 50);
+      const content = $("approvedSheetContent"); content.className = "approved-skill-detail";
+      content.innerHTML = `<div class="approved-skill-detail-head"><span class="approved-skill-detail-icon">${escapeHtml(companion.icon || "🐾")}</span><div class="approved-skill-detail-title"><strong>${escapeHtml(companion.name || "Спутник")}</strong><small>${escapeHtml(companion.rarity_name || companion.rarity || "Обычный")} · ${slotIndex >= 0 ? `слот ${slotIndex + 1}` : "Не установлен"}</small></div></div><section class="approved-skill-section"><h3>Прогресс</h3><div class="approved-skill-facts"><div class="approved-skill-fact">Уровень<strong>${Number(entry.level || 1)}${entry.max_level ? " · MAX" : ""}</strong></div><div class="approved-skill-fact">Ранг и звёзды<strong>${Number(entry.rank || 0)} · ★ ${Number(entry.rank_stars || 0)}/5</strong></div><div class="approved-skill-fact">Пробуждение<strong>Тир ${Number(entry.awakening_tier || 0)}</strong></div><div class="approved-skill-fact">Фрагменты<strong>${fragments}/${required}</strong></div></div></section><section class="approved-skill-section"><h3>Эффект</h3><p class="approved-skill-copy">${escapeHtml(localizeDamageTypes(companion.description || "Описание эффекта недоступно."))}</p><div class="approved-skill-facts"><div class="approved-skill-fact">Боевой эффект<strong>×${entry.effective_preview ?? 1}</strong></div><div class="approved-skill-fact">Активность<strong>${slotIndex >= 0 ? "Применяется" : "Не применяется"}</strong></div></div></section><section class="approved-skill-section"><h3>Следующее улучшение</h3><p class="approved-skill-copy">Стоимость: ${escapeHtml(String(entry.upgrade_cost ?? entry.next_upgrade_cost ?? required))}<br>Следующая веха: ${escapeHtml(localizeDamageTypes(entry.next_milestone ?? "максимальный уровень"))}</p></section><section class="approved-skill-section"><h3>Пробуждение</h3>${nodeCopy}${nodes.length > shownNodes.length ? '<button class="approved-awakening-more" data-approved-awakening-more type="button">Подробнее</button>' : ""}</section>`;
+      const actions = $("approvedSkillActions"); actions.hidden = false;
+      actions.innerHTML = `<div class="approved-skill-action-row"><button class="approved-skill-action primary" data-approved-companion-action="upgrade" type="button" ${!owned || entry.max_level ? "disabled" : ""}>Улучшить</button><button class="approved-skill-action primary" data-approved-companion-action="upgrade10" type="button" ${!owned || entry.max_level ? "disabled" : ""}>Улучшить ×10</button></div><div class="approved-skill-action-row"><button class="approved-skill-action" data-approved-companion-action="equip" type="button" ${!owned ? "disabled" : ""}>${slotIndex >= 0 ? "Заменить" : "Установить"}</button><button class="approved-skill-action" data-approved-companion-action="unequip" type="button" ${slotIndex < 0 ? "disabled" : ""}>Снять</button></div>${entry.rank_up_available || entry.awakening_available ? `<div class="approved-skill-action-row"><button class="approved-skill-action" data-approved-companion-action="rank" type="button" ${entry.rank_up_available ? "" : "disabled"}>Повысить ранг</button><button class="approved-skill-action" data-approved-companion-action="awaken" type="button" ${entry.awakening_available ? "" : "disabled"}>Пробудить</button></div>` : ""}`;
+      $("approvedSheetScroll").classList.add("has-skill-actions"); $("approvedSheetScroll").scrollTop = 0;
+    }
+
     function openApprovedSkillSlotModal(skillId) {
       const slots = player?.skill_system?.slots || [];
+      $("approvedSkillSlotTitle").textContent = "Выберите слот навыка";
       $("approvedSkillSlotOptions").innerHTML = slots.map((slot, index) => { const current = approvedSkillData(slot?.skill_id)?.skill; return `<button class="approved-slot-option" type="button" data-approved-equip-slot="${Number(slot.index || index + 1)}" data-approved-equip-skill="${escapeHtml(skillId)}" ${slot.unlocked ? "" : "disabled"}><strong>Слот ${Number(slot.index || index + 1)}</strong><small>${slot.unlocked ? (current ? `Сейчас: ${escapeHtml(current.name)}` : "Свободен") : `Закрыт до уровня ${Number(slot.unlock_level || 0)}`}</small></button>`; }).join("");
       $("approvedSkillSlotModal").hidden = false;
     }
 
     async function equipApprovedSkill(skillId, slot) {
       try { player = await apiRequest(`/skills/equip?slot=${slot}&skill_id=${encodeURIComponent(skillId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderSkillLoadout(); renderApprovedSkills(); renderApprovedSkillDetail(skillId); setMessage("Навык установлен"); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); }
+    }
+
+    function openApprovedCompanionSlotModal(companionId) {
+      const slots = player?.companion_system?.slots || [];
+      $("approvedSkillSlotTitle").textContent = "Выберите слот спутника";
+      $("approvedSkillSlotOptions").innerHTML = slots.map((slot, index) => { const current = approvedCompanionData(slot?.companion_id)?.companion; return `<button class="approved-slot-option" type="button" data-approved-companion-slot="${Number(slot.index || index + 1)}" data-approved-equip-companion="${escapeHtml(companionId)}" ${slot.unlocked ? "" : "disabled"}><strong>Слот ${Number(slot.index || index + 1)}</strong><small>${slot.unlocked ? (current ? `Сейчас: ${escapeHtml(current.name)}` : "Свободен") : `Закрыт до уровня ${Number(slot.unlock_level || 0)}`}</small></button>`; }).join("");
+      $("approvedSkillSlotModal").hidden = false;
+    }
+
+    async function equipApprovedCompanion(companionId, slot) {
+      try { player = await apiRequest(`/companions/equip?slot=${slot}&companion_id=${encodeURIComponent(companionId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderCompanionLoadout(); renderApprovedSkills(); renderApprovedCompanionDetail(companionId); setMessage("Спутник установлен"); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
 
@@ -7172,8 +7235,6 @@ id="companionSummonChances"
       $("growthCenterBadge").textContent = String(root.notifications?.total_count || 0);
       $("growthCenterBadge").style.display = root.notifications?.total_count ? "inline-grid" : "none";
       const priority = root.priority_action || {};
-      const warning = root.counters?.inventory_free === 0
-        ? `<div class="growth-warning">🔴 Инвентарь заполнен. Освободите место перед добычей.</div>` : "";
       const recommendations = (root.recommended_actions || []).filter(action => action.target_route !== priority.target_route).slice(0, 4).map(action =>
         `<div class="growth-row"><strong>${escapeHtml(action.reason)}</strong><div class="growth-meta">${escapeHtml(action.category)}${action.candidate?.entity_id ? ` · ${escapeHtml(action.candidate.entity_id)}` : ""}</div><button data-growth-route="${escapeHtml(action.target_route)}">Перейти</button></div>`
       ).join("");
@@ -7183,11 +7244,10 @@ id="companionSummonChances"
       const badges = (root.notifications?.items || []).map(item =>
         `<span>${item.severity === "critical" ? "🔴" : item.severity === "attention" ? "🟡" : "🔵"} ${escapeHtml(item.title)} · ${item.count}</span>`
       ).join("");
-      const best = root.summaries?.better_items?.best_item;
       const blockers = (root.blockers || []).slice(0, 4).map(item => escapeHtml(item.message)).join(" · ");
       setText("battleGrowthPriority", priority.title || priority.reason || "Все важные действия выполнены");
-      $("growthCenterContent").innerHTML = `${warning}<div class="growth-priority"><strong>${escapeHtml(priority.title || "Маршрут завершён")}</strong><div class="growth-meta">${escapeHtml(priority.description || priority.reason || "Все важные действия выполнены.")}</div>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}</div><div class="growth-flow">${steps}</div>${recommendations}<div class="growth-badges">${badges}</div>${best ? `<p>Лучший предмет: ${escapeHtml(best.slot)} · +${best.build_score_delta} БМ</p>` : ""}${blockers ? `<p>${blockers}</p>` : ""}`;
-      setNavBadge("equipment", root.counters?.inventory_free === 0 ? 1 : 0);
+      $("growthCenterContent").innerHTML = `<div class="growth-priority"><strong>${escapeHtml(priority.title || "Маршрут завершён")}</strong><div class="growth-meta">${escapeHtml(priority.description || priority.reason || "Все важные действия выполнены.")}</div>${priority.available ? `<button data-growth-route="${escapeHtml(priority.target_route)}">Перейти</button>` : ""}</div><div class="growth-flow">${steps}</div>${recommendations}<div class="growth-badges">${badges}</div>${blockers ? `<p>${blockers}</p>` : ""}`;
+      setNavBadge("equipment", player?.pending_loot ? 1 : 0);
       setNavBadge("quests", root.counters?.claimable_quests || 0);
       setNavBadge("summon", root.counters?.summon_tickets || 0);
       renderApprovedBattleShell();
@@ -7286,6 +7346,16 @@ id="companionSummonChances"
     }
 
     // FAST_START_LOADER_V1
+    function apiErrorDetail(detail, fallback = "Ошибка сервера") {
+      if (typeof detail === "string" && detail.trim()) return detail.trim();
+      if (Array.isArray(detail)) {
+        const messages = detail.map(item => item?.msg || item?.message).filter(Boolean);
+        if (messages.length) return messages.join("; ");
+      }
+      if (detail && typeof detail === "object") return detail.message || detail.msg || fallback;
+      return fallback;
+    }
+
     async function apiRequest(path, method = "GET", body = null) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -7311,11 +7381,13 @@ id="companionSummonChances"
         }
 
         if (!response.ok) {
-          const error = new Error(`HTTP ${response.status}: ${data.detail || "Ошибка сервера"}`);
+          const detail = apiErrorDetail(data.detail);
+          const error = new Error(`HTTP ${response.status}: ${detail}`);
           error.status = response.status;
-          error.detail = data.detail || "Ошибка сервера";
+          error.detail = detail;
           throw error;
         }
+        if (data && typeof data === "object") data._client_received_at = performance.now();
         document.body.classList.remove("api-error");
         return data;
       } catch (error) {
@@ -7323,7 +7395,7 @@ id="companionSummonChances"
         if (error?.name === "AbortError") {
           throw new Error("Сервер слишком долго отвечает");
         }
-
+        if (error instanceof TypeError) throw new Error("Нет связи с сервером. Проверьте подключение и повторите попытку");
         throw error;
       } finally {
         clearTimeout(timeoutId);
@@ -7490,6 +7562,10 @@ id="companionSummonChances"
     }
 
     function skillCooldownRemaining(skillId, state) {
+      if (Number.isFinite(Number(state?.cooldown_remaining))) {
+        const elapsedSinceResponse = Math.max(0, (performance.now() - Number(player?._client_received_at || performance.now())) / 1000);
+        return Math.max(0, Number(state.cooldown_remaining) - elapsedSinceResponse);
+      }
       const fields = {
         spore_strike: "spore_strike_last_used_at",
         mushroom_shield: "mushroom_shield_last_used_at",
@@ -9258,7 +9334,7 @@ id="companionSummonChances"
 
           let progressText = "Не получен";
 
-          if (owned && entry.max_level) {
+          if (owned && skillLevel >= Number(entry.max_level || 50)) {
             progressText = `Уровень ${skillLevel} · МАКС.`;
           } else if (owned) {
             progressText =
@@ -9368,15 +9444,21 @@ id="companionSummonChances"
 
     async function upgradeProgression(kind, id, levels) {
       const plural = kind === "skill" ? "skills" : "companions";
+      const mutationKey = `${kind}:${id}:upgrade`;
+      if (progressionMutations.has(mutationKey)) return;
+      const expectedLevel = Number((kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id])?.level || 1);
       const body = levels > 1
-        ? {id, levels: Math.min(10, levels), client_action_id: crypto.randomUUID()}
-        : {[`${kind}_id`]: id, expected_level: Number((kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id])?.level || 1), client_action_id: crypto.randomUUID()};
+        ? {id, levels: Math.min(10, levels), expected_level: expectedLevel, client_action_id: crypto.randomUUID()}
+        : {[`${kind}_id`]: id, expected_level: expectedLevel, client_action_id: crypto.randomUUID()};
+      progressionMutations.add(mutationKey);
       try {
-        await apiRequest(`/${plural}/upgrade${levels > 1 ? "-bulk" : ""}`, "POST", body);
-        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
+        const result = await apiRequest(`/${plural}/upgrade${levels > 1 ? "-bulk" : ""}`, "POST", body);
+        if (result.stale_level) { player = result; renderPlayer(); throw new Error("Уровень уже изменился. Данные обновлены"); }
+        player = result; renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
         if (kind === "skill" && approvedSkillView === "detail" && String(approvedSelectedSkillId) === String(id)) renderApprovedSkillDetail(id);
         setMessage(levels > 1 ? "Прогрессия улучшена" : "Уровень повышен");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { progressionMutations.delete(mutationKey); renderSkillLoadout(); renderCompanionLoadout(); }
     }
 
     function bindRankActions(container) {
@@ -9386,22 +9468,30 @@ id="companionSummonChances"
     async function rankProgression(kind, id, steps, confirmed = false) {
       const entry = kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id];
       if (steps > 1 && !confirmed) return confirmAction("Повысить несколько рангов?", "Будут списаны показанные сервером фрагменты.", () => rankProgression(kind, id, steps, true));
+      const mutationKey = `${kind}:${id}:rank`;
+      if (progressionMutations.has(mutationKey)) return;
+      progressionMutations.add(mutationKey);
       try {
-        await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/rank-up${steps > 1 ? "-bulk" : ""}`, "POST", {entity_id:id, steps, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
-        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
+        const result = await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/rank-up${steps > 1 ? "-bulk" : ""}`, "POST", {entity_id:id, steps, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
+        player = result; renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
         if (kind === "skill" && approvedSkillView === "detail" && String(approvedSelectedSkillId) === String(id)) renderApprovedSkillDetail(id);
         setMessage("Ранг повышен");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { progressionMutations.delete(mutationKey); renderSkillLoadout(); renderCompanionLoadout(); }
     }
     async function awakenProgression(kind, id, confirmed = false) {
       const entry = kind === "skill" ? player?.skill_system?.collection?.[id] : player?.companion_system?.collection?.[id];
       if (!confirmed) return confirmAction("Пробудить сущность?", "Пробуждение потратит показанные сервером ресурсы.", () => awakenProgression(kind, id, true));
+      const mutationKey = `${kind}:${id}:awaken`;
+      if (progressionMutations.has(mutationKey)) return;
+      progressionMutations.add(mutationKey);
       try {
-        await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/awaken`, "POST", {entity_id:id, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
-        player = await apiRequest("/player"); renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
+        const result = await apiRequest(`/${kind === "skill" ? "skills" : "companions"}/awaken`, "POST", {entity_id:id, client_action_id:crypto.randomUUID(), expected_rank_version:Number(entry?.rank_version || 1)});
+        player = result; renderPlayer(); renderSkillLoadout(); renderCompanionLoadout(); renderApprovedSkills();
         if (kind === "skill" && approvedSkillView === "detail" && String(approvedSelectedSkillId) === String(id)) renderApprovedSkillDetail(id);
         setMessage("Пробуждение повышено");
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
+      finally { progressionMutations.delete(mutationKey); renderSkillLoadout(); renderCompanionLoadout(); }
     }
 
     async function equipSkillToAvailableSlot(skillId) {
@@ -10646,11 +10736,12 @@ id="companionSummonChances"
       try { await refreshGrowthCenter(); } catch (error) { showToast(error.message, "error"); }
     });
     $("approvedSheetClose").addEventListener("click", closeApprovedSheet);
-    $("approvedSheetBack").addEventListener("click", () => approvedSkillView === "detail" ? renderApprovedSkillList() : closeApprovedSheet());
+    $("approvedSheetBack").addEventListener("click", () => approvedEntityKind === "companion" && approvedSkillView === "detail" ? renderApprovedCompanionList() : approvedSkillView === "detail" ? renderApprovedSkillList() : closeApprovedSheet());
     $("approvedHeroTabs").addEventListener("click", event => {
       const tab = event.target.closest("[data-approved-hero-tab]")?.dataset.approvedHeroTab; if (!tab) return;
       $("approvedHeroTabs").querySelectorAll("[data-approved-hero-tab]").forEach(button => button.classList.toggle("active", button.dataset.approvedHeroTab === tab));
       if (tab === "skills") return renderApprovedSkillList();
+      if (tab === "companions") return renderApprovedCompanionList();
       const row = approvedSheetActions.hero.find(item => item[2] === tab); openApprovedSheet("Герой", row ? [row] : approvedSheetActions.hero); $("approvedHeroTabs").hidden = false;
     });
     $("approvedSkillSlotCancel").addEventListener("click", () => $("approvedSkillSlotModal").hidden = true);
@@ -10661,6 +10752,13 @@ id="companionSummonChances"
       const occupied = (player?.skill_system?.slots || []).find(item => Number(item.index) === slot)?.skill_id;
       if (occupied && String(occupied) !== String(skillId)) return confirmAction("Заменить навык?", "Текущий навык в этом слоте будет заменён.", () => equipApprovedSkill(skillId, slot));
       equipApprovedSkill(skillId, slot);
+    });
+    $("approvedSkillSlotOptions").addEventListener("click", event => {
+      const button = event.target.closest("[data-approved-companion-slot]"); if (!button || button.disabled) return;
+      const slot = Number(button.dataset.approvedCompanionSlot); const companionId = button.dataset.approvedEquipCompanion;
+      const occupied = (player?.companion_system?.slots || []).find(item => Number(item.index) === slot)?.companion_id;
+      if (occupied && String(occupied) !== String(companionId)) return confirmAction("Заменить спутника?", "Текущий спутник в этом слоте будет заменён.", () => equipApprovedCompanion(companionId, slot));
+      equipApprovedCompanion(companionId, slot);
     });
     $("approvedSheetWrap").addEventListener("click", event => { if (event.target === $("approvedSheetWrap")) closeApprovedSheet(); });
     $("approvedChestInfo").addEventListener("click", (event) => { event.stopPropagation(); openChest(); });
@@ -10709,13 +10807,15 @@ id="companionSummonChances"
     $("approvedSheetContent").addEventListener("click", event => {
       const skillCard = event.target.closest("[data-approved-skill-card]");
       if (skillCard) return renderApprovedSkillDetail(skillCard.dataset.approvedSkillCard);
-      if (event.target.closest("[data-approved-awakening-more]")) { approvedAwakeningExpanded = true; return renderApprovedSkillDetail(); }
+      const companionCard = event.target.closest("[data-approved-companion-card]");
+      if (companionCard) return renderApprovedCompanionDetail(companionCard.dataset.approvedCompanionCard);
+      if (event.target.closest("[data-approved-awakening-more]")) { approvedAwakeningExpanded = true; return approvedEntityKind === "companion" ? renderApprovedCompanionDetail() : renderApprovedSkillDetail(); }
       const action = event.target.closest("[data-approved-action]")?.dataset.approvedAction;
       if (!action || action === "noop" || action === "soon" || action === "elite") return;
       closeApprovedSheet();
       if (action === "inventory") return $("lootButton").click();
       if (action === "skills") return openApprovedHeroSheet("skills");
-      if (action === "companions") { setEnhancementTab("companions"); return openEnhancementsScreen(); }
+      if (action === "companions") return openApprovedHeroSheet("companions");
       if (action === "hero-stats") return openHeroScreen();
       if (action === "awakening") return openEnhancementsScreen();
       if (action === "boss") return player?.boss_button_visible ? elements.bossButton.click() : openTrialsScreen();
@@ -10750,6 +10850,15 @@ id="companionSummonChances"
       if (action === "upgrade" || action === "upgrade10") { await upgradeProgression("skill", approvedSelectedSkillId, action === "upgrade10" ? 10 : 1); renderApprovedSkills(); return renderApprovedSkillDetail(); }
       if (action === "rank") { await rankProgression("skill", approvedSelectedSkillId, 1); renderApprovedSkills(); return renderApprovedSkillDetail(); }
       if (action === "awaken") return awakenProgression("skill", approvedSelectedSkillId);
+    });
+    $("approvedSkillActions").addEventListener("click", async event => {
+      const action = event.target.closest("[data-approved-companion-action]")?.dataset.approvedCompanionAction; if (!action || !approvedSelectedSkillId) return;
+      const data = approvedCompanionData(approvedSelectedSkillId); if (!data) return;
+      if (action === "equip") return openApprovedCompanionSlotModal(approvedSelectedSkillId);
+      if (action === "unequip" && data.slotIndex >= 0) { await unequipCompanion(data.slotIndex + 1); renderApprovedSkills(); return renderApprovedCompanionDetail(); }
+      if (action === "upgrade" || action === "upgrade10") { await upgradeProgression("companion", approvedSelectedSkillId, action === "upgrade10" ? 10 : 1); renderApprovedSkills(); return renderApprovedCompanionDetail(); }
+      if (action === "rank") { await rankProgression("companion", approvedSelectedSkillId, 1); renderApprovedSkills(); return renderApprovedCompanionDetail(); }
+      if (action === "awaken") return awakenProgression("companion", approvedSelectedSkillId);
     });
     document.body.dataset.activeScreen = "battle";
     openMainScreen("battle");
