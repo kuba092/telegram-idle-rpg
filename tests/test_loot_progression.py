@@ -7,8 +7,9 @@ import unittest
 import api
 from equipment_stats import SECONDARY_STATS, build_score, normalize_item, reroll_secondary_stat
 from loot_progression import (
-    chest_progress, chest_xp_required, inventory_capacity, rarity_weights,
-    reroll_cost, salvage_reward,
+    chest_progress, chest_upgrade_gold_cost, hero_exp_from_open,
+    hero_exp_from_sale, inventory_capacity, rarity_weights, reroll_cost,
+    salvage_reward,
 )
 
 
@@ -32,8 +33,12 @@ class LootProgressionFormulaTest(unittest.TestCase):
         self.assertIn(salvage_reward({"id": "x", "rarity": "celestial"}, 1, 1)["crystals"], range(3, 6))
 
     def test_chest_progress_and_capacity(self):
-        required = chest_xp_required(1)
-        self.assertTrue(chest_progress({"chest_level": 1, "chest_xp": required})["chest_upgrade_ready"])
+        required = chest_upgrade_gold_cost(1)
+        progress = chest_progress({"chest_level": 1, "gold": required, "chest_xp": 999})
+        self.assertTrue(progress["chest_upgrade_ready"])
+        self.assertEqual(progress["chest_xp"], 0)
+        self.assertEqual(hero_exp_from_open(1, 1), round(3 + .8 + .04))
+        self.assertEqual(hero_exp_from_sale("celestial", 1000), round(55 * 3))
         self.assertEqual(inventory_capacity(1), 50)
         self.assertEqual(inventory_capacity(5), 55)
         self.assertEqual(inventory_capacity(999), 100)

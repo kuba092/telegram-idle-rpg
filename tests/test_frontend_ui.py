@@ -192,7 +192,7 @@ class FrontendUiContractTests(unittest.TestCase):
             HTML,
             r'id="approvedChestAuto"[^>]*aria-label="Автооткрытие сундука"',
         )
-        self.assertIn('$("approvedChestAuto").addEventListener("click", toggleAuto)', HTML)
+        self.assertIn('$("approvedChestAuto").addEventListener("click", (event) => { event.stopPropagation(); toggleAuto(); })', HTML)
 
     def test_enemy_hp_and_localized_profile_are_server_driven(self):
         for element_id in ("approvedEnemyHp", "approvedEnemyMaxHp", "approvedEnemyHpBar"):
@@ -266,15 +266,25 @@ class FrontendUiContractTests(unittest.TestCase):
     def test_approved_chest_inventory_pending_and_ticker_contract(self):
         for element_id in (
             "approvedChestOpen", "approvedChestAuto", "approvedPendingBadge",
-            "approvedInventory", "approvedTicker", "approvedTickerCopy",
+            "approvedTicker", "approvedTickerCopy",
         ):
             self.assertIn(element_id, self.parser.ids)
-        self.assertIn('$("approvedChestOpen").addEventListener("click", () => player?.pending_loot ? showLootModal() : openChest())', HTML)
-        self.assertIn('$("approvedChestAuto").addEventListener("click", toggleAuto)', HTML)
+        self.assertNotIn("approvedInventory", self.parser.ids)
+        self.assertIn('$("approvedChestOpen").addEventListener("click", handleChestPrimaryAction)', HTML)
+        self.assertIn('$("approvedChestAuto").addEventListener("click", (event) => { event.stopPropagation(); toggleAuto(); })', HTML)
         self.assertIn('const critical = (root?.notifications?.items || []).find(item => item.severity === "critical")', HTML)
         self.assertIn('root?.counters?.claimable_quests', HTML)
         self.assertIn('player?.offline_progression', HTML)
         self.assertIn('loot_progression?.chest_upgrade_ready', HTML)
+
+    def test_pending_loot_copy_is_localized(self):
+        pending = HTML.split("function showPendingLoot(item", 1)[1].split("function showLootModal", 1)[0]
+        for label in ("Скорость атаки", "Шанс критического удара", "Критический урон", "Урон навыков", "Урон спутников", "Урон боссам", "Бонус лечения", "Контратака"):
+            self.assertIn(label, HTML)
+        for english in ("Secondary stats", "Raw power", "Build score"):
+            self.assertNotIn(english, pending)
+        self.assertIn("RARITY_NAMES[item.rarity]", pending)
+        self.assertIn("SLOT_NAMES[item.slot]", pending)
 
     def test_approved_sheets_keep_existing_feature_handlers(self):
         for marker in (

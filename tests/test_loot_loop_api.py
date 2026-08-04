@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 import api
 from equipment_stats import build_score
-from loot_progression import chest_xp_required, inventory_capacity
+from loot_progression import chest_upgrade_gold_cost, hero_exp_from_open, hero_exp_from_sale, inventory_capacity
 
 
 class LootLoopApiIntegrationTest(unittest.TestCase):
@@ -90,6 +90,94 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
             "expected_item_version": item["item_version"] if version is None else version,
             "client_action_id": action,
         }, "test")
+
+    def open_generated(self, item, auto_mode=False):
+        connection = api.get_database()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            current = api.load_player(connection, 7001)
+            with patch.object(api, "generate_loot", return_value=item):
+                updated, result = api.open_loot_transaction(connection, current, auto_mode)
+            connection.commit()
+            return updated, result
+        finally:
+            connection.close()
+
+    def test_open_grants_hero_exp_once_and_never_chest_xp(self):
+        item = self.item("open-exp")
+        self.update_player(chests=2, chest_level=4, highest_stage=50, chest_xp=777, experience=10)
+        _, first = self.open_generated(item)
+        after_first = self.load_player()
+        _, repeated = self.open_generated(item)
+        after_repeat = self.load_player()
+        expected = hero_exp_from_open(4, 50)
+        self.assertEqual(first["hero_exp_gained"], expected)
+        self.assertEqual(first["hero_exp_before"], 10)
+        self.assertEqual(first["hero_exp_after"], 10 + expected)
+        self.assertTrue(repeated["pending_exists"])
+        self.assertEqual(after_repeat["experience"], after_first["experience"])
+        self.assertEqual(after_repeat["chest_xp"], 777)
+
+    def test_open_route_duplicate_action_generates_exactly_one_item(self):
+        item = self.item("route-once")
+        self.update_player(chests=2, inventory_json=json.dumps(self.full_inventory()), experience=0)
+        with patch.object(api, "generate_loot", return_value=item):
+            first = api.open_loot({"client_action_id": "open-once"}, "test")
+            duplicate = api.open_loot({"client_action_id": "open-once"}, "test")
+        state = self.load_player()
+        self.assertTrue(first["transaction_completed"])
+        self.assertTrue(duplicate["duplicate_request"])
+        self.assertEqual(state["chests"], 1)
+        self.assertEqual(len(api.normalized_inventory(state)), inventory_capacity(1))
+        self.assertEqual(api.public_pending_loot(state)["item_id"], "route-once")
+        self.assertEqual(state["experience"], first["hero_exp_after"])
+
+    def test_pending_sale_grants_gold_and_sale_exp_only_once(self):
+        item = self.item("sale-exp", rarity="legendary")
+        self.update_player(chests=1, highest_stage=100, gold=9, experience=0)
+        self.open_generated(item)
+        after_open = self.load_player()
+        sold = api.sell_loot({"client_action_id": "sell-once"}, "test")
+        after_sale = self.load_player()
+        self.assertEqual(sold["gold_gained"], item["sell_price"])
+        self.assertEqual(sold["hero_exp_gained"], hero_exp_from_sale("legendary", 100))
+        self.assertEqual(after_sale["experience"] - after_open["experience"], sold["hero_exp_gained"])
+        self.assertTrue(sold["pending_cleared"])
+        duplicate = api.sell_loot({"client_action_id": "sell-once"}, "test")
+        self.assertTrue(duplicate["duplicate_request"])
+
+    def test_equip_sells_replaced_item_without_regranting_open_exp(self):
+        replaced = self.item("old", rarity="epic")
+        replaced["sell_price"] = 11
+        pending = self.item("new", slot="weapon", power=50)
+        self.update_player(equipment_json=json.dumps({"weapon": replaced}), inventory_json=json.dumps([pending]),
+                           pending_loot_json=json.dumps(pending), highest_stage=200, gold=3, experience=20)
+        equipped = api.equip_loot({"client_action_id": "equip-once"}, "test")
+        state = self.load_player()
+        expected_exp = hero_exp_from_sale("epic", 200)
+        self.assertEqual(equipped["gold_gained_from_replaced"], 11)
+        self.assertEqual(equipped["hero_exp_gained_from_replaced"], expected_exp)
+        self.assertEqual(state["experience"], 20 + expected_exp)
+        self.assertEqual(state["gold"], 14)
+        self.assertEqual(len(api.normalized_inventory(state)), 1)
+        self.assertTrue(equipped["pending_cleared"])
+
+    def test_auto_sale_combines_open_and_sale_exp(self):
+        strong = self.item("strong-auto", slot="helmet", power=1000)
+        weak = self.item("weak-auto", rarity="rare", slot="helmet", power=1)
+        self.update_player(chests=1, equipment_json=json.dumps({"helmet": strong}), highest_stage=300,
+                           experience=0, gold=0, chest_xp=55)
+        _, result = self.open_generated(weak, auto_mode=True)
+        self.assertTrue(result["auto_sold"])
+        self.assertEqual(result["hero_exp_gained_from_open"], hero_exp_from_open(1, 300))
+        self.assertEqual(result["hero_exp_gained_from_sale"], hero_exp_from_sale("rare", 300))
+        self.assertEqual(result["hero_exp_gained"], result["hero_exp_gained_from_open"] + result["hero_exp_gained_from_sale"])
+        self.assertEqual(self.load_player()["chest_xp"], 55)
+
+    def test_hero_exp_result_supports_multiple_levels(self):
+        result = api.hero_exp_result({"experience": 0, "level": 1}, api.LEVEL_TOTAL_EXP[10])
+        self.assertEqual(result["hero_level_after"], 10)
+        self.assertEqual(result["hero_levels_gained"], 9)
 
     # Salvage
     def test_salvage_success_and_duplicate_action_reward_once(self):
@@ -250,20 +338,24 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
                 }, "test")
         self.assertEqual(self.snapshot(), before)
 
-    # Chest XP
-    def test_chest_upgrade_requires_xp_preserves_remainder_and_is_idempotent(self):
-        required = chest_xp_required(1)
-        self.update_player(chest_level=1, chest_xp=required - 1)
-        rejected = api.upgrade_chest({"client_action_id": "not-ready"}, "test")
+    # Gold chest upgrade
+    def test_chest_upgrade_requires_gold_preserves_remainder_and_is_idempotent(self):
+        required = chest_upgrade_gold_cost(1)
+        self.update_player(chest_level=1, gold=required - 1, chest_xp=999999, premium_crystals=17)
+        rejected = api.upgrade_chest({"client_action_id": "not-ready", "expected_level": 1}, "test")
         self.assertFalse(rejected["transaction_completed"])
         self.assertEqual(self.snapshot()["chest_level"], 1)
-        self.update_player(chest_xp=required + 7)
-        first = api.upgrade_chest({"client_action_id": "upgrade-once"}, "test")
-        second = api.upgrade_chest({"client_action_id": "upgrade-once"}, "test")
+        self.update_player(gold=required + 7)
+        first = api.upgrade_chest({"client_action_id": "upgrade-once", "expected_level": 1}, "test")
+        second = api.upgrade_chest({"client_action_id": "upgrade-once", "expected_level": 1}, "test")
         self.assertTrue(first["transaction_completed"])
-        self.assertEqual(first["chest_xp_remaining"], 7)
+        self.assertEqual(first["gold_remaining"], 7)
         self.assertTrue(second["duplicate_request"])
         self.assertEqual(self.snapshot()["chest_level"], 2)
+        self.assertEqual(self.snapshot()["premium_crystals"], 17)
+        stale = api.upgrade_chest({"client_action_id": "stale-level", "expected_level": 1}, "test")
+        self.assertTrue(stale["stale_level"])
+        self.assertEqual(self.load_player()["gold"], 7)
 
     def test_chest_upgrade_cap_and_migration_rerun(self):
         self.update_player(chest_level=30, chest_xp=999999)
@@ -279,8 +371,7 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
     def full_inventory(self):
         return [self.item(f"full-{index}", slot="helmet", power=1) for index in range(inventory_capacity(1))]
 
-    def test_inventory_full_does_not_consume_chest_or_pending_item(self):
-        pending = self.item("pending", slot="helmet")
+    def test_inventory_full_does_not_block_or_receive_new_pending_item(self):
         self.update_player(inventory_json=json.dumps(self.full_inventory()), chests=3,
                            pending_loot_json="")
         generated = self.item("generated", slot="helmet")
@@ -293,45 +384,24 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
             connection.commit()
         finally:
             connection.close()
-        self.assertTrue(result["inventory_full"])
+        self.assertTrue(result["item_generated"])
         state = self.snapshot()
-        self.assertEqual(state["chests"], 3)
+        self.assertEqual(state["chests"], 2)
         self.assertEqual(len(state["inventory"]), 50)
-        self.assertEqual(state["pending"], "")
-        self.assertEqual(updated["chests"], 3)
+        self.assertEqual(json.loads(state["pending"])["item_id"], "generated")
+        self.assertEqual(updated["chests"], 2)
 
-    def test_auto_salvage_uses_no_slot_and_protects_locked_or_upgrade(self):
+    def test_legacy_auto_salvage_setting_does_not_bypass_pending_decision(self):
         equipped = self.item("strong", power=1000)
         base_values = dict(inventory_json=json.dumps(self.full_inventory()), chests=3,
                            equipment_json=json.dumps({"helmet": equipped}),
                            auto_salvage_enabled=1, auto_salvage_max_rarity="rare")
         self.update_player(**base_values)
 
-        def open_generated(item):
-            connection = api.get_database()
-            try:
-                connection.execute("BEGIN IMMEDIATE")
-                current = api.load_player(connection, 7001)
-                with patch.object(api, "generate_loot", return_value=item):
-                    updated, result = api.open_loot_transaction(connection, current, False)
-                connection.commit()
-                return updated, result
-            finally:
-                connection.close()
-
-        _, salvaged = open_generated(self.item("auto", slot="helmet", power=1))
-        self.assertTrue(salvaged["auto_salvaged"])
+        _, pending = self.open_generated(self.item("auto", slot="helmet", power=1), auto_mode=False)
+        self.assertTrue(pending["item_generated"])
+        self.assertFalse(pending["auto_salvaged"])
         self.assertEqual(len(self.snapshot()["inventory"]), 50)
-        self.assertEqual(self.snapshot()["chests"], 2)
-
-        _, locked = open_generated(self.item("auto-locked", slot="helmet", power=1, locked=True))
-        self.assertTrue(locked["inventory_full"])
-        self.assertFalse(locked["auto_salvaged"])
-        self.assertEqual(self.snapshot()["chests"], 2)
-
-        _, upgrade = open_generated(self.item("auto-upgrade", slot="helmet", power=2000))
-        self.assertTrue(upgrade["inventory_full"])
-        self.assertFalse(upgrade["auto_salvaged"])
         self.assertEqual(self.snapshot()["chests"], 2)
 
     # Compatibility and public contract
@@ -355,21 +425,21 @@ class LootLoopApiIntegrationTest(unittest.TestCase):
         equip_item = self.item("legacy-equip")
         self.update_player(inventory_json=json.dumps([equip_item]),
                            pending_loot_json=json.dumps(equip_item))
-        equipped = api.equip_loot("test")
+        equipped = api.equip_loot({}, "test")
         for key in ("equipped", "item", "comparison", "replaced_item", "replaced_reward", "message"):
             self.assertIn(key, equipped)
 
         sell_item = self.item("legacy-sell", slot="helmet")
         self.update_player(inventory_json=json.dumps([sell_item]),
                            pending_loot_json=json.dumps(sell_item))
-        sold = api.sell_loot("test")
+        sold = api.sell_loot({}, "test")
         for key in ("sold", "item", "sell_price", "message"):
             self.assertIn(key, sold)
 
         generated = self.item("legacy-open", slot="helmet")
         self.update_player(inventory_json="[]", pending_loot_json="", chests=1)
         with patch.object(api, "generate_loot", return_value=generated):
-            opened = api.open_loot("test")
+            opened = api.open_loot({}, "test")
         for key in ("opened", "loot", "comparison", "experience_reward", "message"):
             self.assertIn(key, opened)
 

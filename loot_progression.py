@@ -16,7 +16,9 @@ RARITY_ORDER = (
 )
 RARITY_INDEX = {name: index for index, name in enumerate(RARITY_ORDER)}
 BASE_DUST = dict(zip(RARITY_ORDER, (1, 2, 4, 8, 16, 28, 45, 70, 110)))
-SALVAGE_CHEST_XP = dict(zip(RARITY_ORDER, (1, 1, 2, 2, 3, 3, 4, 4, 5)))
+SALE_HERO_EXP_BASE = dict(zip(RARITY_ORDER, (1, 2, 4, 7, 12, 18, 26, 38, 55)))
+CHEST_UPGRADE_GOLD_BASE = 250
+CHEST_UPGRADE_GOLD_GROWTH = 1.45
 BASE_REROLL_COST = {
     "uncommon": 8, "rare": 12, "epic": 20, "legendary": 35,
     "mythic": 60, "ancient": 100, "divine": 160, "celestial": 250,
@@ -62,21 +64,38 @@ def normalize_item_progression(item: Any) -> dict:
 
 
 def chest_xp_required(level: int) -> int:
+    """Deprecated compatibility formula; new clients must use gold costs."""
     return round(20 * (1.18 ** (max(1, int(level)) - 1)))
+
+
+def chest_upgrade_gold_cost(level: int) -> int:
+    level = min(CHEST_LEVEL_CAP, max(1, int(level)))
+    return round(CHEST_UPGRADE_GOLD_BASE * (CHEST_UPGRADE_GOLD_GROWTH ** (level - 1)))
+
+
+def hero_exp_from_open(chest_level: int, effective_stage: int) -> int:
+    return max(0, round(3 + max(1, int(chest_level)) * .8
+                        + min(1000, max(1, int(effective_stage))) * .04))
+
+
+def hero_exp_from_sale(rarity: Any, effective_stage: int) -> int:
+    base = SALE_HERO_EXP_BASE[normalize_rarity(rarity)]
+    return max(0, round(base * (1 + max(1, int(effective_stage)) * .002)))
 
 
 def chest_progress(player: Mapping[str, Any]) -> dict:
     level = min(CHEST_LEVEL_CAP, max(1, int(player.get("chest_level", 1) or 1)))
-    xp = max(0, int(player.get("chest_xp", 0) or 0))
-    required = chest_xp_required(level) if level < CHEST_LEVEL_CAP else 0
+    gold = max(0, int(player.get("gold", 0) or 0))
+    required = chest_upgrade_gold_cost(level) if level < CHEST_LEVEL_CAP else 0
     return {
         "salvage_dust": max(0, int(player.get("salvage_dust", 0) or 0)),
         "refinement_ore": max(0, int(player.get("refinement_ore", 0) or 0)),
         "refinement_crystal": max(0, int(player.get("refinement_ore", 0) or 0)),
         "refinement_crystal_deprecated": True,
-        "chest_xp": xp, "chest_level": level, "chest_xp_current": xp,
-        "chest_xp_required": required,
-        "chest_upgrade_ready": level < CHEST_LEVEL_CAP and xp >= required,
+        "chest_xp": 0, "chest_xp_current": 0, "chest_xp_required": 0,
+        "chest_xp_deprecated": True, "chest_level": level,
+        "chest_upgrade_gold_cost": required, "gold_current": gold,
+        "chest_upgrade_ready": level < CHEST_LEVEL_CAP and gold >= required,
         "next_chest_level": min(CHEST_LEVEL_CAP, level + 1),
     }
 
@@ -124,7 +143,7 @@ def salvage_reward(item: Mapping[str, Any], chest_level: int, effective_stage: i
     return {"rarity": rarity,
             "dust": salvage_dust_value(rarity, chest_level, effective_stage),
             "ore": ore, "crystals": ore, "crystals_deprecated": True,
-            "chest_xp": SALVAGE_CHEST_XP[rarity]}
+            "chest_xp": 0, "chest_xp_deprecated": True}
 
 
 def reroll_cost(rarity: Any, reroll_count: int) -> dict:

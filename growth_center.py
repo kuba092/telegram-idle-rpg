@@ -85,7 +85,7 @@ def blocker(resource: str, required: Any, current: Any, related_action: str, mes
     labels = {
         "gold": "золота", "skill_tomes": "томов навыков", "companion_essence": "эссенции спутников",
         "skill_fragments": "фрагментов навыка", "companion_fragments": "фрагментов спутника",
-        "salvage_dust": "пыли разбора", "refinement_ore": "руды улучшения", "chest_xp": "опыта сундука",
+        "salvage_dust": "пыли разбора", "refinement_ore": "руды улучшения",
         "inventory_space": "свободных мест", "skill_summon_scrolls": "свитков призыва навыков",
         "companion_summon_contracts": "контрактов призыва спутников", "premium_crystals": "кристаллов",
         "rank_requirement": "ранга", "level_requirement": "уровней", "locked": "разблокировки",
@@ -221,7 +221,7 @@ class GrowthCenter:
         if offline["claimable"]: recommendations.append(_recommendation("claim_offline", "offline", True, "Офлайн-награда готова", "attention", 950))
         if daily_claim + weekly_claim + achievements + daily_miles + weekly_miles:
             recommendations.append(_recommendation("claim_quest_rewards", "quests", True, "Есть награды заданий", "attention", 900))
-        if chest["chest_upgrade_ready"]: recommendations.append(_recommendation("upgrade_chest", "chest", True, "Накоплен опыт сундука", "attention", 850))
+        if chest["chest_upgrade_ready"]: recommendations.append(_recommendation("upgrade_chest", "chest", True, "Хватает золота на улучшение сундука", "attention", 850, {"gold": chest["chest_upgrade_gold_cost"]}, p))
         for kind, data in (("skill", skills), ("companion", companions)):
             if data["best_awakening"]: recommendations.append(_recommendation(f"awaken_{kind}", f"{kind}_awakening", True, "Доступно пробуждение", "attention", 800, candidate=data["best_awakening"]))
             if data["best_rank"]: recommendations.append(_recommendation(f"rank_{kind}", f"{kind}_rank", True, "Доступно повышение ранга", "attention", 750, candidate=data["best_rank"]))
@@ -248,7 +248,7 @@ class GrowthCenter:
             add(ntype, len(claimable), severity, "Награды заданий", f"Можно получить: {len(claimable)}", "quests", "quests")
         add("daily_milestone_claimable", daily_miles, "attention" if any(m["completed"] and not m["claimed"] and m["reward"].get("premium_crystals") for m in quests["daily"]["milestones"]) else "info", "Дневная веха", "Награда вехи готова", "quests", "quests")
         add("weekly_milestone_claimable", weekly_miles, "attention" if any(m["completed"] and not m["claimed"] and m["reward"].get("premium_crystals") for m in quests["weekly"]["milestones"]) else "info", "Недельная веха", "Награда вехи готова", "quests", "quests")
-        add("chest_upgrade_ready", chest["chest_upgrade_ready"], "attention", "Сундук можно улучшить", "Опыт сундука заполнен", "chest", "chest")
+        add("chest_upgrade_ready", chest["chest_upgrade_ready"], "attention", "Сундук можно улучшить", "Золота достаточно", "chest", "chest")
         add("better_item_available", better["count"], "info", "Есть предмет сильнее", "Сравните его с экипировкой", "inventory", "loot_compare")
         for kind,data in (("skill",skills),("companion",companions)):
             label="навыка" if kind=="skill" else "спутника"
@@ -294,8 +294,8 @@ class GrowthCenter:
                 _,required,current,entity_id=min(rank_gates); blockers.append(blocker(fragment_resource,required,current,f"rank_{kind}",f"{entity_id}: не хватает {required-current} fragments"))
             if awakening_gates and not data["best_awakening"]:
                 _,required,current,entity_id=min(awakening_gates); blockers.append(blocker(fragment_resource,required,current,f"awaken_{kind}",f"{entity_id}: не хватает {required-current} fragments"))
-        if not chest["chest_upgrade_ready"] and chest["chest_xp_required"]:
-            blockers.append(blocker("chest_xp",chest["chest_xp_required"],chest["chest_xp_current"],"upgrade_chest"))
+        if not chest["chest_upgrade_ready"] and chest["chest_upgrade_gold_cost"]:
+            blockers.append(blocker("gold",chest["chest_upgrade_gold_cost"],chest["gold_current"],"upgrade_chest"))
         if not skill_tickets: blockers.append(blocker("skill_summon_scrolls",1,0,"summon_skill_ticket"))
         if not companion_tickets: blockers.append(blocker("companion_summon_contracts",1,0,"summon_companion_ticket"))
         flow = self._daily_flow(counters, daily_claim, weekly_claim, achievements, boss_available, can_battle, skills, companions)

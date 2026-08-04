@@ -2352,6 +2352,9 @@
     .comparison-card.equal small { color:#a7b2b0; }
     .loot-meta { margin-bottom:12px; color:rgba(238,246,243,.67); font-size:9px; line-height:1.45; }
     .loot-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    #lootOverlay{align-items:flex-end;padding:0;background:#000b}
+    #lootResultCard{width:min(100%,480px);max-height:78dvh;margin:0 auto;border-radius:20px 20px 0 0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+    #lootResultCard .loot-action{min-height:44px}
     .loot-action.equip { background:linear-gradient(135deg,#bde955,#55c86e); color:#08200d; }
     .loot-action.sell { background:linear-gradient(135deg,#ffd064,#d68b2c); color:#2a1605; }
 
@@ -5377,18 +5380,20 @@
   .app>.game-screen:not(.hidden){position:fixed;z-index:260;inset:0;max-width:520px;margin:auto}
   .approved-game{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;width:100%;max-width:520px;height:100dvh;margin:auto;padding-bottom:calc(var(--ab-nav) + var(--ab-safe-b) + 5px);overflow-x:hidden;overflow-y:auto;background:linear-gradient(#06140f33,#06140f 72%),url("assets/forest_bg.png?v=9") center/cover no-repeat;color:#f5fbf7;font:14px/1.3 Inter,system-ui,-apple-system,sans-serif}
   .approved-game button{font:inherit;color:inherit;touch-action:manipulation}.approved-game button:focus-visible{outline:2px solid var(--ab-gold);outline-offset:2px}
-  .approved-hud{position:relative;z-index:5;display:grid;flex:0 0 calc(64px + var(--ab-safe-t));grid-template-columns:44px minmax(0,1fr) 82px;gap:7px;align-items:center;height:calc(64px + var(--ab-safe-t));padding:calc(4px + var(--ab-safe-t)) 8px 4px;border-bottom:1px solid #ffffff16;background:#071610eb;backdrop-filter:blur(12px)}
-  .approved-avatar{width:44px;height:44px;object-fit:contain;border:1px solid #8edf6370;border-radius:13px;background:#173528}.approved-identity{min-width:0}.approved-identity-top{display:flex;gap:5px;align-items:baseline;white-space:nowrap}.approved-identity-top strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.approved-identity-top small{color:var(--ab-muted);font-size:11px}.approved-power{display:block;color:var(--ab-gold);font-size:11px;font-weight:850}.approved-hp-label{display:flex;justify-content:space-between;color:#c7d7cf;font-size:11px;line-height:12px}.approved-bar{height:6px;overflow:hidden;border-radius:4px;background:#020806aa}.approved-bar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#4dcf73,#b7ef68)}
+  .approved-hud{position:relative;z-index:5;display:grid;flex:0 0 calc(76px + var(--ab-safe-t));grid-template-columns:44px minmax(0,1fr) 82px;gap:7px;align-items:center;height:calc(76px + var(--ab-safe-t));padding:calc(4px + var(--ab-safe-t)) 8px 4px;border-bottom:1px solid #ffffff16;background:#071610eb;backdrop-filter:blur(12px)}
+  .approved-avatar{width:44px;height:44px;object-fit:contain;border:1px solid #8edf6370;border-radius:13px;background:#173528}.approved-identity{min-width:0}.approved-identity-top{display:flex;gap:5px;align-items:baseline;white-space:nowrap}.approved-identity-top strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.approved-identity-top small{color:var(--ab-muted);font-size:11px}.approved-power{display:block;color:var(--ab-gold);font-size:10px;font-weight:850}.approved-hp-label,.approved-exp-label{display:flex;justify-content:space-between;color:#c7d7cf;font-size:9px;line-height:10px}.approved-exp-label{margin-top:2px;color:#bfe8ff}.approved-bar{height:5px;overflow:hidden;border-radius:4px;background:#020806aa}.approved-bar>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#4dcf73,#b7ef68)}.approved-exp-bar>i{background:linear-gradient(90deg,#55aef5,#e4c45b)}
   .approved-currencies{display:grid;gap:2px}.approved-currency{display:flex;justify-content:flex-end;gap:4px;color:var(--ab-gold);font-size:12px;font-weight:900;white-space:nowrap}.approved-currency:last-child{color:#a9efff}
   .approved-stage{position:relative;z-index:5;display:block;flex:0 0 58px;height:58px;padding:4px 9px;border-bottom:1px solid #ffffff12;background:#0a1b15e8}.approved-enemy-copy{min-width:0;text-align:center}.approved-enemy-title{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px}.approved-elite{padding:2px 5px;border-radius:6px;background:#a46cff;font-size:9px}.approved-enemy-hp-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;max-width:410px;margin:3px auto 0}.approved-enemy-bar{width:100%;height:7px;overflow:hidden;border-radius:4px;background:#030806}.approved-enemy-bar i{display:block;height:100%;background:linear-gradient(90deg,#e84656,#ff9a65)}.approved-enemy-hp-value{color:#f4f8f6;font-size:10px;font-weight:850;white-space:nowrap}.approved-stage-meta{display:block;overflow:hidden;margin-top:2px;color:var(--ab-muted);font-size:10px;white-space:nowrap;text-overflow:ellipsis}
   .approved-battle{position:relative;z-index:1;flex:1 0 clamp(210px,32dvh,350px);min-height:210px;overflow:hidden}.approved-battle:after{content:"";position:absolute;inset:auto 0 0;height:30%;background:linear-gradient(transparent,#06110ddd);pointer-events:none}.approved-ground{position:absolute;left:6%;right:6%;bottom:26px;height:28px;border-radius:50%;background:#0007;filter:blur(5px)}.approved-fighter{position:absolute;z-index:2;bottom:32px;width:38%;height:62%;object-fit:contain;filter:drop-shadow(0 12px 8px #0008)}.approved-hero{left:7%}.approved-enemy{right:7%;transform:scaleX(-1)}.approved-damage{position:absolute;z-index:5;top:37%;right:27%;display:none;color:#fff1a4;font-size:22px;font-weight:950;text-shadow:0 2px 0 #8b2d1d}.approved-damage.visible{display:block;animation:approved-float 1.2s ease-out}.approved-message{position:absolute;z-index:5;left:8%;right:8%;bottom:1px;height:24px;padding:4px 9px;overflow:hidden;border-radius:7px;background:#03100bd1;color:#d7e5de;font-size:11px;line-height:16px;text-align:center;white-space:nowrap;text-overflow:ellipsis;backdrop-filter:blur(4px);pointer-events:none}
   @keyframes approved-float{from{opacity:0;transform:translateY(8px)}35%{opacity:1}to{opacity:0;transform:translateY(-24px)}}
   .approved-dock{position:relative;z-index:4;display:flex;flex:0 0 36px;align-items:center;justify-content:center;gap:5px;height:36px;padding:2px 6px;border-block:1px solid #ffffff0b;background:linear-gradient(#0b1c15f5,#0a1813)}.approved-skill{position:relative;display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;min-height:30px;padding:0;border:1px solid #ffffff1c;border-radius:8px;background:linear-gradient(#1a3328,#10231c);font-size:15px}.approved-skill small{position:absolute;right:1px;bottom:1px;padding:0 2px;border-radius:4px;background:#06100bd9;font-size:7px;line-height:9px}.approved-skill.locked{opacity:.45}.approved-skill.cooldown:after{content:attr(data-cooldown);position:absolute;inset:0;display:grid;place-items:center;border-radius:7px;background:#06100be6;font-size:9px}.approved-skill.companion{border-color:#55dce2;background:linear-gradient(#153b3b,#102522)}
-  .approved-lower{position:absolute;z-index:3;left:0;right:0;bottom:calc(var(--ab-nav) + var(--ab-safe-b) + 5px);padding:2px 8px 0;background:#0b1c16}.approved-chest{position:relative;display:grid;grid-template-columns:30px minmax(58px,1fr) auto auto;align-items:center;gap:5px;height:46px;padding:3px 6px;border-radius:9px 9px 3px 3px;background:linear-gradient(100deg,#192b20,#10251d);box-shadow:inset 2px 0 0 #f3c75f8c}.approved-chest-icon{display:grid;place-items:center;width:30px;height:30px;min-height:30px;border:0;border-radius:8px;background:#2c2213}.approved-chest-copy{min-width:0}.approved-chest-title{font-size:10px;font-weight:900}.approved-chest-title strong{color:var(--ab-gold)}.approved-chest-xp{height:2px;margin-top:3px;overflow:hidden;border-radius:3px;background:#06100b}.approved-chest-xp i{display:block;height:100%;background:var(--ab-gold)}.approved-chest-open{min-height:34px;padding:0 8px;border:0;border-radius:8px;background:var(--ab-gold);color:#231704;font-size:10px;font-weight:950}.approved-chest-auto{min-height:34px;padding:0 6px;border:0;border-radius:8px;background:#173a27;color:#baf299;font-size:8px;font-weight:900}.approved-pending{position:absolute;top:1px;right:1px;min-width:15px;padding:0 3px;border-radius:8px;background:#ff6d73;font-size:7px;line-height:12px;text-align:center}.approved-pending[hidden]{display:none}
+  .approved-lower{position:absolute;z-index:3;left:0;right:0;bottom:calc(var(--ab-nav) + var(--ab-safe-b) + 5px);padding:2px 8px 0;background:#0b1c16}.approved-chest{position:relative;display:grid;grid-template-columns:30px minmax(72px,1fr) minmax(58px,auto) 70px;align-items:center;gap:5px;width:100%;max-width:100%;height:50px;padding:3px 6px;overflow:hidden;border-radius:9px 9px 3px 3px;background:linear-gradient(100deg,#192b20,#10251d);box-shadow:inset 2px 0 0 #f3c75f8c}.approved-chest.opening .approved-chest-icon{animation:approvedChestOpen .55s ease}.approved-chest.busy{opacity:.72}.approved-chest-icon{display:grid;place-items:center;width:30px;height:44px;min-height:44px;padding:0;border:0;border-radius:8px;background:#2c2213}.approved-chest-copy{min-width:0}.approved-chest-upgrade-button{display:grid;grid-template-columns:auto auto;align-items:center;justify-content:start;gap:3px;width:max-content;max-width:100%;min-height:40px;padding:2px 4px;border:1px solid #d9ad4355;border-radius:6px;background:transparent;color:#f2d274;font-size:9px;font-weight:900;line-height:13px;white-space:nowrap}.approved-chest-level{color:#f5fbf7}.approved-chest-count{color:var(--ab-gold)}.approved-chest-cost{grid-column:1/-1;font-size:8px}.approved-chest-upgrade{position:static;padding:1px 3px;border-radius:5px;background:#f4c752;color:#2b1b02;font-size:6px;pointer-events:none}.approved-chest-open{min-width:58px;min-height:44px;padding:0 7px;border:0;border-radius:8px;background:var(--ab-gold);color:#231704;font-size:10px;font-weight:950}.approved-chest-auto{display:grid;grid-template-columns:36px;justify-items:center;align-content:center;flex-shrink:0;width:70px;max-width:70px;min-height:44px;padding:2px;border:0;border-radius:8px;background:#172b22;color:#aebfb7;font-size:10px;font-weight:900;line-height:12px;overflow:hidden}.approved-auto-track{position:relative;width:36px;height:18px;border-radius:10px;background:#526158}.approved-auto-knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .18s}.approved-chest-auto.active{background:#173a27;color:#baf299}.approved-chest-auto.active .approved-auto-track{background:#54bd72}.approved-chest-auto.active .approved-auto-knob{transform:translateX(18px)}.approved-chest-auto.paused{background:#493b1c;color:#ffe28a}.approved-chest-auto.paused .approved-auto-track{background:#b78a31}.approved-pending{position:absolute;top:1px;right:1px;min-width:15px;padding:0 3px;border-radius:8px;background:#ff6d73;font-size:7px;line-height:12px;text-align:center;pointer-events:none}.approved-pending[hidden]{display:none}@media(max-width:359px){.approved-chest{grid-template-columns:30px minmax(64px,1fr) minmax(54px,auto) 66px;gap:3px;padding-inline:4px}.approved-chest-auto{width:66px;max-width:66px}.approved-chest-upgrade-button{padding-inline:2px}.approved-chest-cost{font-size:7px}}@keyframes approvedChestOpen{35%{transform:translateY(-4px) rotate(-8deg)}70%{transform:translateY(1px) rotate(6deg)}}
   .approved-equipment-head{display:flex;align-items:center;gap:5px;height:44px;padding:0 4px;background:var(--ab-panel);font-size:11px;font-weight:900}.approved-equipment-head span{margin-left:auto;color:#b8c9c0}.approved-inventory{min-width:82px;min-height:44px;padding:0 8px;border:0;border-radius:8px;background:#ffffff0d;font-size:9px}.approved-equipment{display:grid;grid-template-columns:repeat(5,44px);grid-auto-rows:44px;justify-content:center;column-gap:8px;row-gap:8px;height:108px;padding:6px 0 2px;border-radius:0 0 9px 9px;background:var(--ab-panel)}.approved-gear{position:relative;width:44px;height:44px;min-height:44px;padding:4px;border:1px solid #ffffff24;border-radius:8px;background:linear-gradient(145deg,#193025,#10221b);font-size:19px}.approved-gear.rare{border-color:#5ba8ff99}.approved-gear.epic{border-color:#b779ff99}.approved-gear.legendary{border-color:#ffb84d99}.approved-gear.empty{border-color:#26372f;background:#09140f;color:#52645a}.approved-gear-level{position:absolute;right:2px;bottom:2px;min-width:14px;padding:0 2px;border-radius:4px;background:#07110dcc;font-size:8px;line-height:10px}.approved-ticker{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;height:30px;min-height:30px;margin-top:4px;padding:0 7px 0 8px;overflow:hidden;border:0;border-left:2px solid var(--ab-gold);border-radius:5px;background:#0d1d17;color:#cbdad2;text-align:left}.approved-ticker-copy{overflow:hidden;font-size:10px;white-space:nowrap;text-overflow:ellipsis}.approved-ticker-badge{padding:2px 5px;border:1px solid #f3c75f4d;border-radius:8px;color:#f3d985;font-size:8px;font-weight:900}
   .approved-nav{position:fixed;z-index:180;left:50%;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);width:min(100%,520px);height:calc(var(--ab-nav) + var(--ab-safe-b));padding:2px 4px var(--ab-safe-b);transform:translateX(-50%);border-top:1px solid #ffffff12;background:#07150ff5;backdrop-filter:blur(14px)}.approved-nav button{position:relative;min-width:0;min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--ab-muted);font-size:11px;font-weight:800}.approved-nav svg{display:block;width:25px;height:25px;margin:0 auto 1px;fill:none;stroke:currentColor;stroke-width:1.7}.approved-nav .active{transform:translateY(-5px);color:var(--ab-gold)}.approved-nav .active:before{content:"";position:absolute;top:4px;left:31%;right:31%;height:1px;background:var(--ab-gold)}
   .approved-sheet-wrap{position:fixed;z-index:350;inset:0;display:grid;align-items:end;background:#0009;overflow:hidden}.approved-sheet-wrap[hidden]{display:none}.approved-sheet{display:flex;flex-direction:column;width:min(100%,520px);height:min(88dvh,760px);max-height:88dvh;margin:0 auto;padding:0;overflow:hidden;border:1px solid #315643;border-bottom:0;border-radius:22px 22px 0 0;background:#10231c}.approved-sheet-head{position:sticky;z-index:3;top:0;flex:0 0 auto;background:#10231c}.approved-sheet-titlebar{display:flex;align-items:center;gap:8px;padding:9px 12px 6px}.approved-sheet-head h2{min-width:0;margin:0;font-size:18px}.approved-sheet-close,.approved-sheet-back{display:grid;place-items:center;flex:0 0 44px;min-height:44px;padding:0;border:1px solid #315643;border-radius:11px;background:#183328;color:#eef8f2}.approved-sheet-close{margin-left:auto}.approved-sheet-tabs{display:flex;gap:6px;padding:4px 12px 9px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}.approved-sheet-tabs::-webkit-scrollbar{display:none}.approved-sheet-tab{flex:0 0 auto;min-height:36px;padding:7px 11px;border:1px solid #315643;border-radius:999px;background:#132b22;color:#aabeb5;font-size:11px;white-space:nowrap}.approved-sheet-tab.active{border-color:#cfae54;background:#2b2a19;color:#fff0a1}.approved-sheet-scroll{min-height:0;flex:1 1 auto;padding:0 12px calc(16px + var(--ab-safe-b));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}.approved-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}.approved-sheet-card{min-height:58px;padding:9px;border:0;border-radius:12px;background:#183328;text-align:left}.approved-sheet-card strong,.approved-sheet-card small{display:block}.approved-sheet-card small{color:var(--ab-muted)}
   .approved-skill-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 0}.approved-skill-card{display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto 1fr auto;gap:3px 7px;min-width:0;height:104px;padding:9px;overflow:hidden;border:1px solid #294b3b;border-radius:13px;background:linear-gradient(145deg,#193329,#11271f);color:#edf7f1;text-align:left}.approved-skill-card.active{border-color:#cfae54;box-shadow:inset 0 0 0 1px #cfae5438}.approved-skill-card:disabled{opacity:.52}.approved-skill-card-icon{grid-row:1/3;display:grid;place-items:center;width:42px;height:42px;overflow:hidden;border-radius:10px;background:#0b1d16;font-size:22px}.approved-skill-card-main{min-width:0}.approved-skill-card-name{display:-webkit-box;max-height:30px;overflow:hidden;font-size:12px;font-weight:900;line-height:15px;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2}.approved-skill-card-meta{overflow:hidden;color:#aebfb7;font-size:9px;line-height:13px;text-overflow:ellipsis;white-space:nowrap}.approved-skill-card-slot{grid-column:1/3;min-width:0;overflow:hidden;color:#d9e6df;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.approved-skill-badges{grid-column:1/3;display:flex;min-width:0;gap:3px;overflow:hidden}.approved-skill-badge{min-width:0;padding:2px 4px;overflow:hidden;border-radius:5px;font-size:7px;font-weight:900;text-overflow:ellipsis;white-space:nowrap}.approved-skill-badge.upgrade{background:#1e5b39;color:#b9ffd0}.approved-skill-badge.rank{background:#4b3268;color:#e3c7ff}.approved-skill-badge.awaken{background:#22546b;color:#c1eeff}.approved-skill-empty-badge{color:#71877d;font-size:8px}.approved-skill-detail{min-width:0;padding-top:10px}.approved-skill-detail-head{display:grid;grid-template-columns:46px minmax(0,1fr);gap:9px;align-items:center;margin-bottom:9px}.approved-skill-detail-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;background:#0b1d16;font-size:24px}.approved-skill-detail-title{min-width:0}.approved-skill-detail-title strong{display:block;overflow:hidden;font-size:15px;overflow-wrap:anywhere}.approved-skill-detail-title small{color:#aebfb7}.approved-skill-section{margin:7px 0;padding:10px;border:1px solid #29483a;border-radius:12px;background:#142c23}.approved-skill-section h3{margin:0 0 7px;color:#fff0a1;font-size:11px}.approved-skill-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.approved-skill-fact{min-width:0;padding:6px;border-radius:8px;background:#0c2119;color:#aebfb7;font-size:9px;overflow-wrap:anywhere}.approved-skill-fact strong{display:block;margin-top:2px;color:#f1f7f3;font-size:11px}.approved-skill-copy{margin:0;color:#c4d4cc;font-size:10px;line-height:1.5;overflow-wrap:anywhere}.approved-awakening-more{margin-top:7px;min-height:36px;border:1px solid #35604c;border-radius:9px;background:#19372b;color:#dbeae2}.approved-skill-actions{position:sticky;z-index:2;bottom:0;flex:0 0 auto;display:grid;gap:6px;padding:8px 12px calc(8px + var(--ab-safe-b));border-top:1px solid #315643;background:#10231cf5;box-shadow:0 -10px 22px #07110d}.approved-skill-action-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.approved-skill-action{min-width:0;min-height:44px;padding:7px;border:1px solid #426d58;border-radius:10px;background:#1c3d30;color:#f2f8f4;font-weight:850;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.approved-skill-action.primary{border-color:#947b36;background:#51441e;color:#fff0a1}.approved-skill-action:disabled{border-color:#263d33;background:#14251e;color:#64776e;opacity:.75}.approved-slot-modal{position:fixed;z-index:370;inset:0;display:grid;place-items:end center;padding:12px;background:#000b}.approved-slot-modal[hidden]{display:none}.approved-slot-dialog{width:min(100%,430px);max-height:70dvh;padding:13px calc(13px + env(safe-area-inset-right)) calc(13px + var(--ab-safe-b)) calc(13px + env(safe-area-inset-left));overflow:auto;border:1px solid #416b57;border-radius:18px;background:#10231c}.approved-slot-dialog h3{margin:0 0 9px}.approved-slot-options{display:grid;gap:7px}.approved-slot-option{display:grid;grid-template-columns:32px minmax(0,1fr);gap:8px;align-items:center;min-height:52px;padding:8px;border:1px solid #315643;border-radius:10px;background:#183328;color:#eaf4ef;text-align:left}.approved-slot-option:disabled{opacity:.45}.approved-slot-option small{display:block;color:#9db1a7}.approved-slot-cancel{width:100%;min-height:44px;margin-top:9px;border:1px solid #315643;border-radius:10px;background:#142a22;color:#d9e7e0}
+  .approved-sheet-wrap.open{display:grid}.approved-sheet{position:relative;padding-bottom:var(--ab-safe-b)}.approved-sheet.open{transform:translateY(0)}body.approved-sheet-open{overflow:hidden}
+  .approved-sheet.pending-loot-sheet{width:min(calc(100% - 16px),504px);height:auto;max-height:72dvh;border-radius:24px 24px 0 0;padding-bottom:0}.pending-loot-sheet .approved-sheet-titlebar{height:56px;padding:6px 12px}.pending-loot-sheet .approved-sheet-back,.pending-loot-sheet .approved-sheet-tabs{display:none!important}.pending-loot-sheet .approved-sheet-scroll{flex:0 1 auto;padding:0 12px 8px;overflow-y:auto}.pending-loot-sheet .approved-sheet-head h2{font-size:17px}.pending-loot-sheet .approved-sheet-close{flex-basis:42px;min-height:42px}.approved-pending-loot{display:grid;gap:4px;padding-top:4px}.approved-pending-hero{display:grid;grid-template-columns:60px minmax(0,1fr) auto;gap:10px;align-items:center;padding:4px 0 8px}.approved-pending-icon{display:grid;place-items:center;width:60px;height:60px;border:1px solid #f3c75f66;border-radius:14px;background:#0b1d16;font-size:31px}.approved-pending-name{min-width:0}.approved-pending-name strong{display:block;color:#fff0a1;font-size:16px;line-height:20px;overflow-wrap:anywhere}.approved-pending-name small{display:block;margin-top:2px;color:#aebfb7;font-size:11px}.approved-pending-gain{padding:3px 6px;border-radius:8px;background:#173c28;color:#8edf63;font-size:10px;font-weight:900;white-space:nowrap}.approved-pending-gain.worse{background:#3b2225;color:#ff8388}.approved-pending-gain.same{background:#23332c;color:#91a59b}.approved-pending-rows{border-top:1px solid #315643}.approved-pending-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:7px;align-items:center;min-height:36px;border-bottom:1px solid #29483a;font-size:11px}.approved-pending-label{min-width:0;overflow-wrap:anywhere}.approved-pending-old,.approved-pending-new,.approved-pending-delta{font-variant-numeric:tabular-nums;white-space:nowrap}.approved-pending-arrow{color:#70877b}.approved-pending-delta{min-width:42px;text-align:right}.approved-pending-delta.better{color:#8edf63}.approved-pending-delta.worse{color:#ff8388}.approved-pending-delta.same{color:#91a59b}.approved-pending-sale{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;border-bottom:1px solid #29483a;color:#b8cac1;font-size:11px}.approved-pending-sale strong{color:#f3d985;white-space:nowrap}.approved-pending-details-toggle{justify-self:start;min-height:32px;padding:3px 0;border:0;background:transparent;color:#b9cec3;font-size:11px}.approved-pending-details{display:grid;gap:4px;padding:7px 0;border-top:1px solid #29483a;color:#aebfb7;font-size:10px;line-height:1.4}.approved-pending-details[hidden]{display:none}.approved-pending-detail{display:flex;justify-content:space-between;gap:10px}.approved-pending-detail span:last-child{text-align:right;color:#e1ebe6}.approved-pending-actions{position:sticky;padding:8px 12px calc(8px + var(--ab-safe-b));box-shadow:0 -5px 14px #07110d99}.approved-pending-actions .approved-skill-action-row{gap:8px}.approved-pending-actions .approved-skill-action{min-height:50px}.approved-pending-actions .pending-equip-improvement{border-color:#58a860;background:#28613a;color:#effff2}.approved-pending-actions .pending-sell{border-color:#947b36;background:#51441e;color:#fff0a1}@media(max-width:359px){.approved-sheet.pending-loot-sheet{width:calc(100% - 8px);max-height:78dvh}.approved-pending-row{gap:5px;font-size:10px}.approved-pending-delta{min-width:36px}}
   .approved-sheet-scroll.has-skill-actions{padding-bottom:24px}
   @media(max-width:359px){.approved-skill-list{grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:7px}.approved-skill-card{grid-template-columns:38px minmax(0,1fr);height:100px;padding:8px}.approved-skill-card-icon{width:38px;height:38px}.approved-sheet-scroll{padding-inline:9px}.approved-skill-actions{padding-inline:9px}}
   @media(max-width:359px){.approved-hud{height:calc(62px + var(--ab-safe-t));grid-template-columns:40px minmax(0,1fr) 66px;padding-inline:5px}.approved-avatar{width:40px;height:40px}.approved-stage{top:calc(62px + var(--ab-safe-t));height:46px;padding-inline:6px}.approved-battle{top:calc(108px + var(--ab-safe-t));height:clamp(270px,39dvh,290px);min-height:270px}.approved-dock{top:calc(108px + var(--ab-safe-t) + clamp(270px,39dvh,290px));grid-template-columns:repeat(6,28px);gap:4px;height:32px}.approved-skill{width:28px;height:28px;min-height:28px}.approved-lower{padding-inline:5px}.approved-equipment{grid-template-columns:repeat(5,40px);grid-auto-rows:40px;column-gap:4px;row-gap:6px;height:98px}.approved-gear{width:40px;height:40px;min-height:40px}.approved-inventory{min-width:44px;font-size:0}.approved-inventory:after{content:"≡";font-size:15px}.approved-message{left:10%;right:10%}}
@@ -5400,11 +5405,11 @@
 </head>
 <body>
 <main class="approved-game" id="approvedBattleShell" aria-label="Бой">
-  <header class="approved-hud"><img class="approved-avatar" id="approvedHeroAvatar" src="assets/hero.png?v=9" alt="Аватар героя"><div class="approved-identity"><div class="approved-identity-top"><strong id="approvedPlayerName">Игрок</strong><small id="approvedPlayerLevel">ур. 1</small></div><span class="approved-power" id="approvedPower">Сила 0</span><div class="approved-hp-label"><span>HP</span><span><b id="approvedHeroHp">100</b> / <b id="approvedHeroMaxHp">100</b></span></div><div class="approved-bar"><i id="approvedHeroHpBar" style="width:100%"></i></div></div><div class="approved-currencies"><div class="approved-currency">● <span id="approvedGold">0</span></div><div class="approved-currency">◆ <span id="approvedCrystals">0</span></div></div></header>
+  <header class="approved-hud"><img class="approved-avatar" id="approvedHeroAvatar" src="assets/hero.png?v=9" alt="Аватар героя"><div class="approved-identity"><div class="approved-identity-top"><strong id="approvedPlayerName">Игрок</strong><small id="approvedPlayerLevel">ур. 1</small></div><span class="approved-power" id="approvedPower">Сила 0</span><div class="approved-hp-label"><span>HP</span><span><b id="approvedHeroHp">100</b> / <b id="approvedHeroMaxHp">100</b></span></div><div class="approved-bar"><i id="approvedHeroHpBar" style="width:100%"></i></div><div class="approved-exp-label"><span>Опыт</span><span><b id="approvedHeroExp">0</b> / <b id="approvedHeroExpRequired">1</b></span></div><div class="approved-bar approved-exp-bar"><i id="approvedHeroExpBar" style="width:0%"></i></div></div><div class="approved-currencies"><div class="approved-currency">● <span id="approvedGold">0</span></div><div class="approved-currency">◆ <span id="approvedCrystals">0</span></div></div></header>
   <section class="approved-stage"><div class="approved-enemy-copy"><div class="approved-enemy-title"><strong id="approvedEnemyName">Слизень</strong><span class="approved-elite" id="approvedElite" hidden>Элита</span><span class="approved-elite" id="approvedBoss" hidden>Босс</span></div><div class="approved-enemy-hp-row"><div class="approved-enemy-bar"><i id="approvedEnemyHpBar" style="width:100%"></i></div><span class="approved-enemy-hp-value"><b id="approvedEnemyHp">30</b> / <b id="approvedEnemyMaxHp">30</b></span></div><small class="approved-stage-meta" id="approvedStageMeta">Этап 1 · 0/10 · Страж · слабость: —</small></div></section>
   <section class="approved-battle" aria-label="Активный бой"><div class="approved-ground"></div><img class="approved-fighter approved-hero" id="approvedHeroSprite" src="assets/hero.png?v=9" alt="Герой"><img class="approved-fighter approved-enemy" id="approvedEnemySprite" src="assets/slime.png?v=9" alt="Враг"><span class="approved-damage" id="approvedDamage">−0</span><div class="approved-message" id="approvedCombatMessage" aria-live="polite">Подключаемся к серверу…</div></section>
   <section class="approved-dock" id="approvedSkillDock" aria-label="Навыки и спутники"></section>
-  <section class="approved-lower"><div class="approved-chest"><button class="approved-chest-icon" id="approvedChestInfo" type="button" aria-label="Информация о сундуке">🧰</button><div class="approved-chest-copy"><div class="approved-chest-title">Ур. <span id="approvedChestLevel">1</span> <strong>×<span id="approvedChestCount">0</span></strong></div><div class="approved-chest-xp"><i id="approvedChestXp" style="width:0%"></i></div></div><button class="approved-chest-open" id="approvedChestOpen" type="button">Открыть</button><button class="approved-chest-auto" id="approvedChestAuto" type="button" aria-label="Автооткрытие сундука" aria-pressed="false">Авто</button><b class="approved-pending" id="approvedPendingBadge" hidden>1</b></div><div class="approved-equipment-head">Экипировка <span id="approvedEquipmentCount">0/10</span><button class="approved-inventory" id="approvedInventory" type="button">Инвентарь</button></div><section class="approved-equipment equipment-grid" id="approvedEquipmentGrid" aria-label="Экипировка героя"></section><button class="approved-ticker" id="approvedTicker" type="button"><span aria-hidden="true">◎</span><span class="approved-ticker-copy" id="approvedTickerCopy">Рекомендации загружаются…</span><span class="approved-ticker-badge" id="approvedTickerBadge">Ещё</span></button></section>
+  <section class="approved-lower"><div class="approved-chest" id="approvedChestBar" role="group" aria-label="Сундук"><button class="approved-chest-icon" id="approvedChestInfo" type="button" aria-label="Открыть сундук">🧰</button><div class="approved-chest-copy"><button class="approved-chest-upgrade-button" id="approvedChestUpgrade" type="button" aria-label="Улучшить сундук"><span class="approved-chest-level">Ур. <span id="approvedChestLevel">1</span></span><strong class="approved-chest-count">×<span id="approvedChestCount">0</span></strong><span class="approved-chest-cost" id="approvedChestGoldCost">🪙 0</span><b class="approved-chest-upgrade" id="approvedChestUpgradeBadge" hidden>УЛУЧШИТЬ</b></button></div><button class="approved-chest-open" id="approvedChestOpen" type="button" title="Открыть сундук">Открыть</button><button class="approved-chest-auto" id="approvedChestAuto" type="button" aria-label="Автооткрытие сундука" title="Автосундук" aria-pressed="false"><span class="approved-auto-track"><i class="approved-auto-knob"></i></span><i id="approvedChestAutoState">Выкл.</i></button><b class="approved-pending" id="approvedPendingBadge" hidden>1</b></div><div class="approved-equipment-head">Экипировка <span id="approvedEquipmentCount">0/10</span></div><section class="approved-equipment equipment-grid" id="approvedEquipmentGrid" aria-label="Экипировка героя"></section><button class="approved-ticker" id="approvedTicker" type="button"><span aria-hidden="true">◎</span><span class="approved-ticker-copy" id="approvedTickerCopy">Рекомендации загружаются…</span><span class="approved-ticker-badge" id="approvedTickerBadge">Ещё</span></button></section>
 </main>
 <nav class="approved-nav" id="approvedNavigation" aria-label="Основная навигация"><button data-approved-nav="hero" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg>Герой</button><button data-approved-nav="trials" type="button"><svg viewBox="0 0 24 24"><path d="M4 21V9l4-4 4 4 4-4 4 4v12M8 21v-5h8v5"/></svg>Испытания</button><button class="active" data-approved-nav="battle" type="button" aria-current="page"><svg viewBox="0 0 24 24"><path d="m5 4 14 16M19 4 5 20M8 7 5 10M16 7l3 3"/></svg>Бой</button><button data-approved-nav="shop" type="button"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1 12H5zM8 9V7a4 4 0 0 1 8 0v2"/></svg>Магазин</button><button data-approved-nav="more" type="button"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Ещё</button></nav>
 <div class="approved-sheet-wrap" id="approvedSheetWrap" hidden><section class="approved-sheet" role="dialog" aria-modal="true" aria-labelledby="approvedSheetTitle"><header class="approved-sheet-head"><div class="approved-sheet-titlebar"><button class="approved-sheet-back" id="approvedSheetBack" type="button" aria-label="Назад" hidden>‹</button><h2 id="approvedSheetTitle">Раздел</h2><button class="approved-sheet-close" id="approvedSheetClose" type="button" aria-label="Закрыть панель">×</button></div><nav class="approved-sheet-tabs" id="approvedHeroTabs" aria-label="Разделы героя" hidden><button class="approved-sheet-tab" data-approved-hero-tab="inventory" type="button">Снаряжение</button><button class="approved-sheet-tab" data-approved-hero-tab="skills" type="button">Навыки</button><button class="approved-sheet-tab" data-approved-hero-tab="companions" type="button">Спутники</button><button class="approved-sheet-tab" data-approved-hero-tab="hero-stats" type="button">Характеристики</button><button class="approved-sheet-tab" data-approved-hero-tab="awakening" type="button">Пробуждение</button></nav></header><div class="approved-sheet-scroll" id="approvedSheetScroll"><div class="approved-sheet-grid" id="approvedSheetContent"></div></div><div class="approved-skill-actions" id="approvedSkillActions" hidden></div></section></div>
@@ -6557,11 +6562,6 @@ id="companionSummonChances"
 <div class="loot-card-title" id="lootItemName">Предмет</div>
 <div class="equipped-item-name hidden" id="equippedItemName"></div>
 <div class="loot-meta" id="comparisonProfileName">Профиль: Баланс</div>
-<div class="loot-actions" id="comparisonProfileButtons">
-<button class="loot-action" data-comparison-profile="damage" type="button">Урон</button>
-<button class="loot-action" data-comparison-profile="defense" type="button">Защита</button>
-<button class="loot-action" data-comparison-profile="balanced" type="button">Баланс</button>
-</div>
 <div class="comparison-grid">
 <div class="comparison-card" id="comparePower"><span>БМ</span><strong>0</strong><small>0</small></div>
 <div class="comparison-card" id="compareDamage"><span>УРОН</span><strong>0</strong><small>0</small></div>
@@ -6569,16 +6569,13 @@ id="companionSummonChances"
 <div class="comparison-card" id="compareBuild"><span>BUILD</span><strong>0</strong><small>0</small></div>
 </div>
 <div class="loot-meta" id="lootSecondaryStats"></div>
+<div class="loot-meta" id="lootMainStats"></div>
 <div class="loot-meta" id="lootMeta"></div>
 <div class="loot-actions">
 <button class="loot-action equip" id="equipLootButton" type="button">НАДЕТЬ</button>
 <button class="loot-action sell" id="sellLootButton" type="button">ПРОДАТЬ</button>
 </div>
-<div class="loot-actions">
-<button class="loot-action" id="lockLootButton" type="button">🔓 ЗАБЛОКИРОВАТЬ</button>
-<button class="loot-action" id="salvageLootButton" type="button">♻️ РАЗОБРАТЬ</button>
-</div>
-<div class="loot-actions"><select id="rerollStatSelect"></select><button class="loot-action" id="rerollLootButton" type="button">ПЕРЕРАБОТАТЬ</button></div>
+<button class="loot-action" id="lootDetailsButton" type="button">ПОДРОБНЕЕ</button>
 </div>
 </div>
 <div class="game-modal hidden" id="skillSummonModal">
@@ -6619,18 +6616,19 @@ id="companionSummonChances"
 <div><span>💎 КРИСТАЛЛЫ</span><strong id="premiumCrystals">0</strong></div>
 <div><span>ИНВЕНТАРЬ</span><strong id="inventoryCapacityText">0 / 50</strong></div>
 </div>
-<div class="upgrade-copy" id="chestUpgradeText">Опыт сундука 0 / 20</div>
-<div class="upgrade-track"><div id="chestUpgradeBar"></div></div>
+<div class="upgrade-copy" id="chestUpgradeText">Улучшение повышает качество будущего лута</div>
 <div class="chest-main-actions">
 <button class="primary-game-button" id="openChestButton" type="button">ОТКРЫТЬ СУНДУК</button>
 <button class="secondary-game-button" id="upgradeChestButton" type="button">УЛУЧШИТЬ</button>
 </div>
-<div class="upgrade-cost" id="chestUpgradeCost">Нужен опыт сундука</div>
+<div class="upgrade-cost" id="chestUpgradeCost">Стоимость: 0 золота</div>
 <div class="rarity-title">Инвентарь</div>
 <div class="loot-actions"><select id="bulkSalvageRarity"><option value="common">Обычные</option><option value="uncommon">До необычных</option><option value="rare">До редких</option><option value="epic">До эпических</option></select><button class="loot-action sell" id="bulkSalvageButton" type="button">МАССОВЫЙ РАЗБОР</button></div>
 <div class="rarity-chances" id="inventoryLootList"></div>
 <div class="rarity-title">Шансы редкости</div>
 <div class="rarity-chances" id="rarityChances"></div>
+<div class="rarity-title">После улучшения</div>
+<div class="rarity-chances" id="nextRarityChances"></div>
 </div>
 </div><div class="loading-overlay" id="loadingOverlay">
 <div class="loading-box">
@@ -6873,16 +6871,32 @@ id="companionSummonChances"
       return Math.max(0, Math.min(100, Number(value || 0) / max * 100));
     }
 
-    function openApprovedSheet(name, rows) {
-      $("approvedSheetTitle").textContent = name;
-      $("approvedHeroTabs").hidden = name !== "Герой";
+    function openGameSheet({mode, title, content, actions = "", contentClass = "approved-sheet-grid"}) {
+      const overlay = $("approvedSheetWrap");
+      const sheet = overlay?.querySelector(".approved-sheet");
+      const contentNode = $("approvedSheetContent");
+      sheet?.classList.toggle("pending-loot-sheet", mode === "pending-loot");
+      $("approvedSheetTitle").textContent = title;
+      $("approvedHeroTabs").hidden = mode !== "hero";
       $("approvedSheetBack").hidden = true;
-      $("approvedSkillActions").hidden = true;
+      $("approvedSkillActions").hidden = !actions;
+      $("approvedSkillActions").classList.toggle("approved-pending-actions", mode === "pending-loot");
+      $("approvedSkillActions").innerHTML = actions;
       $("approvedSheetScroll").classList.remove("has-skill-actions");
-      $("approvedSheetContent").className = "approved-sheet-grid";
-      $("approvedSheetContent").innerHTML = rows.map(([titleText, note, action]) => `<button class="approved-sheet-card" type="button" data-approved-action="${escapeHtml(action)}"><strong>${escapeHtml(titleText)}</strong><small>${escapeHtml(note)}</small></button>`).join("");
-      $("approvedSheetWrap").hidden = false;
-      frontendState.modal = `approved:${name}`;
+      contentNode.className = contentClass;
+      contentNode.innerHTML = content;
+      overlay.hidden = false;
+      overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden", "false");
+      sheet?.classList.add("open");
+      document.body.classList.add("approved-sheet-open");
+      activeSheetMode = mode;
+      frontendState.modal = `approved:${mode}`;
+      $("approvedSheetScroll").scrollTop = 0;
+    }
+
+    function openApprovedSheet(name, rows) {
+      return openGameSheet({mode:name === "Герой" ? "hero" : String(name || "section").toLowerCase(), title:name, content:rows.map(([titleText, note, action]) => `<button class="approved-sheet-card" type="button" data-approved-action="${escapeHtml(action)}"><strong>${escapeHtml(titleText)}</strong><small>${escapeHtml(note)}</small></button>`).join("")});
     }
 
     function openApprovedHeroSheet(tab = "inventory") {
@@ -6944,7 +6958,13 @@ id="companionSummonChances"
     }
 
     function closeApprovedSheet() {
-      $("approvedSheetWrap").hidden = true;
+      const overlay = $("approvedSheetWrap");
+      overlay.hidden = true;
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.querySelector(".approved-sheet")?.classList.remove("open");
+      document.body.classList.remove("approved-sheet-open");
+      activeSheetMode = null;
       frontendState.modal = null;
     }
 
@@ -7009,8 +7029,10 @@ id="companionSummonChances"
       setText("approvedPlayerName", player.first_name || player.name || "Игрок");
       setText("approvedPlayerLevel", `ур. ${player.level || 1}`);
       setText("approvedPower", `Сила ${formatNumber(player.power || 0)}`);
-      setText("approvedHeroHp", formatNumber(player.hero_hp || 0)); setText("approvedHeroMaxHp", formatNumber(player.hero_max_hp || 0));
-      $("approvedHeroHpBar").style.width = `${approvedPercent(player.hero_hp, player.hero_max_hp)}%`;
+     setText("approvedHeroHp", formatNumber(player.hero_hp || 0)); setText("approvedHeroMaxHp", formatNumber(player.hero_max_hp || 0));
+     $("approvedHeroHpBar").style.width = `${approvedPercent(player.hero_hp, player.hero_max_hp)}%`;
+      const heroExpCurrent = Number(player.hero_experience_current ?? player.level_exp?.current ?? 0); const heroExpRequired = Number(player.hero_experience_required ?? player.level_exp?.required ?? 0);
+      setText("approvedHeroExp", formatNumber(heroExpCurrent)); setText("approvedHeroExpRequired", formatNumber(heroExpRequired)); $("approvedHeroExpBar").style.width = `${approvedPercent(heroExpCurrent, heroExpRequired)}%`;
       setText("approvedGold", formatNumber(player.gold || 0)); setText("approvedCrystals", formatNumber(player?.progression_resources?.premium_crystals ?? player.gems ?? 0));
       setText("approvedEnemyName", player.enemy_name || currentMonster?.name || "Враг"); setText("approvedEnemyHp", formatNumber(player.enemy_hp || 0)); setText("approvedEnemyMaxHp", formatNumber(player.enemy_max_hp || 0));
       $("approvedEnemyHpBar").style.width = `${approvedPercent(player.enemy_hp, player.enemy_max_hp)}%`;
@@ -7022,9 +7044,10 @@ id="companionSummonChances"
       $("approvedEnemySprite").src = currentMonster?.idle || elements.enemySprite.src; $("approvedEnemySprite").alt = player.enemy_name || currentMonster?.name || "Враг";
       $("approvedHeroSprite").src = HERO_ASSETS.idle; $("approvedHeroSprite").alt = player.first_name || "Герой";
       setText("approvedChestLevel", player.chest_level || 1); setText("approvedChestCount", formatNumber(player.chests || 0));
-      const loot = player.loot_progression || {}; $("approvedChestXp").style.width = `${approvedPercent(loot.chest_xp_current ?? player.chest_xp, loot.chest_xp_required ?? player.chest_xp_required)}%`;
-      $("approvedPendingBadge").hidden = !player.pending_loot; $("approvedChestOpen").disabled = Boolean(player.pending_loot) || Number(player.chests || 0) <= 0 || Boolean(loot.inventory_full);
-      const chestAuto = Boolean(Number(player.auto_open_enabled)); $("approvedChestAuto").classList.toggle("active", chestAuto); $("approvedChestAuto").setAttribute("aria-pressed", String(chestAuto));
+      const loot = player.loot_progression || {}; setText("approvedChestGoldCost", `🪙 ${formatNumber(loot.chest_upgrade_gold_cost || 0)}`);
+      const upgradeReady = Boolean(loot.chest_upgrade_ready ?? player.chest_upgrade_ready); $("approvedChestUpgradeBadge").hidden = !upgradeReady; $("approvedChestUpgrade").disabled = !upgradeReady;
+      $("approvedPendingBadge").hidden = !player.pending_loot; $("approvedChestOpen").disabled = chestOpenInProgress || (!player.pending_loot && Number(player.chests || 0) <= 0); $("approvedChestOpen").textContent = player.pending_loot ? "Решить" : "Открыть"; $("approvedChestOpen").title = player.pending_loot ? "Сначала наденьте или продайте найденную вещь" : "Открыть сундук";
+      const chestAuto = Boolean(Number(player.auto_open_enabled)); const autoPaused = chestAuto && (Boolean(player.pending_loot) || autoRequestInProgress || Number(player.chests || 0) <= 0 || Boolean(autoOpenError)); $("approvedChestAuto").classList.toggle("active", chestAuto && !autoPaused); $("approvedChestAuto").classList.toggle("paused", autoPaused); $("approvedChestAuto").setAttribute("aria-pressed", String(chestAuto)); const autoLabel = !chestAuto ? "Выкл." : player.pending_loot ? "Найден предмет" : autoPaused ? "Пауза" : "Работает"; setText("approvedChestAutoState", autoLabel);
       renderApprovedSkills(); renderApprovedEquipment();
       const ticker = approvedTickerState(); setText("approvedTickerCopy", ticker.text); setText("approvedTickerBadge", ticker.badge); $("approvedTicker").dataset.approvedAction = ticker.action;
     }
@@ -7035,6 +7058,11 @@ id="companionSummonChances"
     let respawnTimer = null;
     let autoOpenTimer = null;
     let autoRequestInProgress = false;
+   let chestOpenInProgress = false;
+   let autoToggleInProgress = false;
+    let autoOpenError = "";
+    let shownPendingLootId = null;
+    let activeSheetMode = null;
     let attackCounter = 0;
     let pendingPlayerAfterDefeat = null;
 
@@ -7116,7 +7144,7 @@ id="companionSummonChances"
       const copy = {
         skills:["Навыки", "Уровни, ранги, звёзды и активные слоты."],
         companions:["Спутники", "Команда, фрагменты, ранги и эффекты."],
-        chest:["Сундук", "Прогресс сундука, опыт и доступное улучшение."],
+        chest:["Сундук", "Улучшение за золото повышает качество будущего лута."],
         awakening:["Пробуждение", "Доступные узлы открываются в детальной панели."]
       }[tab];
       $("progressionSummary").innerHTML = `<h3>${copy[0]}</h3><p>${copy[1]}</p>`;
@@ -7131,7 +7159,7 @@ id="companionSummonChances"
         ["♻️", "Пыль разбора", loot.salvage_dust], ["⛏️", "Руда улучшения", resources.refinement_ore],
         ["📚", "Тома навыков", resources.skill_tomes], ["🐾", "Эссенция спутников", resources.companion_essence],
         ["📜", "Свитки призыва", resources.summon_scrolls], ["📨", "Контракты призыва", resources.summon_contracts],
-        ["🧰", "Опыт сундука", loot.chest_xp_current], ["🎒", "Вместимость", `${loot.inventory_count || 0}/${loot.inventory_capacity || 50}`]
+        ["🧰", "Уровень сундука", player?.chest_level], ["🎒", "Вместимость", `${loot.inventory_count || 0}/${loot.inventory_capacity || 50}`]
       ];
       $("resourceDrawerGrid").innerHTML = rows.map(([icon,label,value]) => `<div class="resource-tile"><span>${icon} ${label}</span><strong>${typeof value === "string" ? value : formatNumber(value || 0)}</strong></div>`).join("");
     }
@@ -7283,7 +7311,10 @@ id="companionSummonChances"
         }
 
         if (!response.ok) {
-          throw new Error(data.detail || "Ошибка сервера");
+          const error = new Error(`HTTP ${response.status}: ${data.detail || "Ошибка сервера"}`);
+          error.status = response.status;
+          error.detail = data.detail || "Ошибка сервера";
+          throw error;
         }
         document.body.classList.remove("api-error");
         return data;
@@ -7420,12 +7451,10 @@ id="companionSummonChances"
       setText("companionEssence", formatNumber(resources.companion_essence || 0));
       setText("premiumCrystals", formatNumber(resources.premium_crystals || 0));
       setText("inventoryCapacityText", `${lootProgress.inventory_count || 0} / ${lootProgress.inventory_capacity || 50}`);
-      const required = Number(lootProgress.chest_xp_required || 0);
-      const step = Number(lootProgress.chest_xp_current || 0);
+      const required = Number(lootProgress.chest_upgrade_gold_cost || 0);
       const maxed = Number(player.chest_level) >= Number(player.chest_max_level);
-      setText("chestUpgradeText", maxed ? "Максимальный уровень" : `Опыт сундука ${step}/${required}`);
-      $("chestUpgradeBar").style.width = maxed ? "100%" : `${required ? Math.min(100, step / required * 100) : 0}%`;
-      setText("chestUpgradeCost", maxed ? "Сундук полностью улучшен" : lootProgress.chest_upgrade_ready ? "Улучшение готово" : "Открывайте и разбирайте предметы");
+      setText("chestUpgradeText", maxed ? "Максимальный уровень" : `Уровень ${player.chest_level} → ${Number(player.chest_level) + 1}. Повышается качество будущего лута.`);
+      setText("chestUpgradeCost", maxed ? "Сундук полностью улучшен" : `Стоимость: ${formatNumber(required)} золота · у вас ${formatNumber(player.gold || 0)}`);
       $("openChestButton").disabled = Number(player.chests) <= 0 || Boolean(player.pending_loot);
       $("upgradeChestButton").disabled = maxed || !lootProgress.chest_upgrade_ready;
       $("upgradeChestButton").textContent = maxed ? "МАКС. УРОВЕНЬ" : "УЛУЧШИТЬ";
@@ -7435,6 +7464,13 @@ id="companionSummonChances"
         const row = document.createElement("div"); row.className = "rarity-row";
         row.innerHTML = `<span style="color:${RARITY_COLORS[key] || '#fff'}">${RARITY_NAMES[key] || key}</span><strong>${chance}%</strong>`;
         rarityBox.appendChild(row);
+      });
+      const nextRarityBox = $("nextRarityChances"); nextRarityBox.innerHTML = "";
+      Object.entries(player.next_chest_rarity_chances || {}).forEach(([key, chance]) => {
+        if (Number(chance) <= 0) return;
+        const row = document.createElement("div"); row.className = "rarity-row";
+        row.innerHTML = `<span style="color:${RARITY_COLORS[key] || '#fff'}">${RARITY_NAMES[key] || key}</span><strong>${chance}%</strong>`;
+        nextRarityBox.appendChild(row);
       });
       const inventoryBox = $("inventoryLootList");
       inventoryBox.innerHTML = (player.inventory || []).map((item) => `<div class="rarity-row" style="opacity:${item.locked || item.comparison?.is_improvement ? .55 : 1}"><span>${item.locked ? "🔒 " : ""}${escapeHtml(item.name || "Предмет")}</span><strong>♻️ ${formatNumber(item.salvage_value?.dust || 0)}</strong></div>`).join("") || "Инвентарь пуст";
@@ -7649,6 +7685,8 @@ id="companionSummonChances"
       setNavBadge("battle", player.boss_button_visible ? 1 : 0);
       if (frontendState.activeScreen === "equipment") renderEquipmentHub();
       renderApprovedBattleShell();
+      console.debug("[loot] pending from player", player.pending_loot);
+      if (player.pending_loot) showPendingLoot(player.pending_loot);
       scheduleAutoOpen();
     }
 
@@ -7898,6 +7936,59 @@ id="companionSummonChances"
       card.querySelector("strong").textContent = emptySlot ? `${delta >= 0 ? '+' : ''}${formatNumber(delta)}` : `${formatNumber(data?.old)} → ${formatNumber(data?.new)}`;
       card.querySelector("small").textContent = `${delta > 0 ? '+' : ''}${formatNumber(delta)}`;
     }
+    function pendingLootFrom(payload) { return payload?.pending_loot || payload?.item || null; }
+    function pendingLootUiId(item) { return String(item?.item_id || item?.id || `${item?.slot || "item"}:${item?.name || "pending"}`); }
+    const PENDING_STAT_NAMES = Object.freeze({
+      attack_speed:"Скорость атаки", crit_chance:"Шанс критического удара", crit_damage:"Критический урон",
+      skill_damage:"Урон навыков", companion_damage:"Урон спутников", boss_damage:"Урон боссам",
+      incoming_damage_reduction:"Снижение входящего урона", healing_bonus:"Бонус лечения", dodge_chance:"Уклонение",
+      combo_chance:"Комбо", counter_chance:"Контратака", physical_penetration:"Пробивание физической защиты",
+      nature_penetration:"Пробивание защиты природы", poison_penetration:"Пробивание защиты от яда",
+      arcane_penetration:"Пробивание магической защиты"
+    });
+    function pendingNumber(value, percent = false) {
+      const number = Number(value || 0);
+      const rendered = new Intl.NumberFormat("ru-RU", {maximumFractionDigits:percent ? 1 : 2}).format(number);
+      return `${rendered}${percent ? "%" : ""}`;
+    }
+    function pendingComparisonRow(label, oldValue, newValue, {percent = false} = {}) {
+      const oldNumber = Number(oldValue || 0); const newNumber = Number(newValue || 0); const delta = newNumber - oldNumber;
+      const tone = delta > 0 ? "better" : delta < 0 ? "worse" : "same";
+      return `<div class="approved-pending-row"><span class="approved-pending-label">${escapeHtml(label)}</span><span class="approved-pending-old">${pendingNumber(oldNumber, percent)} <i class="approved-pending-arrow">→</i></span><strong class="approved-pending-new">${pendingNumber(newNumber, percent)}</strong><span class="approved-pending-delta ${tone}">${delta > 0 ? "+" : ""}${pendingNumber(delta, percent)}</span></div>`;
+    }
+    function showPendingLoot(item, {comparison = player?.pending_loot_comparison, force = false} = {}) {
+      console.debug("[loot] showPendingLoot called", item?.item_id || item?.id);
+      const overlay = $("approvedSheetWrap");
+      const sheet = overlay?.querySelector(".approved-sheet");
+      const contentNode = $("approvedSheetContent");
+      console.debug("[loot] pending sheet nodes", {overlay:Boolean(overlay), sheet:Boolean(sheet), content:Boolean(contentNode)});
+      if (!item || !overlay || !sheet || !contentNode) return;
+      const itemId = pendingLootUiId(item);
+      if (!force && shownPendingLootId === itemId) return;
+      comparison = comparison || {};
+      const power = comparison.power || {};
+      const powerDelta = Number(power.delta ?? comparison.bm_difference ?? 0);
+      const oldPower = power.old ?? comparison.old_bm ?? player?.power ?? 0; const newPower = power.new ?? comparison.new_bm ?? oldPower;
+      const equipped = comparison.equipped_item || {}; const rows = [pendingComparisonRow("Боевая мощь", oldPower, newPower)];
+      if (comparison.damage || Object.hasOwn(item, "damage")) rows.push(pendingComparisonRow("Урон", comparison.damage?.old ?? equipped.damage, comparison.damage?.new ?? item.damage));
+      if (comparison.hp || Object.hasOwn(item, "hp")) rows.push(pendingComparisonRow("Здоровье", comparison.hp?.old ?? equipped.hp, comparison.hp?.new ?? item.hp));
+      const rawPower = Number(comparison.raw_power ?? item.raw_power ?? item.power ?? 0); const equippedRawPower = Number(comparison.equipped_raw_power ?? equipped.raw_power ?? equipped.power ?? 0);
+      if (rawPower !== Number(newPower)) rows.push(pendingComparisonRow("Сила предмета", equippedRawPower, rawPower));
+      const secondaryPublic = Array.isArray(item.secondary_stats_public) ? item.secondary_stats_public : Object.entries(item.secondary_stats || {}).map(([key, value]) => ({key, value}));
+      const equippedSecondary = equipped.secondary_stats || {};
+      secondaryPublic.forEach(stat => rows.push(pendingComparisonRow(PENDING_STAT_NAMES[stat.key] || player?.secondary_stat_catalog?.[stat.key]?.name || "Дополнительная характеристика", equippedSecondary[stat.key], stat.value, {percent:true})));
+      const secondaryDetails = secondaryPublic.map(stat => `${PENDING_STAT_NAMES[stat.key] || player?.secondary_stat_catalog?.[stat.key]?.name || "Дополнительная характеристика"}: ${stat.formatted || stat.formatted_value || pendingNumber(stat.value, true)}`).join(" · ") || "Нет";
+      const rarityName = RARITY_NAMES[item.rarity] || "Предмет"; const slotName = SLOT_NAMES[item.slot] || item.slot_name || "Слот";
+      const profileNames = {damage:"Урон", defense:"Защита", balanced:"Баланс"}; const profileName = profileNames[comparison.comparison_profile || player?.comparison_profile] || "Баланс";
+      const buildOld = comparison.equipped_build_score ?? 0; const buildNew = comparison.build_score ?? item.build_score ?? 0; const buildRow = pendingComparisonRow("Оценка сборки", buildOld, buildNew);
+      const gainTone = powerDelta > 0 ? "" : powerDelta < 0 ? " worse" : " same";
+      const details = `<div class="approved-pending-details" data-pending-details hidden>${buildRow}<div class="approved-pending-detail"><span>Дополнительные характеристики</span><span>${escapeHtml(secondaryDetails)}</span></div><div class="approved-pending-detail"><span>Профиль сравнения</span><span>${escapeHtml(profileName)}</span></div><div class="approved-pending-detail"><span>Уровень сундука при находке</span><span>${item.chest_level_found == null ? "—" : formatNumber(item.chest_level_found)}</span></div><div class="approved-pending-detail"><span>Редкость</span><span>${escapeHtml(rarityName)}</span></div><div class="approved-pending-detail"><span>Надето</span><span>${escapeHtml(comparison.equipped_item_name || "Пустой слот")}</span></div></div>`;
+      const content = `<div class="approved-pending-hero"><span class="approved-pending-icon">${escapeHtml(item.icon || "🧰")}</span><div class="approved-pending-name"><strong>${escapeHtml(item.name || "Предмет")}</strong><small style="color:${escapeHtml(RARITY_COLORS[item.rarity] || "#fff")}">${escapeHtml(rarityName)} · ${escapeHtml(slotName)}</small></div><span class="approved-pending-gain${gainTone}">БМ ${powerDelta > 0 ? "+" : ""}${formatNumber(powerDelta)}</span></div><div class="approved-pending-rows">${rows.join("")}</div><div class="approved-pending-sale"><span>Цена продажи</span><strong>${formatNumber(item.sell_price || 0)} золота</strong></div><button class="approved-pending-details-toggle" data-pending-action="details" type="button" aria-expanded="false">Подробнее ∨</button>${details}`;
+      const actions = `<div class="approved-skill-action-row"><button class="approved-skill-action${powerDelta > 0 ? " pending-equip-improvement" : ""}" data-pending-action="equip" type="button">Надеть</button><button class="approved-skill-action pending-sell" data-pending-action="sell" type="button">Продать · ${formatNumber(item.sell_price || 0)}</button></div>`;
+      shownPendingLootId = itemId;
+      openGameSheet({mode:"pending-loot", title:"Найден предмет", content, actions, contentClass:"approved-pending-loot"});
+      console.debug("[loot] sheet opened", {mode:activeSheetMode, hidden:overlay.hidden, ariaHidden:overlay.getAttribute("aria-hidden")});
+    }
     function showLootModal(loot = player?.pending_loot, comparison = player?.pending_loot_comparison) {
       if (!loot) return;
       comparison = comparison || player?.pending_loot_comparison || {};
@@ -7930,34 +8021,49 @@ id="companionSummonChances"
             return `<div class="${delta > 0 ? "better" : delta < 0 ? "worse" : "equal"}">${escapeHtml(stat.name)}: ${escapeHtml(stat.formatted)}${escapeHtml(deltaText)}</div>`;
           }).join("")
         : "Вторичные характеристики: нет";
-      const salvage = loot.salvage_value || {};
-      const reroll = loot.reroll_cost || {};
-      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} • Разбор: ${formatNumber(salvage.dust || 0)} пыли • Переработок: ${Number(loot.reroll_count || 0)} • Цена: ${formatNumber(reroll.dust || 0)} пыли / ${formatNumber(reroll.ore ?? reroll.crystals ?? 0)} руды улучшения.`);
-      $("sellLootButton").textContent = `ПРОДАТЬ +${formatNumber(loot.sell_price)}`;
-      $("lockLootButton").textContent = loot.locked ? "🔒 РАЗБЛОКИРОВАТЬ" : "🔓 ЗАБЛОКИРОВАТЬ";
-      $("salvageLootButton").disabled = Boolean(loot.locked);
-      $("rerollLootButton").disabled = !loot.can_reroll && !secondary.length;
-      $("rerollStatSelect").innerHTML = secondary.map((stat) => `<option value="${escapeHtml(stat.key)}">${escapeHtml(stat.name)}</option>`).join("");
+      const mainStats = loot.main_stats || loot.primary_stats || {power: loot.power};
+      setText("lootMainStats", "Основные: " + Object.entries(mainStats).map(([key, value]) => `${key}: ${formatNumber(value)}`).join(" · "));
+      setText("lootMeta", `${loot.slot_name || SLOT_NAMES[loot.slot] || ''} • Продажа: ${formatNumber(loot.sell_price)} золота`);
+    $("sellLootButton").textContent = `ПРОДАТЬ +${formatNumber(loot.sell_price)}`;
       modalShow("lootOverlay");
     }
     async function setComparisonProfile(profile) {
       try {
         player = await apiRequest(`/equipment/comparison-profile?profile=${encodeURIComponent(profile)}`, "POST");
         renderPlayer();
-        if (player.pending_loot) showLootModal();
+        if (player.pending_loot) showPendingLoot(player.pending_loot, {comparison:player.pending_loot_comparison, force:true});
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
-    async function openChest() {
-      $("openChestButton").disabled = true;
-      try {
-        const result = await apiRequest("/loot/open", "POST"); player = result; renderPlayer(); setMessage(result.message);
-        if (result.loot || result.pending_loot) { modalHide("chestModal"); showLootModal(result.loot || result.pending_loot, result.comparison || result.pending_loot_comparison); }
-      } catch (error) { setMessage(`❌ ${error.message}`, true); }
-      finally { renderChestModal(); }
+  async function openChest() {
+      console.debug("[chest] open requested", {chests: Number(player?.chests || 0), pending: Boolean(player?.pending_loot), busy: chestOpenInProgress});
+     if (chestOpenInProgress) return;
+     if (player?.pending_loot) { showPendingLoot(player.pending_loot, {comparison:player.pending_loot_comparison, force:true}); return; }
+     chestOpenInProgress = true; $("openChestButton").disabled = true; $("approvedChestOpen").disabled = true; $("approvedChestBar").classList.add("busy", "opening");
+    try {
+       const result = await apiRequest("/loot/open", "POST", {client_action_id: crypto.randomUUID()}); const pending = pendingLootFrom(result); if (pending && !result.pending_loot) result.pending_loot = pending; console.debug("[loot] pending from open", pending); player = result; renderPlayer(); setMessage(result.message);
+       if (result.pending_exists) showToast("Сначала решите судьбу найденного предмета", "warning");
+        if (pending) { modalHide("chestModal"); showPendingLoot(pending, {comparison:result.pending_loot_comparison || result.comparison}); showToast(`Получен предмет · +${formatNumber(result.hero_exp_gained || 0)} опыта`, "success"); }
+      } catch (error) { console.error("[chest] open failed", {status:error.status, detail:error.detail, error}); setMessage(`❌ ${error.message}`, true); showToast(`Сундук: ${error.message}. Повторите попытку.`, "error"); }
+     finally { chestOpenInProgress = false; $("approvedChestBar").classList.remove("busy", "opening"); renderChestModal(); renderApprovedBattleShell(); }
+   }
+    async function handleChestPrimaryAction(event) {
+      event.stopPropagation();
+      if (player?.pending_loot) return showPendingLoot(player.pending_loot, {comparison:player.pending_loot_comparison, force:true});
+      if ($("approvedChestOpen").textContent.trim() === "Решить") {
+        try { player = await apiRequest("/player"); renderPlayer(); if (player.pending_loot) return showPendingLoot(player.pending_loot, {comparison:player.pending_loot_comparison, force:true}); }
+        catch (error) { showToast(`Не удалось обновить предмет: ${error.message}`, "error"); return; }
+        showToast("Предмет для решения больше не найден", "warning");
+        return;
+      }
+      return openChest();
     }
-    async function upgradeChest() {
-      $("upgradeChestButton").disabled = true;
-      try { const result = await apiRequest("/chest/upgrade", "POST", {client_action_id: crypto.randomUUID()}); player = await apiRequest("/player"); renderPlayer(); setMessage(result.transaction_completed ? `⬆️ Сундук улучшен до ${result.new_level} уровня` : "Недостаточно опыта сундука"); }
+    async function upgradeChest(confirmed = false) {
+      console.debug("[chest] upgrade requested", {confirmed, level: Number(player?.chest_level || 1)});
+      const loot = player?.loot_progression || {}; const oldLevel = Number(player?.chest_level || 1); const gold = Number(player?.gold || 0); const required = Number(loot.chest_upgrade_gold_cost || 0);
+      if (!(loot.chest_upgrade_ready ?? player?.chest_upgrade_ready)) { showToast(`Недостаточно золота: ${formatNumber(gold)} / ${formatNumber(required)} (не хватает ${formatNumber(Math.max(0, required - gold))})`, "warning"); return; }
+      if (!confirmed) return confirmAction("Улучшить сундук?", `Уровень ${oldLevel} → ${oldLevel + 1}. Цена: ${formatNumber(required)} золота, останется ${formatNumber(Math.max(0, gold - required))}. Повышается качество будущего лута.`, () => upgradeChest(true));
+     $("upgradeChestButton").disabled = true;
+      try { const result = await apiRequest("/chest/upgrade", "POST", {client_action_id: crypto.randomUUID(), expected_level: oldLevel}); player = await apiRequest("/player"); renderPlayer(); setMessage(result.transaction_completed ? `⬆️ Сундук улучшен до ${result.new_level} уровня за ${formatNumber(result.gold_spent)} золота` : "Недостаточно золота"); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
       finally { renderChestModal(); }
     }
@@ -7985,12 +8091,18 @@ id="companionSummonChances"
       try { const result = await apiRequest("/inventory/salvage-bulk", "POST", {max_rarity:threshold, exclude_locked:true, exclude_build_upgrades:true}); player = await apiRequest("/player"); renderPlayer(); renderChestModal(); setMessage(`♻️ Разобрано: ${result.salvaged_count}, пыль: +${result.total_dust}`); }
       catch (error) { setMessage(`❌ ${error.message}`, true); }
     }
-    async function resolveLoot(path) {
-      $("equipLootButton").disabled = true; $("sellLootButton").disabled = true;
-      try {
-        player = await apiRequest(path, "POST"); renderPlayer(); modalHide("lootOverlay"); setMessage(player.message); scheduleAutoOpen(450);
-      } catch (error) { setMessage(`❌ ${error.message}`, true); }
+  async function resolveLoot(path) {
+     $("equipLootButton").disabled = true; $("sellLootButton").disabled = true;
+     try {
+        player = await apiRequest(path, "POST", {client_action_id: crypto.randomUUID()}); shownPendingLootId = null; if (activeSheetMode === "pending-loot") closeApprovedSheet(); modalHide("lootOverlay"); renderPlayer(); setMessage(player.message); showToast(player.message || "Предмет обработан", "success"); scheduleAutoOpen(450);
+      } catch (error) { setMessage(`❌ ${error.message}`, true); showToast(error.message, "error"); }
       finally { $("equipLootButton").disabled = false; $("sellLootButton").disabled = false; }
+   }
+
+    function sellCurrentLoot(confirmed = false) {
+      const item = player?.pending_loot; if (!item) return;
+      if (!confirmed) return confirmAction("Продать предмет?", `${item.name || "Предмет"}: получите ${formatNumber(item.sell_price || 0)} золота.`, () => sellCurrentLoot(true));
+      resolveLoot("/loot/sell");
     }
 
     function scheduleAutoOpen(delay = 700) {
@@ -7998,23 +8110,30 @@ id="companionSummonChances"
       if (!player || !Number(player.auto_open_enabled) || Number(player.chests) <= 0 || player.pending_loot || document.hidden) return;
       autoOpenTimer = setTimeout(autoOpenOnce, delay);
     }
-    async function autoOpenOnce() {
-      if (autoRequestInProgress || !player || !Number(player.auto_open_enabled) || player.pending_loot || Number(player.chests) <= 0) return;
-      autoRequestInProgress = true;
-      try {
-        const result = await apiRequest("/loot/auto/open", "POST"); player = result; renderPlayer(); setMessage(result.message);
-        if (result.pending_loot || (result.opened && !result.auto_sold)) showLootModal(result.loot || result.pending_loot, result.comparison || result.pending_loot_comparison);
-      } catch (error) { setMessage(`❌ ${error.message}`, true); }
-      finally { autoRequestInProgress = false; scheduleAutoOpen(); }
-    }
-    async function toggleAuto() {
-      elements.autoToggle.disabled = true;
-      try {
-        const enable = !Number(player?.auto_open_enabled);
+   async function autoOpenOnce() {
+     if (autoRequestInProgress || !player || !Number(player.auto_open_enabled) || player.pending_loot || Number(player.chests) <= 0) return;
+     autoRequestInProgress = true;
+      let shouldContinue = false;
+    try {
+      const result = await apiRequest("/loot/auto/open", "POST"); const pending = pendingLootFrom(result); if (pending && !result.pending_loot) result.pending_loot = pending; player = result; renderPlayer(); setMessage(result.message);
+       autoOpenError = ""; if (pending) showPendingLoot(pending, {comparison:result.pending_loot_comparison || result.comparison});
+        shouldContinue = !pending && !result.paused;
+      } catch (error) { autoOpenError = error.message; setMessage(`❌ ${error.message}`, true); showToast("Автосундук: ошибка API", "error"); }
+      finally { autoRequestInProgress = false; renderApprovedBattleShell(); if (shouldContinue) scheduleAutoOpen(); }
+   }
+   async function toggleAuto() {
+      console.debug("[chest] auto toggle requested", {enabled: Boolean(Number(player?.auto_open_enabled))});
+      if (autoToggleInProgress) return;
+      autoToggleInProgress = true;
+     elements.autoToggle.disabled = true;
+      $("approvedChestAuto").disabled = true;
+     try {
+       const enable = !Number(player?.auto_open_enabled);
+        autoOpenError = "";
         player = await apiRequest(enable ? "/loot/auto/enable" : "/loot/auto/disable", "POST");
         renderPlayer(); setMessage(player.message); if (enable) scheduleAutoOpen(250); else clearTimeout(autoOpenTimer);
       } catch (error) { setMessage(`❌ ${error.message}`, true); }
-      finally { elements.autoToggle.disabled = false; }
+      finally { autoToggleInProgress = false; elements.autoToggle.disabled = false; $("approvedChestAuto").disabled = false; }
     }
 
     async function usePoisonCloud() {
@@ -10262,9 +10381,7 @@ id="companionSummonChances"
 
         preloadOtherAssetsInBackground();
 
-        if (player.pending_loot) {
-          showLootModal();
-        }
+        if (player.pending_loot) showPendingLoot(player.pending_loot);
 
         showOfflineIfAvailable();
 
@@ -10391,15 +10508,13 @@ id="companionSummonChances"
     $("chestModalClose").addEventListener("click", () => modalHide("chestModal"));
     $("openChestButton").addEventListener("click", openChest);
     $("upgradeChestButton").addEventListener("click", upgradeChest);
-    $("lootModalClose").addEventListener("click", () => { if (!player?.pending_loot) modalHide("lootOverlay"); else setMessage("Сначала наденьте или продайте предмет", true); });
+    $("lootModalClose").addEventListener("click", () => { modalHide("lootOverlay"); if (player?.pending_loot) { setMessage("Сначала наденьте или продайте найденную вещь", true); renderApprovedBattleShell(); } });
     $("equipLootButton").addEventListener("click", () => resolveLoot("/loot/equip"));
     document.querySelectorAll("[data-comparison-profile]").forEach((button) => {
       button.addEventListener("click", () => setComparisonProfile(button.dataset.comparisonProfile));
     });
-    $("sellLootButton").addEventListener("click", () => resolveLoot("/loot/sell"));
-    $("salvageLootButton").addEventListener("click", salvageCurrentLoot);
-    $("lockLootButton").addEventListener("click", lockCurrentLoot);
-    $("rerollLootButton").addEventListener("click", rerollCurrentLoot);
+    $("sellLootButton").addEventListener("click", () => sellCurrentLoot());
+    $("lootDetailsButton").addEventListener("click", () => $("lootResultCard").classList.toggle("details-open"));
     $("bulkSalvageButton").addEventListener("click", bulkSalvage);
     elements.autoToggle.addEventListener("click", toggleAuto);
     $("normalAttackButton").addEventListener("click", () => performAttack());
@@ -10460,6 +10575,7 @@ id="companionSummonChances"
         stopChestBossFight();
         clearTimeout(autoOpenTimer);
       } else {
+        apiRequest("/player").then((freshPlayer) => { player = freshPlayer; renderPlayer(); if (player.pending_loot) showPendingLoot(player.pending_loot, {comparison:player.pending_loot_comparison, force:true}); }).catch((error) => console.debug("[loot] resume refresh failed", error));
         syncBattleState();
         scheduleAutoOpen(300);
 
@@ -10547,11 +10663,10 @@ id="companionSummonChances"
       equipApprovedSkill(skillId, slot);
     });
     $("approvedSheetWrap").addEventListener("click", event => { if (event.target === $("approvedSheetWrap")) closeApprovedSheet(); });
-    $("approvedChestInfo").addEventListener("click", () => $("lootButton").click());
-    $("approvedInventory").addEventListener("click", () => $("lootButton").click());
-    $("approvedChestOpen").addEventListener("click", () => player?.pending_loot ? showLootModal() : openChest());
-    $("approvedPendingBadge").addEventListener("click", () => showLootModal());
-    $("approvedChestAuto").addEventListener("click", toggleAuto);
+    $("approvedChestInfo").addEventListener("click", (event) => { event.stopPropagation(); openChest(); });
+    $("approvedChestOpen").addEventListener("click", handleChestPrimaryAction);
+    $("approvedChestUpgrade").addEventListener("click", (event) => { event.stopPropagation(); upgradeChest(); });
+    $("approvedChestAuto").addEventListener("click", (event) => { event.stopPropagation(); toggleAuto(); });
     $("approvedSkillDock").addEventListener("click", event => {
       const skill = event.target.closest("[data-approved-skill]");
       if (skill && !skill.disabled) return useBattleSkill(String(skill.dataset.approvedSkill || ""));
@@ -10568,9 +10683,8 @@ id="companionSummonChances"
         [item.name || SLOT_NAMES[slot], `${RARITY_NAMES[item.rarity] || item.rarity || "Предмет"} · ${SLOT_NAMES[slot]}`,"noop"],
         ["Основные stats", `Урон +${formatNumber(item.damage || 0)} · HP +${formatNumber(item.hp || 0)}`,"noop"],
         ["Вторичные stats", secondary,"noop"],
-        ["Raw power / build score", `${formatNumber(item.power || 0)} / ${formatNumber(item.build_score ?? item.comparison?.build_score ?? 0)}`,"noop"],
-        [item.locked ? "Разблокировать / управление" : "Заблокировать / управление","Lock, reroll, unequip и сравнение","inventory"]
-      ] : [[SLOT_NAMES[slot],"Слот пуст","noop"],["Открыть инвентарь","Выбрать предмет для экипировки","inventory"]];
+        ["Raw power / build score", `${formatNumber(item.power || 0)} / ${formatNumber(item.build_score ?? item.comparison?.build_score ?? 0)}`,"noop"]
+      ] : [[SLOT_NAMES[slot],"Слот пуст","noop"]];
       openApprovedSheet("Экипировка", rows);
     });
     $("approvedTicker").addEventListener("click", event => {
@@ -10611,6 +10725,22 @@ id="companionSummonChances"
       if (action === "growth") { $("growthCenterModal").classList.remove("hidden"); return refreshGrowthCenter().catch(error => showToast(error.message,"error")); }
       if (action === "resources") return $("resourceDrawerOpen").click();
       if (action === "settings") return $("settingsButton").click();
+    });
+    $("approvedSkillActions").addEventListener("click", event => {
+      const action = event.target.closest("[data-pending-action]")?.dataset.pendingAction;
+      if (!action || activeSheetMode !== "pending-loot") return;
+      if (action === "equip") return resolveLoot("/loot/equip");
+      if (action === "sell") return sellCurrentLoot();
+      if (action === "details") { const details = $("approvedSheetContent").querySelector("[data-pending-details]"); if (details) { details.hidden = !details.hidden; const button = event.target.closest('[data-pending-action="details"]'); button?.setAttribute("aria-expanded", String(!details.hidden)); if (button) button.textContent = details.hidden ? "Подробнее ∨" : "Скрыть ∧"; } }
+    });
+    $("approvedSheetContent").addEventListener("click", event => {
+      const button = event.target.closest('[data-pending-action="details"]');
+      if (!button || activeSheetMode !== "pending-loot") return;
+      const details = $("approvedSheetContent").querySelector("[data-pending-details]");
+      if (!details) return;
+      details.hidden = !details.hidden;
+      button.setAttribute("aria-expanded", String(!details.hidden));
+      button.textContent = details.hidden ? "Подробнее ∨" : "Скрыть ∧";
     });
     $("approvedSkillActions").addEventListener("click", async event => {
       const action = event.target.closest("[data-approved-skill-action]")?.dataset.approvedSkillAction; if (!action || !approvedSelectedSkillId) return;
@@ -11318,7 +11448,7 @@ id="companionSummonChances"
     // Offline/summon values are rendered exactly as returned by the server.
     let summonBanner = "skill_standard";
     let summonPublicStatus = null;
-    const rewardText = rewards => Object.entries(rewards || {}).filter(([key, value]) => key !== "reward_units" && value)
+    const rewardText = rewards => Object.entries(rewards || {}).filter(([key, value]) => key !== "reward_units" && key !== "chest_xp" && !key.endsWith("_deprecated") && value)
       .map(([key, value]) => `${key}: +${value}`).join(" · ") || "Пока пусто";
     const openProgression = panel => {
       $("progressionModal").classList.remove("hidden");

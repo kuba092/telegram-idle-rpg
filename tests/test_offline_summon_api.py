@@ -64,7 +64,7 @@ class OfflineSummonApiIntegrationTest(unittest.TestCase):
 
     def offline_snapshot(self):
         player = self.load()
-        keys = ("gold", "salvage_dust", "chest_xp", "skill_tomes", "companion_essence",
+        keys = ("gold", "salvage_dust", "chest_xp", "experience", "level", "skill_tomes", "companion_essence",
                 "refinement_ore", "premium_crystals", "offline_unclaimed_json",
                 "offline_last_claim_at", "last_active_at", "offline_claim_version", "daily_quests_json")
         return {key: player[key] for key in keys}
@@ -102,7 +102,8 @@ class OfflineSummonApiIntegrationTest(unittest.TestCase):
         self.assertEqual(self.offline_snapshot(), before)
 
     def test_claim_after_five_minutes_duplicate_stale_parallel_and_premium_policy(self):
-        snapshot = self.seed_offline(300); version = int(self.load()["offline_claim_version"])
+        snapshot = self.seed_offline(300); self.update(chest_xp=444, experience=0)
+        version = int(self.load()["offline_claim_version"])
         first = self.call_offline("same", version); after = self.offline_snapshot()
         duplicate = self.call_offline("same", version)
         stale = self.call_offline("stale", version)
@@ -111,6 +112,8 @@ class OfflineSummonApiIntegrationTest(unittest.TestCase):
         self.assertTrue(duplicate["duplicate_request"]); self.assertEqual(duplicate["rewards"], first["rewards"])
         self.assertTrue(stale["stale_version"]); self.assertTrue(logical_second["stale_version"])
         self.assertEqual(self.offline_snapshot(), after); self.assertEqual(after["premium_crystals"], 77)
+        self.assertEqual(after["chest_xp"], 444)
+        self.assertEqual(after["experience"], first["rewards"]["hero_exp"])
         self.assertEqual(self.quest_value("claim_offline_rewards"), 1)
 
     def test_offline_rollback_restores_everything_and_restart_is_durable(self):

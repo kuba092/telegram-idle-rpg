@@ -66,7 +66,8 @@ def rewards(stage: Any, chest_level: Any, rewarded_seconds: Any, *, seed: str = 
     # A different phase deliberately prevents permanent tome/essence lockstep.
     essence = min(6, (units + 40 + digest[2] % 40) // 80) if units else 0
     return {"gold": units * round(2 + stage_i * .12), "salvage_dust": min(units, dust),
-            "chest_xp": min(48, units // 10), "skill_tomes": tomes,
+            "hero_exp": units // 10, "chest_xp": 0, "chest_xp_deprecated": True,
+            "skill_tomes": tomes,
             "companion_essence": essence, "refinement_ore": min(2, units // 240),
             "premium_crystals": 0, "reward_units": units}
 
