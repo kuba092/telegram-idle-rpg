@@ -187,7 +187,8 @@ class ChestUiIntegrationTests(unittest.TestCase):
 
     def test_pending_mode_hides_generic_hero_controls(self):
         game_sheet = HTML.split("function openGameSheet", 1)[1].split("function openApprovedSheet", 1)[0]
-        self.assertIn('$("approvedHeroTabs").hidden = mode !== "hero"', game_sheet)
+        self.assertNotIn('id="approvedHeroTabs"', HTML)
+        self.assertNotIn("data-approved-hero-tab", HTML)
         self.assertIn('$("approvedSheetBack").hidden = true', game_sheet)
         self.assertIn('sheet?.classList.toggle("pending-loot-sheet", mode === "pending-loot")', game_sheet)
         self.assertIn('contentClass:"approved-pending-loot"', HTML)

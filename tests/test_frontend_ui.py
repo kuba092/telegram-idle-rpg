@@ -297,7 +297,7 @@ class FrontendUiContractTests(unittest.TestCase):
         self.assertIn('confirmAction("Потратить кристаллы?"', HTML)
         self.assertIn('confirmAction("Разобрать предмет?"', HTML)
         self.assertIn('confirmAction("Переработать характеристику?"', HTML)
-        self.assertIn('Rank / awakening', HTML)
+        self.assertIn('"hero-awakening":"Ранг и пробуждение"', HTML)
 
     def test_mobile_skills_have_distinct_list_and_detail_states(self):
         self.assertIn('approvedSkillView = "list"', HTML)
@@ -305,7 +305,7 @@ class FrontendUiContractTests(unittest.TestCase):
         self.assertIn("function renderApprovedSkillList()", HTML)
         self.assertIn("function renderApprovedSkillDetail", HTML)
         self.assertIn('data-approved-skill-card=', HTML)
-        self.assertIn('approvedSkillView === "detail" ? renderApprovedSkillList()', HTML)
+        self.assertIn('sheetNavigationStack.push({mode:"skill-detail"', HTML)
         list_renderer = HTML.split("function renderApprovedSkillList()", 1)[1].split("function renderApprovedSkillDetail", 1)[0]
         self.assertNotIn('data-approved-skill-action=', list_renderer)
 
@@ -390,6 +390,86 @@ class FrontendUiContractTests(unittest.TestCase):
         renderer = HTML.split("function renderGrowthCenter()", 1)[1].split("async function refreshGrowthCenter", 1)[0]
         self.assertIn('setNavBadge("equipment", player?.pending_loot ? 1 : 0)', renderer)
         self.assertNotIn("inventory_free === 0", renderer)
+
+    def test_bottom_buttons_route_to_five_unique_root_modes(self):
+        mapping = HTML.split("const BOTTOM_ROOT_MODES", 1)[1].split(");", 1)[0]
+        self.assertEqual(
+            {"hero": "hero-home", "trials": "trials-home", "battle": "battle", "shop": "shop-home", "more": "more-home"},
+            dict(re.findall(r'(hero|trials|battle|shop|more):"([^"]+)"', mapping)),
+        )
+        handler = HTML.split('$("approvedNavigation").addEventListener', 1)[1].split("});", 1)[0]
+        self.assertIn("navigateBottomSection(button.dataset.approvedNav)", handler)
+
+    def test_root_renderers_are_isolated_by_contract(self):
+        boundaries = [
+            ("renderHeroHome", "renderTrialsHome", ("hero-equipment", "hero-skills"), ("trial-chest-boss", "shop-skills", "more-quests")),
+            ("renderTrialsHome", "renderShopHome", ("trial-chest-boss", "trial-gem-boss"), ("hero-skills", "shop-skills", "more-quests")),
+            ("renderShopHome", "renderMoreHome", ("shop-skills", "shop-companions", "shop-history"), ("hero-skills", "trial-chest-boss", "more-quests")),
+            ("renderMoreHome", "renderHeroEquipment", ("more-quests", "more-offline", "more-growth"), ("hero-skills", "trial-chest-boss", "shop-skills")),
+        ]
+        for start, end, included, excluded in boundaries:
+            renderer = HTML.split(f"function {start}()", 1)[1].split(f"function {end}", 1)[0]
+            for marker in included:
+                self.assertIn(marker, renderer)
+            for marker in excluded:
+                self.assertNotIn(marker, renderer)
+
+    def test_legacy_shared_hero_tabs_are_removed(self):
+        self.assertNotIn('id="approvedHeroTabs"', HTML)
+        self.assertNotIn("data-approved-hero-tab", HTML)
+        self.assertNotIn("approvedSheetActions", HTML)
+
+    def test_battle_closes_ui_without_fetching_player(self):
+        router = HTML.split("function navigateBottomSection(section)", 1)[1].split("function restoreAfterPendingLoot", 1)[0]
+        for marker in ("closeIncompatibleOverlays()", "closeApprovedSheet()", 'activeSheetMode = null', 'openBattleScreen()'):
+            self.assertIn(marker, router)
+        self.assertNotIn("apiRequest", router)
+        self.assertNotIn('"/player"', router)
+
+    def test_sheet_back_uses_stack_and_close_returns_to_battle(self):
+        back = HTML.split("function navigateSheetBack()", 1)[1].split("function navigateBottomSection", 1)[0]
+        self.assertIn("sheetNavigationStack.pop()", back)
+        self.assertIn("renderSheetMode(sheetNavigationStack.at(-1).mode", back)
+        self.assertIn('navigateBottomSection("battle")', HTML.split('$("approvedSheetClose").addEventListener', 1)[1].split(";", 1)[0])
+
+    def test_pending_loot_preserves_and_restores_sheet_stack(self):
+        pending = HTML.split("function showPendingLoot(item", 1)[1].split("function showLootModal", 1)[0]
+        restore = HTML.split("function restoreAfterPendingLoot()", 1)[1].split("function updateBottomBadges", 1)[0]
+        self.assertIn("pendingLootReturnState", pending)
+        self.assertIn("sheetNavigationStack.map", pending)
+        self.assertIn("sheetNavigationStack.splice", restore)
+        self.assertIn("renderSheetMode(saved.mode", restore)
+
+    def test_child_modes_have_expected_root_parent_in_stack(self):
+        for mode in ("hero-equipment", "hero-skills", "hero-companions", "hero-stats", "hero-awakening"):
+            self.assertIn(mode, HTML)
+        for mode in ("more-quests", "more-offline", "more-growth", "more-leaderboard", "more-settings"):
+            self.assertIn(mode, HTML)
+        for mode in ("trial-chest-boss", "trial-gem-boss"):
+            self.assertIn(mode, HTML)
+        self.assertIn("sheetNavigationStack.push({mode", HTML)
+
+    def test_active_section_and_aria_current_are_owned_by_router(self):
+        state = HTML.split("function setBottomNavigationState(section)", 1)[1].split("function closeIncompatibleOverlays", 1)[0]
+        self.assertIn("activeBottomSection = section", state)
+        self.assertIn('setAttribute("aria-current", "page")', state)
+        self.assertIn('removeAttribute("aria-current")', state)
+        self.assertIn('classList.toggle("active", active)', state)
+
+    def test_bottom_badges_use_independent_sources(self):
+        badges = HTML.split("function updateBottomBadges()", 1)[1].split("function approvedTickerState", 1)[0]
+        self.assertIn("upgrade_available", badges)
+        self.assertIn("attempts_remaining", badges)
+        self.assertIn("free_available", badges)
+        self.assertIn("claimable_quests", badges)
+        self.assertNotIn("battle:", badges)
+
+    def test_mobile_bottom_section_contracts(self):
+        self.assertIn('@media(max-width:359px){.section-home-grid.complex{grid-template-columns:1fr}', HTML)
+        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", HTML)
+        self.assertIn('.approved-nav [data-approved-nav="battle"]', HTML)
+        self.assertIn("min-height:44px", HTML)
+        self.assertIn("overflow-x:hidden", HTML)
 
 
 if __name__ == "__main__":
