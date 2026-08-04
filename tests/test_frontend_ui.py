@@ -154,12 +154,12 @@ class FrontendUiContractTests(unittest.TestCase):
         self.assertIn('document.body.dataset.activeScreen = "battle"', HTML)
         self.assertNotIn('data-approved-nav="home"', HTML)
 
-    def test_approved_navigation_has_exactly_five_entries(self):
+    def test_approved_navigation_has_exactly_four_entries(self):
         nav = re.search(r'<nav class="approved-nav".*?</nav>', HTML, re.S)
         self.assertIsNotNone(nav)
-        self.assertEqual(5, nav.group(0).count('data-approved-nav="'))
+        self.assertEqual(4, nav.group(0).count('data-approved-nav="'))
         self.assertEqual(
-            ["hero", "trials", "battle", "shop", "more"],
+            ["hero", "trials", "battle", "shop"],
             re.findall(r'data-approved-nav="([^"]+)"', nav.group(0)),
         )
         self.assertIn('data-approved-nav="battle" type="button" aria-current="page"', nav.group(0))
@@ -391,10 +391,10 @@ class FrontendUiContractTests(unittest.TestCase):
         self.assertIn('setNavBadge("equipment", player?.pending_loot ? 1 : 0)', renderer)
         self.assertNotIn("inventory_free === 0", renderer)
 
-    def test_bottom_buttons_route_to_five_unique_root_modes(self):
+    def test_bottom_buttons_route_to_four_unique_root_modes(self):
         mapping = HTML.split("const BOTTOM_ROOT_MODES", 1)[1].split(");", 1)[0]
         self.assertEqual(
-            {"hero": "hero-home", "trials": "trials-home", "battle": "battle", "shop": "shop-home", "more": "more-home"},
+            {"hero": "hero-home", "trials": "trials-home", "battle": "battle", "shop": "shop-home"},
             dict(re.findall(r'(hero|trials|battle|shop|more):"([^"]+)"', mapping)),
         )
         handler = HTML.split('$("approvedNavigation").addEventListener', 1)[1].split("});", 1)[0]
@@ -402,10 +402,9 @@ class FrontendUiContractTests(unittest.TestCase):
 
     def test_root_renderers_are_isolated_by_contract(self):
         boundaries = [
-            ("renderHeroHome", "renderTrialsHome", ("hero-equipment", "hero-skills"), ("trial-chest-boss", "shop-skills", "more-quests")),
-            ("renderTrialsHome", "renderShopHome", ("trial-chest-boss", "trial-gem-boss"), ("hero-skills", "shop-skills", "more-quests")),
-            ("renderShopHome", "renderMoreHome", ("shop-skills", "shop-companions", "shop-history"), ("hero-skills", "trial-chest-boss", "more-quests")),
-            ("renderMoreHome", "renderHeroEquipment", ("more-quests", "more-offline", "more-growth"), ("hero-skills", "trial-chest-boss", "shop-skills")),
+            ("renderHeroHome", "renderTrialsHome", ("hero-skills", "hero-companions", "hero-stats", "hero-awakening"), ("hero-equipment", "trial-chest-boss", "shop-skills")),
+            ("renderTrialsHome", "renderShopHome", ("trial-chest-boss", "trial-gem-boss"), ("hero-skills", "shop-skills")),
+            ("renderShopHome", "renderHeroSkills", ("shop-skills", "shop-companions", "shop-history"), ("hero-skills", "trial-chest-boss")),
         ]
         for start, end, included, excluded in boundaries:
             renderer = HTML.split(f"function {start}()", 1)[1].split(f"function {end}", 1)[0]
@@ -441,10 +440,10 @@ class FrontendUiContractTests(unittest.TestCase):
         self.assertIn("renderSheetMode(saved.mode", restore)
 
     def test_child_modes_have_expected_root_parent_in_stack(self):
-        for mode in ("hero-equipment", "hero-skills", "hero-companions", "hero-stats", "hero-awakening"):
+        for mode in ("hero-skills", "hero-companions", "hero-stats", "hero-awakening"):
             self.assertIn(mode, HTML)
-        for mode in ("more-quests", "more-offline", "more-growth", "more-leaderboard", "more-settings"):
-            self.assertIn(mode, HTML)
+        for mode in ("hero-equipment", "more-home", "more-quests", "more-offline", "more-growth", "more-leaderboard", "more-settings"):
+            self.assertNotIn(f'"{mode}"', HTML)
         for mode in ("trial-chest-boss", "trial-gem-boss"):
             self.assertIn(mode, HTML)
         self.assertIn("sheetNavigationStack.push({mode", HTML)
@@ -461,8 +460,26 @@ class FrontendUiContractTests(unittest.TestCase):
         self.assertIn("upgrade_available", badges)
         self.assertIn("attempts_remaining", badges)
         self.assertIn("free_available", badges)
-        self.assertIn("claimable_quests", badges)
         self.assertNotIn("battle:", badges)
+
+    def test_battle_first_hero_slots_and_bootstrap_contracts(self):
+        hero = HTML.split("function renderHeroHome()", 1)[1].split("function renderTrialsHome", 1)[0]
+        self.assertEqual(4, hero.count("sectionCard("))
+        self.assertNotIn("hero-equipment", hero)
+        self.assertIn('id="${kind}-slot-${index + 1}"', HTML)
+        self.assertIn('Array.from({length:3}', HTML)
+        self.assertIn("function openSkillSlotSelector(slotIndex)", HTML)
+        self.assertIn("function openCompanionSlotSelector(slotIndex)", HTML)
+        self.assertIn("slotSelectionMutex", HTML)
+        self.assertIn('const offlinePromise = apiRequest("/offline/status")', HTML)
+        self.assertIn("if (player.pending_loot) showPendingLoot", HTML)
+        self.assertIn("else showOfflineStatus(offlineStatus)", HTML)
+
+    def test_battle_quest_badge_is_real_and_leaderboard_has_no_fake_rank(self):
+        self.assertIn('id="questBattleClaimableCount" hidden', HTML)
+        self.assertIn("claimableCount", HTML)
+        leaderboard = re.search(r'id="leaderboardButton".*?</button>', HTML, re.S).group(0)
+        self.assertNotRegex(leaderboard, r">\s*#?\d+")
 
     def test_mobile_bottom_section_contracts(self):
         self.assertIn('@media(max-width:359px){.section-home-grid.complex{grid-template-columns:1fr}', HTML)

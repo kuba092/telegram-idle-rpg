@@ -5407,9 +5407,14 @@
   .section-home{display:grid;gap:10px;margin-top:12px}.section-home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.section-home-card{min-height:72px;padding:10px;border:1px solid #ffffff12;border-radius:13px;background:#183328;text-align:left}.section-home-card>span,.section-home-card strong,.section-home-card small{display:block}.section-home-card>span{font-size:22px}.section-home-card small{margin-top:3px;color:var(--ab-muted)}
   .hero-home-summary{display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;padding:12px;border:1px solid #f3c75f42;border-radius:15px;background:linear-gradient(135deg,#213b2d,#142a21)}.hero-home-avatar{width:58px;height:58px;object-fit:contain}.hero-home-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}.hero-home-fact{padding:5px;border-radius:8px;background:#07150f66;font-size:10px}.hero-home-equipment{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.hero-home-equipment span{display:grid;place-items:center;min-height:38px;border:1px solid #ffffff18;border-radius:8px;background:#0d1d17}.trial-home-card,.shop-home-card{grid-column:1/-1;display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:9px;min-height:88px}.section-state{grid-column:1/-1;padding:24px 12px;text-align:center;color:var(--ab-muted)}
   @media(max-width:359px){.section-home-grid.complex{grid-template-columns:1fr}.trial-home-card,.shop-home-card{grid-column:auto}.approved-nav button{font-size:9px}.approved-nav{padding-inline:2px}.section-home-card{min-height:68px}}
+  /* BATTLE_FIRST_UX_V4 */
+  .approved-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .active-loadout{grid-column:1/-1;display:grid;gap:7px;margin-bottom:4px}.active-loadout h3,.collection-title{margin:0;color:#fff0a1;font-size:12px}.active-slot-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.active-slot{position:relative;display:grid;align-content:center;justify-items:center;min-width:0;min-height:88px;padding:7px 4px;border:1px solid #315643;border-radius:12px;background:#142c23;text-align:center}.active-slot:disabled{opacity:.62}.active-slot-icon{font-size:22px}.active-slot strong{display:-webkit-box;max-width:100%;overflow:hidden;font-size:10px;line-height:13px;-webkit-box-orient:vertical;-webkit-line-clamp:2}.active-slot small{max-width:100%;overflow:hidden;color:var(--ab-muted);font-size:8px;text-overflow:ellipsis;white-space:nowrap}.active-slot-badge{position:absolute;top:3px;right:3px;padding:1px 3px;border-radius:5px;background:#4b3268;font-size:7px}.slot-selector-list{display:grid;gap:7px}.slot-selector-list .approved-slot-option.active-elsewhere{border-color:#cfae54}.hero-home-rank{margin-top:5px;color:#d9c8ff;font-size:10px}.battle-overlay-button{position:absolute;z-index:7;top:8px;display:grid;place-items:center;min-width:44px;height:44px;padding:0 7px;border:1px solid #ffffff26;border-radius:13px;background:#10251de8;color:#fff;font-size:20px}.battle-overlay-button.leaderboard{left:8px}.battle-overlay-button.quests{right:8px}.battle-overlay-badge{position:absolute;top:-3px;right:-3px;min-width:17px;padding:1px 4px;border-radius:9px;background:#e45d65;color:#fff;font-size:9px}.battle-overlay-rank{font-size:9px}.battle-overlay-badge[hidden],.battle-overlay-rank[hidden]{display:none}.approved-ticker{display:none!important}
+  @media(max-width:359px){.active-slot-row{gap:5px}.active-slot{min-height:82px;padding-inline:2px}.active-slot-icon{font-size:18px}.section-home-grid.hero-directions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<!-- Active loadout ID contract: skill-slot-1 skill-slot-2 skill-slot-3 companion-slot-1 companion-slot-2 companion-slot-3 -->
 <main class="approved-game" id="approvedBattleShell" aria-label="Бой" tabindex="-1">
   <header class="approved-hud"><img class="approved-avatar" id="approvedHeroAvatar" src="assets/hero.png?v=9" alt="Аватар героя"><div class="approved-identity"><div class="approved-identity-top"><strong id="approvedPlayerName">Игрок</strong><small id="approvedPlayerLevel">ур. 1</small></div><span class="approved-power" id="approvedPower">Сила 0</span><div class="approved-hp-label"><span>HP</span><span><b id="approvedHeroHp">100</b> / <b id="approvedHeroMaxHp">100</b></span></div><div class="approved-bar"><i id="approvedHeroHpBar" style="width:100%"></i></div><div class="approved-exp-label"><span>Опыт</span><span><b id="approvedHeroExp">0</b> / <b id="approvedHeroExpRequired">1</b></span></div><div class="approved-bar approved-exp-bar"><i id="approvedHeroExpBar" style="width:0%"></i></div></div><div class="approved-currencies"><div class="approved-currency">● <span id="approvedGold">0</span></div><div class="approved-currency">◆ <span id="approvedCrystals">0</span></div></div></header>
   <section class="approved-stage"><div class="approved-enemy-copy"><div class="approved-enemy-title"><strong id="approvedEnemyName">Слизень</strong><span class="approved-elite" id="approvedElite" hidden>Элита</span><span class="approved-elite" id="approvedBoss" hidden>Босс</span></div><div class="approved-enemy-hp-row"><div class="approved-enemy-bar"><i id="approvedEnemyHpBar" style="width:100%"></i></div><span class="approved-enemy-hp-value"><b id="approvedEnemyHp">30</b> / <b id="approvedEnemyMaxHp">30</b></span></div><small class="approved-stage-meta" id="approvedStageMeta">Этап 1 · 0/10 · Страж · слабость: —</small></div></section>
@@ -5417,7 +5422,7 @@
   <section class="approved-dock" id="approvedSkillDock" aria-label="Навыки и спутники"></section>
   <section class="approved-lower"><div class="approved-chest" id="approvedChestBar" role="group" aria-label="Сундук"><button class="approved-chest-icon" id="approvedChestInfo" type="button" aria-label="Открыть сундук">🧰</button><div class="approved-chest-copy"><button class="approved-chest-upgrade-button" id="approvedChestUpgrade" type="button" aria-label="Улучшить сундук"><span class="approved-chest-level">Ур. <span id="approvedChestLevel">1</span></span><strong class="approved-chest-count">×<span id="approvedChestCount">0</span></strong><span class="approved-chest-cost" id="approvedChestGoldCost">🪙 0</span><b class="approved-chest-upgrade" id="approvedChestUpgradeBadge" hidden>УЛУЧШИТЬ</b></button></div><button class="approved-chest-open" id="approvedChestOpen" type="button" title="Открыть сундук">Открыть</button><button class="approved-chest-auto" id="approvedChestAuto" type="button" aria-label="Автооткрытие сундука" title="Автосундук" aria-pressed="false"><span class="approved-auto-track"><i class="approved-auto-knob"></i></span><i id="approvedChestAutoState">Выкл.</i></button><b class="approved-pending" id="approvedPendingBadge" hidden>1</b></div><div class="approved-equipment-head">Экипировка <span id="approvedEquipmentCount">0/10</span></div><section class="approved-equipment equipment-grid" id="approvedEquipmentGrid" aria-label="Экипировка героя"></section><button class="approved-ticker" id="approvedTicker" type="button"><span aria-hidden="true">◎</span><span class="approved-ticker-copy" id="approvedTickerCopy">Рекомендации загружаются…</span><span class="approved-ticker-badge" id="approvedTickerBadge">Ещё</span></button></section>
 </main>
-<nav class="approved-nav" id="approvedNavigation" aria-label="Основная навигация"><button data-approved-nav="hero" type="button"><span class="approved-nav-badge" data-nav-badge="hero" hidden></span><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg>Герой</button><button data-approved-nav="trials" type="button"><span class="approved-nav-badge" data-nav-badge="trials" hidden></span><svg viewBox="0 0 24 24"><path d="M4 21V9l4-4 4 4 4-4 4 4v12M8 21v-5h8v5"/></svg>Испытания</button><button class="active" data-approved-nav="battle" type="button" aria-current="page"><svg viewBox="0 0 24 24"><path d="m5 4 14 16M19 4 5 20M8 7 5 10M16 7l3 3"/></svg>Бой</button><button data-approved-nav="shop" type="button"><span class="approved-nav-badge" data-nav-badge="shop" hidden></span><svg viewBox="0 0 24 24"><path d="M4 9h16l-1 12H5zM8 9V7a4 4 0 0 1 8 0v2"/></svg>Магазин</button><button data-approved-nav="more" type="button"><span class="approved-nav-badge" data-nav-badge="more" hidden></span><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>Ещё</button></nav>
+<nav class="approved-nav" id="approvedNavigation" aria-label="Основная навигация"><button data-approved-nav="hero" type="button"><span class="approved-nav-badge" data-nav-badge="hero" hidden></span><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg>Герой</button><button data-approved-nav="trials" type="button"><span class="approved-nav-badge" data-nav-badge="trials" hidden></span><svg viewBox="0 0 24 24"><path d="M4 21V9l4-4 4 4 4-4 4 4v12M8 21v-5h8v5"/></svg>Испытания</button><button class="active" data-approved-nav="battle" type="button" aria-current="page"><svg viewBox="0 0 24 24"><path d="m5 4 14 16M19 4 5 20M8 7 5 10M16 7l3 3"/></svg>Бой</button><button data-approved-nav="shop" type="button"><span class="approved-nav-badge" data-nav-badge="shop" hidden></span><svg viewBox="0 0 24 24"><path d="M4 9h16l-1 12H5zM8 9V7a4 4 0 0 1 8 0v2"/></svg>Магазин</button></nav>
 <div class="approved-sheet-wrap" id="approvedSheetWrap" hidden><section class="approved-sheet" role="dialog" aria-modal="true" aria-labelledby="approvedSheetTitle"><header class="approved-sheet-head"><div class="approved-sheet-titlebar"><button class="approved-sheet-back" id="approvedSheetBack" type="button" aria-label="Назад" hidden>‹</button><h2 id="approvedSheetTitle">Раздел</h2><button class="approved-sheet-close" id="approvedSheetClose" type="button" aria-label="Закрыть панель">×</button></div></header><div class="approved-sheet-scroll" id="approvedSheetScroll"><div class="approved-sheet-grid" id="approvedSheetContent"></div></div><div class="approved-skill-actions" id="approvedSkillActions" hidden></div></section></div>
 <div class="approved-slot-modal" id="approvedSkillSlotModal" role="dialog" aria-modal="true" aria-labelledby="approvedSkillSlotTitle" hidden><section class="approved-slot-dialog"><h3 id="approvedSkillSlotTitle">Выберите слот</h3><div class="approved-slot-options" id="approvedSkillSlotOptions"></div><button class="approved-slot-cancel" id="approvedSkillSlotCancel" type="button">Отмена</button></section></div>
 <main class="app">
@@ -5550,7 +5555,7 @@
   type="button"
 >
   📋
-  <span class="quests-ready-dot"></span>
+  <span class="quests-ready-dot" id="questBattleClaimableCount" hidden></span>
 </button>
 </div>
 </div>
@@ -6603,12 +6608,13 @@ id="companionSummonChances"
 </div><div class="game-modal hidden" id="offlineModal">
 <div class="modal-panel offline-panel">
 <div class="offline-icon">🌙</div>
-<div class="modal-title">Офлайн-награда</div>
-<div class="offline-text">Накопление идёт до 4 часов</div>
+<div class="modal-title">Награды за отсутствие</div>
+<div class="offline-text" id="offlineBootstrapTime">Время вне игры: —</div>
 <div class="offline-rewards">
 <div>🧰 <strong id="offlineChests">0</strong><span>сундуков</span></div>
 <div>✨ <strong id="offlineExp">0</strong><span>опыта</span></div>
 </div>
+<div class="offline-text" id="offlineBootstrapBreakdown"></div>
 <button class="primary-game-button" id="claimOfflineButton" type="button">ЗАБРАТЬ</button>
 </div>
 </div><div class="game-modal hidden" id="chestModal">
@@ -6844,6 +6850,7 @@ id="companionSummonChances"
     let approvedEntityKind = "skill";
     let approvedAwakeningExpanded = false;
     const progressionMutations = new Set();
+    const slotSelectionMutex = new Set();
 
     const APPROVED_SLOT_ICONS = {helmet:"🪖",armor:"🛡️",gloves:"🧤",pants:"👖",boots:"🥾",weapon:"🗡️",necklace:"📿",ring:"💍",belt:"🧷",talisman:"🔮"};
     function approvedPercent(value, maximum) {
@@ -6895,6 +6902,23 @@ id="companionSummonChances"
       return {system, skill, entry, slotIndex, owned:Boolean(entry.owned)};
     }
 
+    function activeSlotHtml(kind, slot, index) {
+      const id = kind === "skill" ? slot?.skill_id : slot?.companion_id;
+      const data = id ? (kind === "skill" ? approvedSkillData(id) : approvedCompanionData(id)) : null;
+      const entity = data?.skill || data?.companion; const entry = data?.entry || {};
+      const unlocked = Boolean(slot?.unlocked);
+      const unlockCopy = slot?.unlock_condition || (slot?.unlock_level ? `Откроется на уровне ${Number(slot.unlock_level)}` : "Слот закрыт");
+      const effect = kind === "skill" ? `${entity?.cooldown ?? entity?.cooldown_seconds ?? 0} с` : (entity?.short_effect || entity?.description || "Активный эффект");
+      const label = kind === "skill" ? "Пустой слот" : "Выбрать спутника";
+      return `<button id="${kind}-slot-${index + 1}" class="active-slot" type="button" data-active-${kind}-slot="${index + 1}" ${unlocked ? "" : "disabled"}>${!unlocked ? `<span class="active-slot-icon">🔒</span><strong>${escapeHtml(unlockCopy)}</strong>` : entity ? `<span class="active-slot-badge">${Number(entry.rank || 0)} · ${Number(entry.rank_stars || 0)}★</span><span class="active-slot-icon">${escapeHtml(entity.icon || (kind === "skill" ? "✨" : "🐾"))}</span><strong>${escapeHtml(entity.name)}</strong><small>ур. ${Number(entry.level || 1)} · ${escapeHtml(effect)}</small>` : `<span class="active-slot-icon">＋</span><strong>${label}</strong><small>Выбрать</small>`}</button>`;
+    }
+
+    function activeLoadoutHtml(kind) {
+      const slots = player?.[kind === "skill" ? "skill_system" : "companion_system"]?.slots || [];
+      const normalized = Array.from({length:3}, (_, index) => slots.find(slot => Number(slot.index || index + 1) === index + 1) || slots[index] || {index:index + 1,unlocked:false});
+      return `<section class="active-loadout"><h3>${kind === "skill" ? "Активные навыки" : "Активные спутники"}</h3><div class="active-slot-row">${normalized.map((slot,index) => activeSlotHtml(kind,slot,index)).join("")}</div><h3 class="collection-title">Коллекция</h3></section>`;
+    }
+
     function renderApprovedSkillList() {
       approvedEntityKind = "skill";
       approvedSkillView = "list"; approvedSelectedSkillId = null; approvedAwakeningExpanded = false;
@@ -6903,7 +6927,7 @@ id="companionSummonChances"
       const content = $("approvedSheetContent"); content.className = "approved-skill-list";
       const system = player?.skill_system || {}; const catalog = Array.isArray(system.catalog) ? system.catalog : [];
       if (!catalog.length) { content.innerHTML = '<div class="empty-state">Навыки пока недоступны.</div>'; return; }
-      content.innerHTML = catalog.map(skill => {
+      content.innerHTML = activeLoadoutHtml("skill") + catalog.map(skill => {
         const entry = system.collection?.[skill.id] || {}; const owned = Boolean(entry.owned);
         const slotIndex = (system.slots || []).findIndex(slot => String(slot?.skill_id || "") === String(skill.id));
         const badges = [entry.upgrade_available && '<span class="approved-skill-badge upgrade">Можно улучшить</span>', entry.rank_up_available && '<span class="approved-skill-badge rank">Доступен ранг</span>', entry.awakening_available && '<span class="approved-skill-badge awaken">Пробуждение</span>'].filter(Boolean).join("") || '<span class="approved-skill-empty-badge">Нет доступных улучшений</span>';
@@ -6946,7 +6970,7 @@ id="companionSummonChances"
       const content = $("approvedSheetContent"); content.className = "approved-skill-list";
       const system = player?.companion_system || {}; const catalog = Array.isArray(system.catalog) ? system.catalog : [];
       if (!catalog.length) { content.innerHTML = '<div class="empty-state">Спутники пока недоступны.</div>'; return; }
-      content.innerHTML = catalog.map(companion => {
+      content.innerHTML = activeLoadoutHtml("companion") + catalog.map(companion => {
         const entry = system.collection?.[companion.id] || {}; const owned = Boolean(entry.owned);
         const slotIndex = (system.slots || []).findIndex(slot => String(slot?.companion_id || "") === String(companion.id));
         const badges = [entry.upgrade_available && '<span class="approved-skill-badge upgrade">Можно улучшить</span>', entry.rank_up_available && '<span class="approved-skill-badge rank">Доступен ранг</span>', entry.awakening_available && '<span class="approved-skill-badge awaken">Пробуждение</span>'].filter(Boolean).join("") || '<span class="approved-skill-empty-badge">Нет доступных улучшений</span>';
@@ -6981,8 +7005,9 @@ id="companionSummonChances"
     }
 
     async function equipApprovedSkill(skillId, slot) {
-      try { player = await apiRequest(`/skills/equip?slot=${slot}&skill_id=${encodeURIComponent(skillId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderSkillLoadout(); renderApprovedSkills(); renderApprovedSkillDetail(skillId); setMessage("Навык установлен"); }
-      catch (error) { setMessage(`❌ ${error.message}`, true); }
+      const key = `skill:${slot}`; if (slotSelectionMutex.has(key)) return; slotSelectionMutex.add(key);
+      try { player = await apiRequest(`/skills/equip?slot=${slot}&skill_id=${encodeURIComponent(skillId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderSkillLoadout(); renderApprovedSkills(); renderApprovedSkillList(); setMessage("Навык установлен"); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); } finally { slotSelectionMutex.delete(key); }
     }
 
     function openApprovedCompanionSlotModal(companionId) {
@@ -6992,9 +7017,26 @@ id="companionSummonChances"
       $("approvedSkillSlotModal").hidden = false;
     }
 
+    function openSkillSlotSelector(slotIndex) {
+      const system = player?.skill_system || {}; const slot = (system.slots || [])[slotIndex - 1];
+      if (!slot?.unlocked) return;
+      $("approvedSkillSlotTitle").textContent = `Навык в слот ${slotIndex}`;
+      $("approvedSkillSlotOptions").innerHTML = (system.catalog || []).filter(skill => system.collection?.[skill.id]?.owned && skill.implemented).map(skill => { const active = (system.slots || []).findIndex(item => String(item.skill_id || "") === String(skill.id)); return `<button class="approved-slot-option ${active >= 0 && active !== slotIndex - 1 ? "active-elsewhere" : ""}" type="button" data-selector-skill="${escapeHtml(skill.id)}" data-selector-slot="${slotIndex}"><span>${escapeHtml(skill.icon || "✨")}</span><span><strong>${escapeHtml(skill.name)}</strong><small>${active >= 0 ? `Активен в слоте ${active + 1}` : "Выбрать"}</small></span></button>`; }).join("") || '<div class="empty-state">Нет доступных навыков.</div>';
+      $("approvedSkillSlotModal").hidden = false;
+    }
+
+    function openCompanionSlotSelector(slotIndex) {
+      const system = player?.companion_system || {}; const slot = (system.slots || [])[slotIndex - 1];
+      if (!slot?.unlocked) return;
+      $("approvedSkillSlotTitle").textContent = `Спутник в слот ${slotIndex}`;
+      $("approvedSkillSlotOptions").innerHTML = (system.catalog || []).filter(entity => system.collection?.[entity.id]?.owned).map(entity => { const active = (system.slots || []).findIndex(item => String(item.companion_id || "") === String(entity.id)); return `<button class="approved-slot-option ${active >= 0 && active !== slotIndex - 1 ? "active-elsewhere" : ""}" type="button" data-selector-companion="${escapeHtml(entity.id)}" data-selector-slot="${slotIndex}"><span>${escapeHtml(entity.icon || "🐾")}</span><span><strong>${escapeHtml(entity.name)}</strong><small>${active >= 0 ? `Активен в слоте ${active + 1}` : "Выбрать"}</small></span></button>`; }).join("") || '<div class="empty-state">Нет доступных спутников.</div>';
+      $("approvedSkillSlotModal").hidden = false;
+    }
+
     async function equipApprovedCompanion(companionId, slot) {
-      try { player = await apiRequest(`/companions/equip?slot=${slot}&companion_id=${encodeURIComponent(companionId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderCompanionLoadout(); renderApprovedSkills(); renderApprovedCompanionDetail(companionId); setMessage("Спутник установлен"); }
-      catch (error) { setMessage(`❌ ${error.message}`, true); }
+      const key = `companion:${slot}`; if (slotSelectionMutex.has(key)) return; slotSelectionMutex.add(key);
+      try { player = await apiRequest(`/companions/equip?slot=${slot}&companion_id=${encodeURIComponent(companionId)}`, "POST"); $("approvedSkillSlotModal").hidden = true; renderPlayer(); renderCompanionLoadout(); renderApprovedSkills(); renderApprovedCompanionList(); setMessage("Спутник установлен"); }
+      catch (error) { setMessage(`❌ ${error.message}`, true); } finally { slotSelectionMutex.delete(key); }
     }
 
     function closeApprovedSheet() {
@@ -7008,17 +7050,18 @@ id="companionSummonChances"
       frontendState.modal = null;
     }
 
-    const BOTTOM_ROOT_MODES = Object.freeze({hero:"hero-home", trials:"trials-home", battle:"battle", shop:"shop-home", more:"more-home"});
+    const BOTTOM_ROOT_MODES = Object.freeze({hero:"hero-home", trials:"trials-home", battle:"battle", shop:"shop-home"});
     const SHEET_MODE_TITLES = Object.freeze({
-      "hero-home":"Герой", "hero-equipment":"Снаряжение", "hero-skills":"Навыки", "hero-companions":"Спутники", "hero-stats":"Характеристики", "hero-awakening":"Ранг и пробуждение",
+      "hero-home":"Герой", "hero-skills":"Навыки", "hero-companions":"Спутники", "hero-stats":"Характеристики", "hero-awakening":"Ранг и пробуждение",
       "trials-home":"Испытания", "trial-chest-boss":"Босс сундуков", "trial-gem-boss":"Босс самоцветов",
       "shop-home":"Магазин", "shop-skills":"Навыки", "shop-companions":"Спутники", "shop-history":"История призывов",
-      "more-home":"Ещё", "more-quests":"Задания", "more-offline":"Офлайн-награды", "more-growth":"Центр развития", "more-leaderboard":"Рейтинг", "more-settings":"Настройки",
       "skill-detail":"Навык", "companion-detail":"Спутник"
     });
     let activeBottomSection = "battle";
     const sheetNavigationStack = [];
     let pendingLootReturnState = null;
+    let pendingOfflineStatus = null;
+    let shownOfflineClaimVersion = null;
 
     function setBottomNavigationState(section) {
       activeBottomSection = section;
@@ -7046,10 +7089,12 @@ id="companionSummonChances"
     }
 
     function renderHeroHome() {
-      const equipment = player?.equipment || {};
-      const gear = Object.keys(SLOT_NAMES).slice(0, 10).map(slot => `<span title="${escapeHtml(SLOT_NAMES[slot])}">${equipment[slot] ? APPROVED_SLOT_ICONS[slot] : "◇"}</span>`).join("");
       const upgrades = [...Object.values(player?.skill_system?.collection || {}), ...Object.values(player?.companion_system?.collection || {})].filter(entry => entry?.upgrade_available || entry?.rank_up_available || entry?.awakening_available).length;
-      const content = `<div class="section-home"><section class="hero-home-summary"><img class="hero-home-avatar" src="assets/hero.png?v=9" alt="Аватар героя"><div><strong>${escapeHtml(player?.first_name || player?.name || "Герой")} · ур. ${Number(player?.level || 1)}</strong><div class="hero-home-facts"><div class="hero-home-fact">БМ<br><b>${formatNumber(player?.power || 0)}</b></div><div class="hero-home-fact">HP<br><b>${formatNumber(player?.hero_hp || 0)}</b></div><div class="hero-home-fact">Урон<br><b>${formatNumber(player?.damage || player?.hero_damage || 0)}</b></div></div></div></section><section><strong>Экипировка</strong><div class="hero-home-equipment">${gear}</div></section>${upgrades ? `<span class="status-chip">Доступно улучшений: ${upgrades}</span>` : ""}<div class="section-home-grid">${sectionCard("🛡️","Снаряжение","Предметы и сборка","hero-equipment")}${sectionCard("✨","Навыки","Коллекция и улучшения","hero-skills")}${sectionCard("🐾","Спутники","Команда героя","hero-companions")}${sectionCard("📊","Характеристики","БМ, HP и урон","hero-stats")}${sectionCard("⭐","Ранг и пробуждение","Развитие коллекций","hero-awakening")}</div></div>`;
+      const skills = (player?.skill_system?.slots || []).filter(slot => slot.unlocked && slot.skill_id).length;
+      const companions = (player?.companion_system?.slots || []).filter(slot => slot.unlocked && slot.companion_id).length;
+      const rank = player?.rank?.name || player?.rank_name || `Ранг ${player?.rank || "I"}`;
+      const stars = Number(player?.awakening_stars || player?.rank_stars || 0);
+      const content = `<div class="section-home"><section class="hero-home-summary"><img class="hero-home-avatar" src="assets/hero.png?v=9" alt="Аватар героя"><div><strong>${escapeHtml(player?.first_name || player?.name || "Герой")} · ур. ${Number(player?.level || 1)}</strong><div class="hero-home-facts"><div class="hero-home-fact">БМ<br><b>${formatNumber(player?.power || 0)}</b></div><div class="hero-home-fact">HP<br><b>${formatNumber(player?.hero_hp || 0)}</b></div><div class="hero-home-fact">EXP<br><b>${formatNumber(player?.experience || 0)}</b></div></div><div class="hero-home-rank">${escapeHtml(String(rank))} · ${stars}★</div></div></section>${upgrades ? `<span class="status-chip">Доступно улучшений: ${upgrades}</span>` : ""}<div class="section-home-grid hero-directions">${sectionCard("✨","Навыки",`Активно ${skills} из 3`,"hero-skills")}${sectionCard("🐾","Спутники",`Активно ${companions} из 3`,"hero-companions")}${sectionCard("📊","Характеристики",`Урон ${formatNumber(player?.damage || player?.hero_damage || 0)} · HP ${formatNumber(player?.hero_max_hp || 0)}`,"hero-stats")}${sectionCard("⭐","Ранг и пробуждение",`${rank} · ${stars}★`,"hero-awakening")}</div></div>`;
       openGameSheet({mode:"hero-home", title:"Герой", content, contentClass:"section-home-root"});
     }
 
@@ -7069,26 +7114,12 @@ id="companionSummonChances"
       openGameSheet({mode:"shop-home", title:"Магазин", content, contentClass:"section-home-root"});
     }
 
-    function renderMoreHome() {
-      const content = `<div class="section-home"><div class="section-home-grid">${sectionCard("📋","Задания","Награды и достижения","more-quests")}${sectionCard("🌙","Офлайн-награды","Накопленный прогресс","more-offline")}${sectionCard("📈","Центр развития","Приоритеты развития","more-growth")}${sectionCard("🏆","Рейтинг","Таблица игроков","more-leaderboard")}${sectionCard("⚙️","Настройки","Звук и интерфейс","more-settings")}</div></div>`;
-      openGameSheet({mode:"more-home", title:"Ещё", content, contentClass:"section-home-root"});
-    }
-
-    function renderHeroEquipment() {
-      const rows = Object.keys(SLOT_NAMES).map(slot => { const item = player?.equipment?.[slot]; return [SLOT_NAMES[slot], item ? `${item.name || "Предмет"} · ${RARITY_NAMES[item.rarity] || item.rarity || ""}` : "Слот пуст", "inventory"]; });
-      openApprovedSheet("Снаряжение", rows); activeSheetMode = "hero-equipment";
-    }
     function renderHeroSkills() { openGameSheet({mode:"hero-skills", title:"Навыки", content:""}); renderApprovedSkillList(); }
     function renderHeroCompanions() { openGameSheet({mode:"hero-companions", title:"Спутники", content:""}); renderApprovedCompanionList(); }
     function renderHeroStats() { const stats = [["Боевая мощь",player?.power],["HP",player?.hero_max_hp],["Урон",player?.damage || player?.hero_damage],["Защита",player?.defense]]; openGameSheet({mode:"hero-stats",title:"Характеристики",content:stats.map(([name,value]) => `<div class="approved-sheet-card"><strong>${name}</strong><small>${formatNumber(value || 0)}</small></div>`).join("")}); }
     function renderHeroAwakening() { openGameSheet({mode:"hero-awakening",title:"Ранг и пробуждение",content:`${sectionCard("✨","Навыки","Ранги и узлы пробуждения","hero-skills")}${sectionCard("🐾","Спутники","Ранги и узлы пробуждения","hero-companions")}`}); }
-    function renderQuestSection() { openGameSheet({mode:"more-quests",title:"Задания",content:sectionCard("📋","Открыть задания","Ежедневные, недельные и достижения","action-quests")}); }
-    function renderOfflineSection() { openGameSheet({mode:"more-offline",title:"Офлайн-награды",content:sectionCard("🌙","Открыть награды","Проверить накопленный прогресс","action-offline")}); }
-    function renderGrowthSection() { openGameSheet({mode:"more-growth",title:"Центр развития",content:sectionCard("📈","Открыть центр","Текущие серверные рекомендации","action-growth")}); }
-    function renderLeaderboardSection() { openGameSheet({mode:"more-leaderboard",title:"Рейтинг",content:sectionCard("🏆","Открыть рейтинг","Волна, БМ и место","action-leaderboard")}); }
-    function renderSettingsSection() { openGameSheet({mode:"more-settings",title:"Настройки",content:sectionCard("⚙️","Настройки","Звук и интерфейс","action-settings")}); }
 
-    const SHEET_RENDERERS = {"hero-home":renderHeroHome,"trials-home":renderTrialsHome,"shop-home":renderShopHome,"more-home":renderMoreHome,"hero-equipment":renderHeroEquipment,"hero-skills":renderHeroSkills,"hero-companions":renderHeroCompanions,"hero-stats":renderHeroStats,"hero-awakening":renderHeroAwakening,"more-quests":renderQuestSection,"more-offline":renderOfflineSection,"more-growth":renderGrowthSection,"more-leaderboard":renderLeaderboardSection,"more-settings":renderSettingsSection};
+    const SHEET_RENDERERS = {"hero-home":renderHeroHome,"trials-home":renderTrialsHome,"shop-home":renderShopHome,"hero-skills":renderHeroSkills,"hero-companions":renderHeroCompanions,"hero-stats":renderHeroStats,"hero-awakening":renderHeroAwakening};
 
     function renderSheetMode(mode, {restoreScroll = false} = {}) {
       const previousScroll = restoreScroll ? sheetNavigationStack.at(-1)?.scrollTop || 0 : 0;
@@ -7137,6 +7168,7 @@ id="companionSummonChances"
     function restoreAfterPendingLoot() {
       const saved = pendingLootReturnState;
       pendingLootReturnState = null;
+      if (pendingOfflineStatus?.claimable && shownOfflineClaimVersion !== pendingOfflineStatus.claim_version) return showOfflineStatus(pendingOfflineStatus);
       if (!saved || saved.section === "battle" || !saved.mode) return navigateBottomSection("battle");
       setBottomNavigationState(saved.section);
       sheetNavigationStack.splice(0, sheetNavigationStack.length, ...saved.stack);
@@ -7149,8 +7181,7 @@ id="companionSummonChances"
       const gem = player?.gem_boss || player?.gem_boss_state || {};
       const trials = Number(gem.attempts?.available ?? gem.attempts?.free_remaining ?? gem.attempts_remaining ?? 0) + (player?.boss_button_visible ? 1 : 0);
       const shop = Number(player?.summon?.free_available || player?.summon_status?.free_available || 0);
-      const more = Number(growthCenter?.growth_center?.counters?.claimable_quests || 0) + (player?.offline_progression?.claimable ? 1 : 0);
-      ({hero:improvements,trials,shop,more} && Object.entries({hero:improvements,trials,shop,more})).forEach(([key,value]) => { const badge = document.querySelector(`[data-nav-badge="${key}"]`); if (!badge) return; badge.hidden = !value; badge.textContent = value > 9 ? "9+" : String(value); });
+      Object.entries({hero:improvements,trials,shop}).forEach(([key,value]) => { const badge = document.querySelector(`[data-nav-badge="${key}"]`); if (!badge) return; badge.hidden = !value; badge.textContent = value > 9 ? "9+" : String(value); });
     }
 
     function approvedTickerState() {
@@ -8459,8 +8490,17 @@ id="companionSummonChances"
 
     async function claimOffline() {
       $("claimOfflineButton").disabled = true;
-      try { player = await apiRequest("/offline/claim", "POST"); renderPlayer(); modalHide("offlineModal"); setMessage(player.message); syncBattleState(); }
+      try { const result = await apiRequest("/offline/claim", "POST", {client_action_id:crypto.randomUUID(), expected_claim_version:Number($("claimOfflineButton").dataset.version)}); player = result.player || result; pendingOfflineStatus = null; renderPlayer(); modalHide("offlineModal"); setMessage(result.message || "Награды получены"); syncBattleState(); }
       catch (error) { setMessage(`❌ ${error.message}`, true); $("claimOfflineButton").disabled = false; }
+    }
+    function showOfflineStatus(status) {
+      if (!status?.claimable || shownOfflineClaimVersion === status.claim_version) return;
+      shownOfflineClaimVersion = status.claim_version; pendingOfflineStatus = status;
+      const rewards = status.estimated_rewards || {};
+      setText("offlineBootstrapTime", `Время вне игры: ${Math.floor(Number(status.offline_seconds_rewarded || 0) / 60)} мин`);
+      setText("offlineChests", formatNumber(rewards.chests || 0)); setText("offlineExp", formatNumber(rewards.experience || rewards.hero_experience || 0));
+      setText("offlineBootstrapBreakdown", Object.entries(rewards).filter(([,value]) => Number(value)).map(([key,value]) => `${key}: +${formatNumber(value)}`).join(" · "));
+      $("claimOfflineButton").dataset.version = status.claim_version; modalShow("offlineModal");
     }
     function showOfflineIfAvailable() {
       const reward = player?.offline_reward;
@@ -8663,14 +8703,16 @@ id="companionSummonChances"
       bindQuestClaimButtons();
       updateQuestResetTimer();
 
-      const hasClaimableReward = [
+      const claimableCount = [
         ...quests,
         questData.bonus,
-      ].some((quest) => Boolean(quest?.claimable));
+      ].filter((quest) => Boolean(quest?.claimable)).length;
+      const questBadge = $("questBattleClaimableCount");
+      if (questBadge) { questBadge.hidden = claimableCount === 0; questBadge.textContent = String(claimableCount); }
 
       elements.questsBattleButton?.classList.toggle(
         "ready",
-        hasClaimableReward
+        claimableCount > 0
       );
     }
 
@@ -10572,11 +10614,13 @@ id="companionSummonChances"
 
         const playerPromise = apiRequest("/player");
         const growthPromise = apiRequest("/growth-center");
+        const offlinePromise = apiRequest("/offline/status");
         const assetsPromise = preloadCriticalAssets();
 
-        const [playerData, growthData] = await Promise.all([
+        const [playerData, growthData, offlineStatus] = await Promise.all([
           playerPromise,
           growthPromise,
+          offlinePromise,
           assetsPromise
         ]);
 
@@ -10595,9 +10639,9 @@ id="companionSummonChances"
 
         preloadOtherAssetsInBackground();
 
+        pendingOfflineStatus = offlineStatus;
         if (player.pending_loot) showPendingLoot(player.pending_loot);
-
-        showOfflineIfAvailable();
+        else showOfflineStatus(offlineStatus);
 
         if (!player.hero_alive || Number(player.hero_hp) <= 0) {
           await handleHeroDefeat();
@@ -10864,6 +10908,10 @@ id="companionSummonChances"
     $("approvedSkillSlotCancel").addEventListener("click", () => $("approvedSkillSlotModal").hidden = true);
     $("approvedSkillSlotModal").addEventListener("click", event => { if (event.target === $("approvedSkillSlotModal")) $("approvedSkillSlotModal").hidden = true; });
     $("approvedSkillSlotOptions").addEventListener("click", event => {
+      const selectedSkill = event.target.closest("[data-selector-skill]");
+      if (selectedSkill) return equipApprovedSkill(selectedSkill.dataset.selectorSkill, Number(selectedSkill.dataset.selectorSlot));
+      const selectedCompanion = event.target.closest("[data-selector-companion]");
+      if (selectedCompanion) return equipApprovedCompanion(selectedCompanion.dataset.selectorCompanion, Number(selectedCompanion.dataset.selectorSlot));
       const button = event.target.closest("[data-approved-equip-slot]"); if (!button || button.disabled) return;
       const slot = Number(button.dataset.approvedEquipSlot); const skillId = button.dataset.approvedEquipSkill;
       const occupied = (player?.skill_system?.slots || []).find(item => Number(item.index) === slot)?.skill_id;
@@ -10917,6 +10965,10 @@ id="companionSummonChances"
       if (button) navigateBottomSection(button.dataset.approvedNav);
     });
     $("approvedSheetContent").addEventListener("click", event => {
+      const skillSlot = event.target.closest("[data-active-skill-slot]");
+      if (skillSlot) { const index = Number(skillSlot.dataset.activeSkillSlot); const id = player?.skill_system?.slots?.[index - 1]?.skill_id; if (!id) return openSkillSlotSelector(index); sheetNavigationStack.push({mode:"skill-detail",scrollTop:$("approvedSheetScroll").scrollTop}); renderApprovedSkillDetail(id); activeSheetMode = "skill-detail"; $("approvedSheetTitle").textContent = "Навык"; return; }
+      const companionSlot = event.target.closest("[data-active-companion-slot]");
+      if (companionSlot) { const index = Number(companionSlot.dataset.activeCompanionSlot); const id = player?.companion_system?.slots?.[index - 1]?.companion_id; if (!id) return openCompanionSlotSelector(index); sheetNavigationStack.push({mode:"companion-detail",scrollTop:$("approvedSheetScroll").scrollTop}); renderApprovedCompanionDetail(id); activeSheetMode = "companion-detail"; $("approvedSheetTitle").textContent = "Спутник"; return; }
       const skillCard = event.target.closest("[data-approved-skill-card]");
       if (skillCard) { sheetNavigationStack.push({mode:"skill-detail",scrollTop:0}); renderApprovedSkillDetail(skillCard.dataset.approvedSkillCard); activeSheetMode = "skill-detail"; $("approvedSheetTitle").textContent = "Навык"; return; }
       const companionCard = event.target.closest("[data-approved-companion-card]");
